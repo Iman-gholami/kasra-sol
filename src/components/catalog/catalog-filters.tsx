@@ -7,6 +7,11 @@ import { categories } from '@/data/products';
 import type { CatalogFilters } from '@/types/store';
 
 type Props = { filters: CatalogFilters; action: string; fixedCategory?: boolean; count: number };
+const colors = [
+  {id:'cream',label:'کرم',hex:'#e7d8c2'}, {id:'black',label:'مشکی',hex:'#34312f'},
+  {id:'rose',label:'رز خاکی',hex:'#b98a83'}, {id:'sage',label:'سبز سدری',hex:'#84958a'},
+  {id:'blue',label:'آبی دودی',hex:'#7c929d'}, {id:'white',label:'سفید',hex:'#f6f3ed'}
+];
 
 export function CatalogFilters({ filters, action, fixedCategory, count }: Props) {
   const [open, setOpen] = useState(false);
@@ -69,13 +74,20 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
           <select name="size" defaultValue={filters.size ?? ''}><option value="">همه سایزها</option>
             {['S','M','L','XL'].map(size => <option key={size} value={size}>{size}</option>)}</select>
         </label>
-        <label>رنگ
-          <select name="color" defaultValue={filters.color ?? ''}>
-            <option value="">همه رنگ‌ها</option><option value="cream">کرم</option><option value="black">مشکی</option>
-            <option value="rose">رز خاکی</option><option value="sage">سبز سدری</option>
-            <option value="blue">آبی دودی</option><option value="white">سفید</option>
-          </select>
-        </label>
+        <fieldset className="filter-color-fieldset">
+          <legend>رنگ</legend>
+          <div className="filter-color-grid">
+            <label className="filter-color-choice filter-any">
+              <input type="radio" name="color" value="" defaultChecked={!filters.color}/>
+              <span className="filter-color-dot filter-color-any" aria-hidden="true">×</span><span>همه</span>
+            </label>
+            {colors.map(color => <label key={color.id} className="filter-color-choice">
+              <input type="radio" name="color" value={color.id} defaultChecked={filters.color===color.id}/>
+              <span className="filter-color-dot" style={{backgroundColor:color.hex}} aria-hidden="true"/>
+              <span>{color.label}</span>
+            </label>)}
+          </div>
+        </fieldset>
         <div className="price-fields">
           <label>حداقل قیمت (تومان)<input type="number" inputMode="numeric" name="min" min="0" placeholder="از" defaultValue={filters.min ?? ''}/></label>
           <label>حداکثر قیمت (تومان)<input type="number" inputMode="numeric" name="max" min="0" placeholder="تا" defaultValue={filters.max ?? ''}/></label>
