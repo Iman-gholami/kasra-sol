@@ -17,9 +17,17 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
   useEffect(() => {
     if (!open) return;
     closeButton.current?.focus();
+    const onDocumentEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onDocumentEscape);
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = oldOverflow; };
+    return () => { document.body.style.overflow = oldOverflow; document.removeEventListener('keydown', onDocumentEscape); };
   }, [open]);
 
   function close() {

@@ -104,7 +104,15 @@ test('all requested viewport widths avoid document overflow', async ({ page }) =
     for (const route of ['/', '/shop', '/product/shomiz-01', '/cart', '/checkout']) {
       await page.goto(route);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-      expect(overflow, 'Horizontal overflow at ' + width + 'px on ' + route).toBe(false);
+      if (overflow) {
+        const details = await page.evaluate(() => [...document.querySelectorAll('body *')]
+          .map(el => {
+            const rect = el.getBoundingClientRect();
+            return {element: el.tagName.toLowerCase(), cls: (el.className && typeof el.className === 'string') ? el.className.slice(0,90) : '', left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width)};
+          })
+          .filter(x => x.right > window.innerWidth + 1 || x.left < -1).slice(0,20));
+        throw new Error('Horizontal overflow at ' + width + 'px on ' + route + ': ' + JSON.stringify(details));
+      }
     }
   }
 });
