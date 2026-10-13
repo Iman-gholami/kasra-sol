@@ -233,7 +233,14 @@ test('official locally hosted Estedad variable font is applied throughout Persia
   await page.goto('/shop');
   await page.evaluate(async () => { await document.fonts.ready; });
   await expect(page.locator('.product-info h3').first()).toHaveCSS('font-family', /estedad/i);
+  // Checkout forms only render when the demo cart contains an item.
+  await page.goto('/product/shomiz-01');
+  await page.getByRole('button', { name: 'رنگ کرم' }).click();
+  await page.getByRole('button', { name: 'سایز M' }).click();
+  await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
+  await expect(page.getByRole('dialog', { name: 'سبد خرید سریع' })).toBeVisible();
   await page.goto('/checkout');
+  await expect(page.locator('input').first()).toBeVisible();
   await page.evaluate(async () => { await document.fonts.ready; });
   await expect(page.locator('input').first()).toHaveCSS('font-family', /estedad/i);
   const family = await page.evaluate(() => Array.from(document.fonts).map(f => f.family.toLowerCase()));
