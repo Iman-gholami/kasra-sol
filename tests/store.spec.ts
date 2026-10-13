@@ -224,3 +224,18 @@ test('mobile shopping toolbar reaches products sooner and keeps sort filters', a
   await expect(page).toHaveURL(/color=black/);
   await expect(page).toHaveURL(/sort=newest/);
 });
+
+test('official locally hosted Estedad variable font is applied throughout Persian UI', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async () => { await document.fonts.ready; });
+  await expect(page.locator('body')).toHaveCSS('font-family', /estedad/i);
+  await expect(page.getByRole('link', { name: /همه محصولات/ }).first()).toHaveCSS('font-family', /estedad/i);
+  await page.goto('/shop');
+  await page.evaluate(async () => { await document.fonts.ready; });
+  await expect(page.locator('.product-info h3').first()).toHaveCSS('font-family', /estedad/i);
+  await page.goto('/checkout');
+  await page.evaluate(async () => { await document.fonts.ready; });
+  await expect(page.locator('input').first()).toHaveCSS('font-family', /estedad/i);
+  const family = await page.evaluate(() => Array.from(document.fonts).map(f => f.family.toLowerCase()));
+  expect(family.some(name => name.includes('estedad'))).toBe(true);
+});

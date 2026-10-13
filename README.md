@@ -45,6 +45,7 @@ Run Playwright against a built app. Do not use the development server for perfor
 
 ```text
 src/
+  fonts/                Official Estedad 8.5 variable WOFF2, OFL license/provenance
   app/                  App Router pages, metadata, sitemap, robots, /api/health
   components/layout/    Navigation, footer
   components/catalog/   Filter and result UI
@@ -68,7 +69,13 @@ To connect a backend, replace `queryProducts` and product lookup methods with ty
 
 ## Data / assets
 
-`src/data/products.ts` defines 12 products per category, each with multiple colors and per-size stock. **Six photorealistic AI-generated model images**, optimized to AVIF and stored locally under `public/images/lookbook/`, are intentionally **reused across the 36 mock products** to evaluate the visual design of the storefront. These images do **not** represent actual inventory or faithfully depict the named clothes, sizes, available colors or variants. The previous SVG illustrations remain in the repository for reference but are no longer used in product displays. Before production, replace this demo mapping with distinct, properly licensed authentic product photos, preferably on an image CDN. Real Persian typography should use properly licensed, self-hosted optimized Vazirmatn files when supplied. The current fallback stack supports Persian without remote font loading.
+`src/data/products.ts` defines 12 products per category, each with multiple colors and per-size stock. **Six photorealistic AI-generated model images**, optimized to AVIF and stored locally under `public/images/lookbook/`, are intentionally **reused across the 36 mock products** to evaluate the visual design of the storefront. These images do **not** represent actual inventory or faithfully depict the named clothes, sizes, available colors or variants. The previous SVG illustrations remain in the repository for reference but are no longer used in product displays. Before production, replace this demo mapping with distinct, properly licensed authentic product photos, preferably on an image CDN. Persian typography uses the official **Estedad 8.5 variable WOFF2** (100–900) bundled at `src/fonts/Estedad-VF.woff2`, loaded through `next/font/local` with `font-display: swap` and local font preloading. It is self-hosted at runtime and makes no font-CDN requests. The font's SIL OFL 1.1 license and source/version verification are at `src/fonts/OFL.txt` and `src/fonts/README.md`.
+
+## Local typography — Estedad 8.5
+
+The primary font for **all Persian text, prices, navigation and forms** is **Estedad**, configured via `next/font/local` in `src/app/layout.tsx`. The single 120,924-byte variable WOFF2 supports weights 100–900, uses `font-display: swap`, is preloaded by Next.js and has Tahoma fallback. The Latin editorial **KASRA** wordmark retains its intentional Georgia serif treatment.
+
+The upstream is [Amin Abedi's official Estedad repository](https://github.com/aminabedi68/Estedad), pinned to [release 8.5](https://github.com/aminabedi68/Estedad/releases/tag/8.5), under **SIL OFL 1.1**. The committed binary matches upstream Git blob SHA `01db924b1aa7dea3ab62814d50e73440957df7d3`. License/provenance are bundled in `src/fonts/`. No Google Fonts API, runtime CDN or extra npm package is needed.
 
 ## Deployment
 

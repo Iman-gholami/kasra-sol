@@ -37,7 +37,7 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--canvas); color: var(--ink); font-family: Vazirmatn, Tahoma, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-estedad), Tahoma, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .5; }
@@ -804,3 +804,18 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
   .catalog-results .active-filter-list {margin-bottom:10px;}
   .category-tile:last-child img {object-position:center 0%;}
 }
+
+/* Official Estedad 8.5 local variable webfont (SIL OFL 1.1).
+   Use the same Persian typeface at all levels; the Latin KASRA wordmark retains
+   its custom serif lettering as an intentional visual identity element. */
+html { font-synthesis: none; }
+body { font-optical-sizing: auto; font-weight: 400; }
+button, input, select, textarea { font-family: inherit; }
+.hero h1, .section-heading h2, .catalog-heading h1, .detail-copy h1,
+.editorial-copy h2, .newsletter h2, .page-heading, .category-description h3,
+.content-page h1, .checkout-card h2, .product-info h3, .mini-cart-heading h2 {
+  letter-spacing: normal;
+}
+.hero h1, .editorial-copy h2 { font-weight: 750; }
+.section-heading h2, .catalog-heading h1, .detail-copy h1 { font-weight: 720; }
+.product-info h3, .price-line strong { font-weight: 700; }

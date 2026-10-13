@@ -30,4 +30,4 @@ GitHub Actions checks are defined in `.github/workflows/ci.yml`. Check the **lat
 5. Test the seven requested viewport widths and keyboard/screen-reader journeys.
 6. Load-test CDN hit and origin-miss scenarios with controlled concurrency and expected product/navigation distribution. Do not issue campaign-scale tests against an unapproved production server.
 
-Known gap: authentic product-specific photography, licensed optimized self-hosted Persian font and reproducible npm lockfile are still required before release. The currently displayed model photos are **AI-generated, low-bandwidth AVIF demo assets** reused across mock products, so they are not verified representations of those items. The previous vector illustrations are retained but unused.
+Known gap: authentic product-specific photography, further real-device font rendering verification and reproducible npm lockfile are still required before release. The currently displayed model photos are **AI-generated, low-bandwidth AVIF demo assets** reused across mock products, so they are not verified representations of those items. The previous vector illustrations are retained but unused.

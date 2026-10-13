@@ -64,7 +64,7 @@ V4 does not add runtime dependencies or build a backend, and retains Server Comp
 ## Remaining work for real launch
 
 1. Licensed actual per-product/per-variant photographs, without repeated ambiguous mock portraits.
-2. Approved self-hosted/subsetted Persian font for consistent typographic experience.
+2. Locally vendored Estedad 8.5 variable font now addresses font licensing and self-hosting; optional subsetting and manual display validation remain.
 3. Final product/business price/stock, shipping/returns policy, and legal support content.
 4. Reproducible `package-lock.json`, backend/auth/payment/inventory integration, server environment validation.
 5. Screen reader, 200–400% zoom and real-device/customer usability study; controlled Lighthouse and RUM measurements.
@@ -99,3 +99,7 @@ Resources reflect caching, browser transfer accounting and changes in CSS/imager
 Verification: [final V4 GitHub Actions CI run](https://github.com/Iman-gholami/kasra-sol/actions/runs/38374653836) — ESLint, TypeScript, Next.js production build, **17/17 Playwright tests** and synthetic capture passed. [Pinned V3 baseline run](https://github.com/Iman-gholami/kasra-sol/actions/runs/38371896983). The **storefront-screenshots** artifact contains 320/375/390/430/1024/1440/1800px screenshots, open modals and `lab-metrics-v4.json`. The baseline artifact contains `lab-metrics-v3.json` and comparison source screenshots.
 
 All prices, stocks, delivery and checkout remain mock-only. The six generated fashion portraits are demo images, **not authenticated item photography**; that asset limitation remains the most important unresolved visual-commerce gap.
+
+## Typeface update (Estedad 8.5)
+
+The approved Estedad font is now installed with `next/font/local` as the sole Persian interface font (variable weights 100–900, `display: swap`, preload). The actual upstream 8.5 WOFF2 binary and SIL OFL 1.1 license are tracked in `src/fonts/`. This resolves the previous missing local typeface asset and avoids external font requests; the next visual QA checks its behavior on mobile and desktop.
