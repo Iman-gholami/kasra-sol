@@ -73,7 +73,7 @@ export const products: Product[] = collections.flatMap((collection, categoryInde
       category: collection.slug,
       price,
       compareAt: i % 4 === 0 ? Math.ceil(price * 1.2 / 10000) * 10000 : undefined,
-      description: name + ' با طراحی ساده و جزئیات کاربردی، برای ساختن استایلی شخصی و راحت. تصاویر، قیمت‌ها و مشخصات در این نسخه نمایشی هستند.',
+      description: name + ' با طراحی ساده و جزئیات کاربردی، برای ترکیب‌های روزمره و استایلی شخصی.',
       images: i % 2 === 0 ? [...demoPhotos[collection.slug]] : [...demoPhotos[collection.slug]].reverse(),
       colors: colorList,
       sizes,

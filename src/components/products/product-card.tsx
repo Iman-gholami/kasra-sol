@@ -23,13 +23,13 @@ export function ProductCard({ product, priority = false }: { product: Product; p
         aria-pressed={liked} onClick={() => toggleWishlist(product.id)}><Heart size={19} strokeWidth={1.7} fill={liked?'currentColor':'none'}/></button>
     </div>
     <div className="product-info">
-      <p className="product-category">{category} <span aria-hidden="true">—</span> KASRA</p>
+      <p className="product-category">{category}</p>
       <h3><Link href={'/product/'+product.slug}>{product.name}</Link></h3>
       <div className="price-line"><strong>{toman(product.price)}</strong>{product.compareAt && <del>{toman(product.compareAt)}</del>}</div>
       <div className="card-bottom">
         <div className="color-dots" aria-label="رنگ‌های فهرست‌شده">{product.colors.map(color =>
           <span title={color.name} key={color.id} style={{backgroundColor:color.hex}}/>)}</div>
-        <Link href={'/product/'+product.slug} className="subtle-link">دیدن محصول <ArrowText/></Link>
+        <Link href={'/product/'+product.slug} className="subtle-link" aria-label={'مشاهده جزئیات و انتخاب سایز '+product.name}>انتخاب سایز <ArrowText/></Link>
       </div>
     </div>
   </article>;
