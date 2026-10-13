@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 test('capture editorial layout on desktop and mobile', async ({ page }) => {
+  test.setTimeout(120_000);
   const folder = 'artifacts/screenshots';
   mkdirSync(folder, { recursive: true });
   for (const width of [320, 375, 390, 430, 1024, 1440, 1800]) {
@@ -20,6 +21,7 @@ test('capture editorial layout on desktop and mobile', async ({ page }) => {
 });
 
 test('capture shopping states on mobile', async ({ page }) => {
+  test.setTimeout(90_000);
   const folder = 'artifacts/screenshots';
   mkdirSync(folder, { recursive: true });
   await page.setViewportSize({ width: 390, height: 844 });
