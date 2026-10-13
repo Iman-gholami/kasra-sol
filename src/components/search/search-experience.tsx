@@ -23,8 +23,8 @@ export function SearchExperience({onClose}:{onClose:()=>void}) {
   const [loading,setLoading] = useState(false);
   const [active,setActive] = useState(-1);
   const entries = [
-    ...suggestions.categories.map(c => ({kind:'category',label:c.title,href:c.href,id:'category-'+c.slug})),
-    ...suggestions.products.map(p => ({kind:'product',label:p.name,href:p.href,id:'product-'+p.id}))
+    ...suggestions.products.map(p => ({kind:'product',label:p.name,href:p.href,id:'product-'+p.id})),
+    ...suggestions.categories.map(c => ({kind:'category',label:c.title,href:c.href,id:'category-'+c.slug}))
   ];
   useEffect(() => {
     const node = dialog.current;
