@@ -6,11 +6,11 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
   await page.getByRole('link', { name: 'همه محصولات' }).first().click();
   await expect(page).toHaveURL(/\/shop/);
   await expect(page.locator('.product-card')).toHaveCount(9);
-  await page.getByLabel('دسته‌بندی', { exact: true }).selectOption('manto');
+  await page.locator('select[name="category"]').selectOption('manto');
   await page.getByRole('button', { name: 'اعمال فیلترها' }).click();
   await expect(page).toHaveURL(/category=manto/);
   await expect(page.locator('.product-category').first()).toHaveText('مانتو');
-  await page.getByLabel('مرتب‌سازی').selectOption('price-asc');
+  await page.locator('select[name="sort"]').selectOption('price-asc');
   await page.getByRole('button', { name: 'اعمال فیلترها' }).click();
   await expect(page).toHaveURL(/sort=price-asc/);
   await page.goto('/search?q=لینن');
@@ -22,7 +22,7 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
 test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await page.goto('/product/shomiz-01');
   await page.getByRole('button', { name: 'افزودن به سبد' }).click();
-  await expect(page.getByRole('alert')).toContainText('انتخاب');
+  await expect(page.locator('.status-message.error')).toContainText('انتخاب');
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await expect(page.getByRole('button', { name: 'سایز S ناموجود' })).toBeDisabled();
   await page.getByRole('button', { name: 'سایز M' }).click();
@@ -36,7 +36,7 @@ test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await expect(page.locator('.qty-stepper span').first()).toContainText('۲');
   await page.getByRole('link', { name: /ادامه تا تسویه/ }).click();
   await page.getByRole('button', { name: 'تأیید نمایشی سفارش' }).click();
-  await expect(page.getByRole('alert')).toContainText('تأیید');
+  await expect(page.locator('.status-message.error')).toContainText('تأیید');
   await page.getByLabel('نام و نام خانوادگی').fill('نام نمایشی کاربر');
   await page.getByLabel('شماره موبایل').fill('09123456789');
   await page.getByLabel('استان').selectOption('تهران');
