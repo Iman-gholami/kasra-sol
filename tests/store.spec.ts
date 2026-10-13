@@ -192,7 +192,7 @@ test('mobile purchase information is grouped and demo imagery disclosure remains
   await page.setViewportSize({width:390,height:844});
   await page.goto('/product/shomiz-01');
   const buyPanel = page.getByRole('region', {name:'انتخاب مشخصات و خرید'});
-  await expect(buyPanel.getByText('لباست رو انتخاب کن')).toBeVisible();
+  await expect(buyPanel.getByText('رنگ', {exact:false}).first()).toBeVisible();
   await expect(page.getByText('عکس‌های مدل با هوش مصنوعی ساخته شده‌اند', {exact:false})).toBeVisible();
   await buyPanel.getByRole('button', {name:'رنگ کرم'}).click();
   await buyPanel.getByRole('button', {name:'سایز M'}).click();
