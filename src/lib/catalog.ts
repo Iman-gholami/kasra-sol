@@ -2,7 +2,7 @@ import { products } from '@/data/products';
 import { normalizePersian, toLatinDigits } from '@/lib/format';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
 
-export const PAGE_SIZE = 9;
+export const PAGE_SIZE = 12;
 type SearchParams = Record<string, string | string[] | undefined>;
 const one = (value?: string | string[]) => typeof value === 'string' ? value : value?.[0];
 const numeric = (value?: string) => {

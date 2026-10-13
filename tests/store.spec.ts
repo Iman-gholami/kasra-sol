@@ -5,7 +5,7 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('استایل هر روزت');
   await page.getByRole('link', { name: 'همه محصولات' }).first().click();
   await expect(page).toHaveURL(/\/shop/);
-  await expect(page.locator('.product-card')).toHaveCount(9);
+  await expect(page.locator('.product-card')).toHaveCount(12);
   await page.locator('select[name="category"]').selectOption('manto');
   await page.getByRole('button', { name: 'اعمال فیلترها' }).click();
   await expect(page).toHaveURL(/category=manto/);
@@ -192,4 +192,15 @@ test('mobile purchase information is grouped and demo imagery disclosure remains
   await buyPanel.getByRole('button', {name:'رنگ کرم'}).click();
   await buyPanel.getByRole('button', {name:'سایز M'}).click();
   await expect(buyPanel.getByRole('button', {name:'افزودن به سبد خرید'})).toBeEnabled();
+});
+
+test('full catalog pagination uses balanced product rows on wide desktop', async ({page}) => {
+  await page.setViewportSize({width:1800,height:960});
+  await page.goto('/shop');
+  await expect(page.locator('.product-card')).toHaveCount(12);
+  const columns = await page.locator('.product-grid').first().evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+  expect(columns).toBe(4);
+  await page.getByRole('link', {name:'صفحه بعد'}).click();
+  await expect(page).toHaveURL(/page=2/);
+  await expect(page.locator('.product-card')).toHaveCount(12);
 });

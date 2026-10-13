@@ -745,3 +745,8 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
   .buy-panel .swatch {min-width:65px;}
   .catalog-sort-form label {font-size:.75rem;}
 }
+
+/* v4 screenshot review: purchase CTA belongs after the selected options on narrow screens. */
+@media (max-width:600px) {
+  .buy-panel .purchase-row {position:static;margin:9px 0 0;padding:0;border:0;background:transparent;}
+}
