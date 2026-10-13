@@ -21,13 +21,16 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
 
 test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await page.goto('/product/shomiz-01');
-  await page.getByRole('button', { name: 'افزودن به سبد' }).click();
+  await page.getByRole('button', { name: 'رنگ و سایز رو انتخاب کن' }).click();
   await expect(page.locator('.status-message.error')).toContainText('انتخاب');
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await expect(page.getByRole('button', { name: 'سایز S ناموجود' })).toBeDisabled();
   await page.getByRole('button', { name: 'سایز M' }).click();
-  await page.getByRole('button', { name: 'افزودن به سبد' }).click();
-  await expect(page.getByRole('status')).toContainText('سبد');
+  await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
+  const quickCart = page.getByRole('dialog', { name: 'سبد خرید سریع' });
+  await expect(quickCart).toBeVisible();
+  await expect(quickCart).toContainText('شومیز لینن آوید');
+  await quickCart.getByRole('button', { name: 'بستن سبد خرید' }).click();
   await page.goto('/cart');
   await expect(page.getByText('شومیز لینن آوید')).toBeVisible();
   await page.reload();
@@ -115,4 +118,52 @@ test('all requested viewport widths avoid document overflow', async ({ page }) =
       }
     }
   }
+});
+
+test('size guide is accessible in place and closes with Escape', async ({ page }) => {
+  await page.goto('/product/shomiz-01');
+  await page.getByRole('button', { name: 'راهنمای سایز' }).click();
+  const dialog = page.getByRole('dialog', { name: 'راهنمای سایز نمونه' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('صرفاً مثال عمومی');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('button', { name: 'رنگ و سایز رو انتخاب کن' })).toBeVisible();
+});
+
+test('header search previews and full Persian search route', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'جستجوی محصولات' }).click();
+  const search = page.getByRole('search').first();
+  await search.getByRole('searchbox', { name: 'عبارت جستجو' }).fill('لینن');
+  await expect(page.locator('.search-preview-item').first()).toBeVisible();
+  await expect(page.locator('.search-preview-item').first().locator('img')).toBeVisible();
+  await page.getByRole('link', { name: /نمایش نتایج «لینن»/ }).click();
+  await expect(page).toHaveURL(/\/search\?q=/);
+  await expect(page.getByRole('heading', { name: /نتایج «لینن»/ })).toBeVisible();
+});
+
+test('mobile color swatches persist in shareable filtered URL', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/shop');
+  await page.getByRole('button', { name: 'فیلتر و مرتب‌سازی' }).click();
+  const drawer = page.getByRole('dialog', { name: 'فیلترهای محصولات' });
+  await drawer.getByRole('radio', { name: 'مشکی' }).check();
+  await drawer.getByRole('button', { name: 'اعمال فیلترها' }).click();
+  await expect(page).toHaveURL(/color=black/);
+  await expect(page.getByRole('link', { name: 'مشکی', exact: true })).toBeVisible();
+});
+
+test('mini-cart returns focus and keeps cart totals and demo status clear', async ({ page }) => {
+  await page.goto('/product/shomiz-01');
+  await page.getByRole('button', { name: 'رنگ کرم' }).click();
+  await page.getByRole('button', { name: 'سایز M' }).click();
+  await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
+  const drawer = page.getByRole('dialog', { name: 'سبد خرید سریع' });
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toContainText('جمع اقلام، بدون ارسال');
+  await expect(drawer).toContainText('نمایشی');
+  await drawer.getByRole('link', { name: 'بررسی سبد خرید' }).click();
+  await expect(page).toHaveURL(/\/cart/);
+  await expect(page.getByText('خلاصه سفارش نمایشی')).toBeVisible();
 });
