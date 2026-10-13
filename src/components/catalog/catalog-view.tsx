@@ -47,6 +47,14 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   if (filters.discounted) chips.push({key:'sale',label:'تخفیف‌دارها'});
   if (filters.sort && filters.sort!=='featured') chips.push({key:'sort',label:filters.sort==='newest'?'جدیدترین':filters.sort==='price-asc'?'ارزان‌ترین':'گران‌ترین'});
 
+  const clearHref = makeUrl({ category:null, size:null, color:null, min:null, max:null,
+    stock:null, sale:null, sort:null, page:null });
+  function categoryHref(slug:string) {
+    if (action==='/search') return makeUrl({category:slug,page:null});
+    const retained = makeUrl({category:null,page:null}).slice(action.length);
+    return '/category/'+slug+retained;
+  }
+
   return <div className="container catalog-layout">
     <div className="breadcrumbs"><Link href="/">خانه</Link><span>/</span><span>{title}</span></div>
     <div className="catalog-heading">
@@ -57,9 +65,10 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
       <section className="catalog-results" aria-label="نتایج محصولات">
         <nav className="catalog-category-nav" aria-label="دسته‌بندی‌های محصولات">
-          <Link href="/shop" aria-current={action === '/shop' && !filters.category ? 'page' : undefined}>همه</Link>
-          {categories.map(item => <Link key={item.slug} href={'/category/'+item.slug}
-             aria-current={fixedCategory && filters.category===item.slug ? 'page' : undefined}>{item.title}</Link>)}
+          <Link href={action === '/search' ? makeUrl({category:null,page:null}) : '/shop'}
+            aria-current={!filters.category ? 'page' : undefined}>همه محصولات</Link>
+          {categories.map(item => <Link key={item.slug} href={categoryHref(item.slug)}
+             aria-current={filters.category===item.slug ? 'page' : undefined}>{item.title}</Link>)}
         </nav>
         <div className="catalog-toolbar">
           <span className="catalog-toolbar-count">{formatNumber(data.total)} مدل برای دیدن</span>
@@ -84,11 +93,17 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
         {chips.length > 0 && <div className="active-filter-list" aria-label="فیلترهای فعال">
           {chips.map(chip=><Link className="active-filter-chip" key={chip.key} href={makeUrl({[chip.key]:null,page:null})}>
             {chip.label}<X size={13} aria-hidden="true"/></Link>)}
-          <Link className="clear-filter-link" href={action}>پاک کردن همه</Link>
+          <Link className="clear-filter-link" href={clearHref}>پاک کردن فیلترها</Link>
         </div>}
         {data.items.length ? <ProductGrid products={data.items}/> :
-          <div className="empty-state"><h2>محصولی پیدا نشد</h2><p>فیلترها را تغییر بده یا دوباره جستجو کن.</p>
-            <Link className="btn btn-dark" href={action}>نمایش همه محصولات</Link></div>}
+          <div className="empty-state"><h2>محصولی با این انتخاب‌ها پیدا نشد</h2>
+            <p>می‌تونی یکی از فیلترها رو برداری، یا جستجوی تازه‌ای انجام بدی.</p>
+            <div className="discovery-empty-actions">
+              <Link className="btn btn-dark" href={clearHref}>حذف فیلترها و دیدن نتایج</Link>
+              <Link className="btn btn-outline" href={filters.q ? '/search' : '/shop'}>
+                {filters.q ? 'جستجوی تازه' : 'همه محصولات'}
+              </Link>
+            </div></div>}
         {data.pages > 1 && <nav aria-label="صفحات نتایج" className="pagination">
           {data.page > 1 && <Link href={makeUrl({page:String(data.page-1)})}>صفحه قبل</Link>}
           <span>صفحه {formatNumber(data.page)} از {formatNumber(data.pages)}</span>
