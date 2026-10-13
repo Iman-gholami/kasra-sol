@@ -49,6 +49,9 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
 
   const clearHref = makeUrl({ category:null, size:null, color:null, min:null, max:null,
     stock:null, sale:null, sort:null, page:null });
+  const allHref = action === '/search' ? makeUrl({category:null,page:null}) :
+    '/shop' + makeUrl({category:null,page:null}).slice(action.length);
+  const relaxHref = makeUrl({size:null,color:null,min:null,max:null,stock:null,sale:null,page:null});
   function categoryHref(slug:string) {
     if (action==='/search') return makeUrl({category:slug,page:null});
     const retained = makeUrl({category:null,page:null}).slice(action.length);
@@ -65,7 +68,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
       <section className="catalog-results" aria-label="نتایج محصولات">
         <nav className="catalog-category-nav" aria-label="دسته‌بندی‌های محصولات">
-          <Link href={action === '/search' ? makeUrl({category:null,page:null}) : '/shop'}
+          <Link href={allHref}
             aria-current={!filters.category ? 'page' : undefined}>همه محصولات</Link>
           {categories.map(item => <Link key={item.slug} href={categoryHref(item.slug)}
              aria-current={filters.category===item.slug ? 'page' : undefined}>{item.title}</Link>)}
@@ -99,7 +102,8 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
           <div className="empty-state"><h2>محصولی با این انتخاب‌ها پیدا نشد</h2>
             <p>می‌تونی یکی از فیلترها رو برداری، یا جستجوی تازه‌ای انجام بدی.</p>
             <div className="discovery-empty-actions">
-              <Link className="btn btn-dark" href={clearHref}>حذف فیلترها و دیدن نتایج</Link>
+              <Link className="btn btn-dark" href={relaxHref}>حذف محدودیت‌ها و دیدن محصولات</Link>
+              <Link className="btn btn-outline" href={clearHref}>بازنشانی همه فیلترها</Link>
               <Link className="btn btn-outline" href={filters.q ? '/search' : '/shop'}>
                 {filters.q ? 'جستجوی تازه' : 'همه محصولات'}
               </Link>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import { ArrowDownWideNarrow, SlidersHorizontal, X } from 'lucide-react';
 import { categories, palette, standardSizes } from '@/data/facets';
+import { toLatinDigits } from '@/lib/format';
 import type { CatalogFilters } from '@/types/store';
 
 type Props = { filters: CatalogFilters; action: string; fixedCategory?: boolean; count: number };
@@ -15,6 +16,9 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
     Number(filters.max !== undefined) + Number(Boolean(filters.inStock)) + Number(Boolean(filters.discounted));
   const clearHref = action + (filters.q ? '?q=' + encodeURIComponent(filters.q) : '');
   const [open, setOpen] = useState(false);
+  const [priceError, setPriceError] = useState('');
+  const minInput = useRef<HTMLInputElement>(null);
+  const maxInput = useRef<HTMLInputElement>(null);
   const panel = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -36,6 +40,7 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
   }, [open]);
 
   function close() {
+    setPriceError('');
     setOpen(false);
     trigger.current?.focus();
   }
@@ -47,6 +52,22 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
     const first = items[0], last = items[items.length-1];
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+
+  function validatePrice(event: import('react').FormEvent<HTMLFormElement>) {
+    const valueOf = (input: HTMLInputElement | null) => {
+      const raw = toLatinDigits(input?.value ?? '').replace(/[\s,٬،]/g, '');
+      return raw && /^\d+$/.test(raw) ? Number(raw) : undefined;
+    };
+    const min = valueOf(minInput.current);
+    const max = valueOf(maxInput.current);
+    if (min !== undefined && max !== undefined && min > max) {
+      event.preventDefault();
+      setPriceError('حداقل قیمت نباید بیشتر از حداکثر قیمت باشد.');
+      minInput.current?.focus();
+      return;
+    }
+    setPriceError('');
   }
 
   return <>
@@ -81,7 +102,7 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
         <span><SlidersHorizontal size={18}/> فیلتر محصولات {activeCount > 0 && <small>({activeCount.toLocaleString('fa-IR')} فعال)</small>}</span>
         <button type="button" className="icon-button filter-close" ref={closeButton} aria-label="بستن فیلترها" onClick={close}><X size={21}/></button>
       </div>
-      <form method="get" action={action} className="filter-form">
+      <form method="get" action={action} className="filter-form" onSubmit={validatePrice}>
         {filters.q && <input type="hidden" name="q" value={filters.q}/>}
         <input type="hidden" name="sort" value={filters.sort ?? 'featured'}/>
         {!fixedCategory && <label>دسته‌بندی
@@ -112,9 +133,10 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
           </div>
         </fieldset>
         <div className="price-fields">
-          <label>حداقل قیمت (تومان)<input type="text" inputMode="numeric" name="min" pattern="[0-9۰-۹٠-٩,٬، ]*" placeholder="مثلاً ۵۰۰٬۰۰۰" defaultValue={filters.min ?? ''}/></label>
-          <label>حداکثر قیمت (تومان)<input type="text" inputMode="numeric" name="max" pattern="[0-9۰-۹٠-٩,٬، ]*" placeholder="مثلاً ۱٬۰۰۰٬۰۰۰" defaultValue={filters.max ?? ''}/></label>
+          <label>حداقل قیمت (تومان)<input type="text" inputMode="numeric" ref={minInput} name="min" pattern="[0-9۰-۹٠-٩,٬، ]*" placeholder="مثلاً ۵۰۰٬۰۰۰" defaultValue={filters.min ?? ''}/></label>
+          <label>حداکثر قیمت (تومان)<input type="text" inputMode="numeric" ref={maxInput} name="max" pattern="[0-9۰-۹٠-٩,٬، ]*" placeholder="مثلاً ۱٬۰۰۰٬۰۰۰" defaultValue={filters.max ?? ''}/></label>
         </div>
+        {priceError && <p className="filter-price-error" role="alert">{priceError}</p>}
         <label className="check-row"><input type="checkbox" name="stock" value="1" defaultChecked={filters.inStock}/> فقط موجودها</label>
         <label className="check-row"><input type="checkbox" name="sale" value="1" defaultChecked={filters.discounted}/> فقط تخفیف‌دارها</label>
         <div className="filter-buttons">
