@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: f5030708ae0af0e49c3db5dcb1f5225ff35f8c93
-          path: baseline-code/baseline-code
+          path: baseline-code
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -68,5 +68,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kasra-baseline-screenshots
-          path: baseline
+          path: baseline-code/baseline
           if-no-files-found: ignore

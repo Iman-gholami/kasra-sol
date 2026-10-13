@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Node CommonJS CLI needs project-relative Playwright resolution. */
 /* A small, dependency-free (apart from the project's existing Playwright) synthetic browser check.
  * Same script runs against the pinned V3 and the V4 production builds in GitHub Actions.
  * Measurements are unthrottled, single-run lab observations, NOT Lighthouse/RUM/Core Web Vitals certification. */
