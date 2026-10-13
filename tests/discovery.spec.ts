@@ -78,7 +78,7 @@ test('Persian Toman price fields and no-results recovery retain the original que
   await expect(page).toHaveURL(/q=/);
   await expect(page).toHaveURL(/min=/);
   await expect(page.getByRole('heading',{name:'محصولی با این انتخاب‌ها پیدا نشد'})).toBeVisible();
-  await page.getByRole('link',{name:'حذف فیلترها و دیدن نتایج'}).click();
+  await page.getByRole('link',{name:'حذف محدودیت‌ها و دیدن محصولات'}).click();
   await expect(page).toHaveURL(/q=/);
   await expect(page).not.toHaveURL(/min=/);
   await expect(page.locator('.product-card').first()).toBeVisible();
