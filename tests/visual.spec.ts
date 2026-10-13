@@ -32,7 +32,7 @@ test('capture shopping states on mobile', async ({ page }) => {
   await page.goto('/product/shomiz-01');
   await page.getByRole('button', {name:'رنگ کرم'}).click();
   await page.getByRole('button', {name:'سایز M'}).click();
-  await page.getByRole('button', {name:'افزودن به سبد خرید'}).click();
+  await page.getByRole('button', {name:'افزودن به سبد خرید',exact:true}).click();
   await page.getByRole('button', {name:'سبد سریع'}).click();
   await page.screenshot({path:folder+'/mini-cart-390.png',fullPage:false,animations:'disabled'});
   await page.goto('/product/shomiz-01');

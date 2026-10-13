@@ -26,7 +26,7 @@ test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await expect(page.getByRole('button', { name: 'سایز S ناموجود' })).toBeDisabled();
   await page.getByRole('button', { name: 'سایز M' }).click();
-  await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
+  await page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
   await expect(page.locator('.purchase-feedback')).toContainText('به سبد نمایشی اضافه شد');
   await page.getByRole('button', { name: 'سبد سریع' }).click();
   const quickCart = page.getByRole('dialog', { name: 'سبد خرید سریع' });
@@ -160,7 +160,7 @@ test('mini-cart returns focus and keeps cart totals and demo status clear', asyn
   await page.goto('/product/shomiz-01');
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await page.getByRole('button', { name: 'سایز M' }).click();
-  await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
+  await page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
   await page.getByRole('button', { name: 'سبد سریع' }).click();
   const drawer = page.getByRole('dialog', { name: 'سبد خرید سریع' });
   await expect(drawer).toBeVisible();
@@ -203,8 +203,10 @@ test('full catalog pagination uses balanced product rows on wide desktop', async
   await page.setViewportSize({width:1800,height:960});
   await page.goto('/shop');
   await expect(page.locator('.product-card')).toHaveCount(12);
-  const columns = await page.locator('.product-grid').first().evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-  expect(columns).toBe(4);
+  // Product cards can mount before the stylesheet finishes, so wait for the rendered grid.
+  await expect.poll(async () => page.locator('.product-grid').first().evaluate(
+    el => getComputedStyle(el).gridTemplateColumns.split(' ').length
+  )).toBe(4);
   await page.getByRole('link', {name:'صفحه بعد'}).click();
   await expect(page).toHaveURL(/page=2/);
   await expect(page.locator('.product-card')).toHaveCount(12);
@@ -240,7 +242,7 @@ test('official locally hosted Estedad variable font is applied throughout Persia
   await page.goto('/product/shomiz-01');
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await page.getByRole('button', { name: 'سایز M' }).click();
-  await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
+  await page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
   await expect(page.locator('.purchase-feedback')).toContainText('به سبد نمایشی اضافه شد');
   await page.goto('/checkout');
   await expect(page.locator('input').first()).toBeVisible();

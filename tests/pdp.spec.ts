@@ -5,6 +5,11 @@ test('PDP gallery swipes horizontally, keeps vertical gestures and closes enlarg
   await page.goto('/product/shomiz-01');
   const gallery = page.locator('.pdp-gallery');
   await expect(gallery.locator('.pdp-gallery-counter')).toContainText('۱ / ۲');
+  // Exercise one real click first so the client has hydrated before synthetic touch events.
+  await gallery.getByRole('button',{name:'تصویر بعدی'}).click();
+  await expect(gallery.locator('.pdp-gallery-counter')).toContainText('۲ / ۲');
+  await gallery.getByRole('button',{name:'تصویر قبلی'}).click();
+  await expect(gallery.locator('.pdp-gallery-counter')).toContainText('۱ / ۲');
   await page.evaluate(() => {
     const target = document.querySelector('.pdp-gallery')!;
     const createTouch = (x: number, y: number) => new Touch({identifier:1,target,clientX:x,clientY:y});
@@ -47,7 +52,7 @@ test('PDP selection responds to unavailable size after a color change',async ({p
   await expect(page.getByRole('button',{name:'رنگ و سایز رو انتخاب کن'})).toBeVisible();
   await page.getByRole('button',{name:'سایز M'}).click();
   await expect(page.getByText('سایز قبلی برای این رنگ ناموجود است')).toHaveCount(0);
-  await page.getByRole('button',{name:'افزودن به سبد خرید'}).click();
+  await page.getByRole('button',{name:'افزودن به سبد خرید',exact:true}).click();
   await expect(page.locator('.purchase-feedback')).toContainText('اضافه شد');
   await expect(page.getByRole('dialog',{name:'سبد خرید سریع'})).toHaveCount(0);
   await page.getByRole('button',{name:'سبد سریع'}).click();
