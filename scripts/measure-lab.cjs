@@ -69,11 +69,15 @@ async function collect(page, route) {
   try {
     for (const width of [390, 1440]) {
       for (const [name, route] of routes) {
-        const page = await browser.newPage({viewport:{width,height:width===390?844:900},deviceScaleFactor:1});
-        try {
-          const metrics = await collect(page, route);
-          results.push({width, page:name, route, ...metrics});
-        } finally { await page.close(); }
+        // Repeat the mobile product route to catch intermittent CLS rather than trusting one cold run.
+        const sampleCount = width === 390 && name === 'product' ? 5 : 1;
+        for (let sample = 1; sample <= sampleCount; sample++) {
+          const page = await browser.newPage({viewport:{width,height:width===390?844:900},deviceScaleFactor:1});
+          try {
+            const metrics = await collect(page, route);
+            results.push({width, page:name, route, sample, ...metrics});
+          } finally { await page.close(); }
+        }
       }
     }
   } finally { await browser.close(); }

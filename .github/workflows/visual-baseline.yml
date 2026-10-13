@@ -4,6 +4,7 @@ on:
     paths:
       - 'docs/DESIGN-REFINEMENT.md'
       - '.github/workflows/visual-baseline.yml'
+      - 'scripts/measure-lab.cjs'
   workflow_dispatch:
 jobs:
   capture-baseline:
