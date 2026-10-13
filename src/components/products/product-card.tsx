@@ -15,7 +15,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   return <article className="product-card">
     <div className="product-visual">
       <Link className="product-image-link" href={'/product/'+product.slug} aria-label={'مشاهده '+product.name}>
-        <Image src={product.images[0]} alt={'عکس نمایشی '+product.name+' ساخته‌شده با هوش مصنوعی'} fill
+        <Image src={product.images[0]} alt={'تصویر مدل نمایشی برای دسته '+category+'؛ عکس واقعی این محصول نیست'} fill
           sizes="(max-width: 600px) 47vw, (max-width: 810px) 45vw, (max-width: 1080px) 30vw, 25vw" priority={priority}/>
       </Link>
       {discount > 0 && <span className="discount-tag">{formatPercent(discount)} تخفیف</span>}

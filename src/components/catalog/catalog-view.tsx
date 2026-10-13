@@ -80,6 +80,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
             <button type="submit" className="catalog-sort-apply">اعمال</button>
           </form>
         </div>
+        <p className="catalog-photo-note">عکس‌های مدل نمونه‌اند و ممکن است با جزئیات کالای نام‌برده یکسان نباشند.</p>
         {chips.length > 0 && <div className="active-filter-list" aria-label="فیلترهای فعال">
           {chips.map(chip=><Link className="active-filter-chip" key={chip.key} href={makeUrl({[chip.key]:null,page:null})}>
             {chip.label}<X size={13} aria-hidden="true"/></Link>)}
