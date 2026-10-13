@@ -53,7 +53,7 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
     <div className="catalog-mobile-controls">
       <button type="button" className="btn btn-outline filter-open-button" ref={trigger}
         onClick={() => setOpen(true)} aria-expanded={open} aria-controls="catalog-filter-panel">
-        <SlidersHorizontal size={17}/> فیلتر و مرتب‌سازی
+        <SlidersHorizontal size={17}/> فیلتر محصولات
       </button>
       <span className="catalog-mobile-count">{count.toLocaleString('fa-IR')} محصول</span>
     </div>
@@ -66,6 +66,7 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
       </div>
       <form method="get" action={action} className="filter-form">
         {filters.q && <input type="hidden" name="q" value={filters.q}/>}
+        <input type="hidden" name="sort" value={filters.sort ?? 'featured'}/>
         {!fixedCategory && <label>دسته‌بندی
           <select name="category" defaultValue={filters.category ?? ''}><option value="">همه دسته‌ها</option>
             {categories.map(category => <option key={category.slug} value={category.slug}>{category.title}</option>)}</select>
@@ -92,12 +93,6 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
           <label>حداقل قیمت (تومان)<input type="number" inputMode="numeric" name="min" min="0" placeholder="از" defaultValue={filters.min ?? ''}/></label>
           <label>حداکثر قیمت (تومان)<input type="number" inputMode="numeric" name="max" min="0" placeholder="تا" defaultValue={filters.max ?? ''}/></label>
         </div>
-        <label>مرتب‌سازی
-          <select name="sort" defaultValue={filters.sort ?? 'featured'}>
-            <option value="featured">پیشنهادی</option><option value="newest">جدیدترین</option>
-            <option value="price-asc">ارزان‌ترین</option><option value="price-desc">گران‌ترین</option>
-          </select>
-        </label>
         <label className="check-row"><input type="checkbox" name="stock" value="1" defaultChecked={filters.inStock}/> فقط موجودها</label>
         <label className="check-row"><input type="checkbox" name="sale" value="1" defaultChecked={filters.discounted}/> فقط تخفیف‌دارها</label>
         <div className="filter-buttons">

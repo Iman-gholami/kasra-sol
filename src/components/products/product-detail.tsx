@@ -50,7 +50,8 @@ export function ProductDetail({ product }: { product: Product }) {
   return <div className="detail-layout">
     <div>
       <button className="gallery-main" type="button" onClick={() => zoom.current?.showModal()} aria-label="بزرگ‌نمایی تصویر محصول">
-        <Image src={product.images[imageIndex]} alt={'عکس نمایشی ساخته‌شده با هوش مصنوعی ' + product.name} fill priority sizes="(max-width: 600px) 100vw, 50vw" />
+        <Image src={product.images[imageIndex]} alt={'عکس نمایشی ساخته‌شده با هوش مصنوعی ' + product.name} fill priority sizes="(max-width: 600px) 100vw, (max-width: 1024px) 52vw, 45vw" />
+        <span className="gallery-demo-label">تصویر نمایشی</span>
       </button>
       <div className="gallery-thumbs">{product.images.map((image, index) =>
         <button key={image} className={'gallery-thumb' + (index === imageIndex ? ' selected' : '')} onClick={() => setImageIndex(index)} type="button" aria-label={'نمایش تصویر ' + (index + 1)} aria-pressed={index === imageIndex}>
@@ -62,18 +63,21 @@ export function ProductDetail({ product }: { product: Product }) {
       </dialog>
     </div>
     <div className="detail-copy">
-      <p className="eyebrow">KASRA / EVERYDAY COLLECTION</p>
+      <Link className="detail-kicker" href={'/category/'+product.category}>
+        {product.category === 'shomiz' ? 'شومیز' : product.category === 'manto' ? 'مانتو' : 'تیشرت'} / کالکشن کسری ←
+      </Link>
       <h1>{product.name}</h1>
       <div className="detail-price"><div className="price-line"><strong>{toman(product.price)}</strong>{product.compareAt && <del>{toman(product.compareAt)}</del>}</div>{discount > 0 && <p className="sale">{formatPercent(discount)} تخفیف نمایشی</p>}</div>
       <p className="detail-desc">{product.description}</p>
-      <p className="status-message" style={{ marginBottom: 24 }}>تصاویر مدل با هوش مصنوعی ساخته شده‌اند و صرفاً برای بررسی طراحی فروشگاه هستند؛ ممکن است با نام، رنگ یا جزئیات دقیق محصول یکسان نباشند.</p>
+      <section className="buy-panel" aria-label="انتخاب مشخصات و خرید">
+        <div className="buy-panel-top"><strong>لباست رو انتخاب کن</strong><span>رنگ و سایز دلخواهت</span></div>
       <div className="variant-group">
         <div className="variant-label">رنگ <span>{color ? '— ' + color.name : '— انتخاب کن'}</span></div>
         <div className="swatch-list">{product.colors.map((entry) => {
           const available = product.variants.some((v) => v.colorId === entry.id && v.stock > 0);
           return <button key={entry.id} type="button" disabled={!available} className={'swatch' + (colorId === entry.id ? ' selected' : '') + (!available ? ' unavailable' : '')}
             title={entry.name} aria-label={'رنگ ' + entry.name + (!available ? ' ناموجود' : '')} aria-pressed={colorId === entry.id} onClick={() => chooseColor(entry.id)}>
-            <span style={{ backgroundColor: entry.hex }} /></button>;
+            <span style={{ backgroundColor: entry.hex }} /><small>{entry.name}</small></button>;
         })}</div>
       </div>
       <div className="variant-group">
@@ -96,9 +100,11 @@ export function ProductDetail({ product }: { product: Product }) {
         <button type="button" className="btn btn-outline" aria-label={isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'} aria-pressed={isFavorite} onClick={() => toggleWishlist(product.id)}>
           <Heart size={19} fill={isFavorite ? 'currentColor' : 'none'} /></button>
       </div>
-      <p className="purchase-assurance">انتخاب رنگ و سایز برای بررسی موجودی نمایشی لازم است.</p>
+        <p className="buy-panel-note">رنگ و سایز انتخاب‌شده بر اساس موجودی <strong>آزمایشی</strong> بررسی می‌شود.</p>
+      </section>
+      <p className="demo-inline-note">تصاویر لباس‌ها با هوش مصنوعی ساخته شده‌اند و ممکن است با رنگ و جزئیات این مدل یکسان نباشند. قیمت و موجودی هم نمونه است.</p>
       <div className="detail-extras">
-        <details open><summary>مشخصات و نگهداری</summary><p>جنس: {product.material} · فرم لباس: {product.fit}</p><p>{product.care}</p></details>
+        <details><summary>مشخصات و نگهداری</summary><p>جنس: {product.material} · فرم لباس: {product.fit}</p><p>{product.care}</p></details>
         <details><summary>ارسال و بازگشت</summary><p>شرایط ارسال و بازگشت هنوز تعیین نشده است. <Link className="subtle-link" href="/shipping-and-returns">مشاهده توضیحات نمونه</Link></p></details>
       </div>
     </div>

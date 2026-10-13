@@ -50,12 +50,36 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   return <div className="container catalog-layout">
     <div className="breadcrumbs"><Link href="/">خانه</Link><span>/</span><span>{title}</span></div>
     <div className="catalog-heading">
-      <div><p className="eyebrow">THE KASRA COLLECTION</p><h1>{title}</h1>{intro && <p className="muted">{intro}</p>}</div>
-      <p className="catalog-count">{formatNumber(data.total)} محصول</p>
+      <div><p className="section-kicker">کالکشن کسری</p><h1>{title}</h1>{intro && <p className="muted">{intro}</p>}</div>
+      <p className="catalog-count">{formatNumber(data.total)} محصول نمایشی</p>
     </div>
     <div className="catalog-body">
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
       <section className="catalog-results" aria-label="نتایج محصولات">
+        <nav className="catalog-category-nav" aria-label="دسته‌بندی‌های محصولات">
+          <Link href="/shop" aria-current={action === '/shop' && !filters.category ? 'page' : undefined}>همه</Link>
+          {categories.map(item => <Link key={item.slug} href={'/category/'+item.slug}
+             aria-current={fixedCategory && filters.category===item.slug ? 'page' : undefined}>{item.title}</Link>)}
+        </nav>
+        <div className="catalog-toolbar">
+          <span className="catalog-toolbar-count">{formatNumber(data.total)} مدل برای دیدن</span>
+          <form className="catalog-sort-form" method="get" action={action}>
+            {filters.q && <input type="hidden" name="q" value={filters.q}/>}
+            {filters.category && !fixedCategory && <input type="hidden" name="category" value={filters.category}/>}
+            {filters.size && <input type="hidden" name="size" value={filters.size}/>}
+            {filters.color && <input type="hidden" name="color" value={filters.color}/>}
+            {filters.min !== undefined && <input type="hidden" name="min" value={String(filters.min)}/>}
+            {filters.max !== undefined && <input type="hidden" name="max" value={String(filters.max)}/>}
+            {filters.inStock && <input type="hidden" name="stock" value="1"/>}
+            {filters.discounted && <input type="hidden" name="sale" value="1"/>}
+            <label htmlFor="catalog-sort">مرتب‌سازی</label>
+            <select id="catalog-sort" name="sort" defaultValue={filters.sort ?? 'featured'}>
+              <option value="featured">پیشنهادی</option><option value="newest">تازه‌ترین</option>
+              <option value="price-asc">قیمت: کم به زیاد</option><option value="price-desc">قیمت: زیاد به کم</option>
+            </select>
+            <button type="submit" className="catalog-sort-apply">اعمال</button>
+          </form>
+        </div>
         {chips.length > 0 && <div className="active-filter-list" aria-label="فیلترهای فعال">
           {chips.map(chip=><Link className="active-filter-chip" key={chip.key} href={makeUrl({[chip.key]:null,page:null})}>
             {chip.label}<X size={13} aria-hidden="true"/></Link>)}
