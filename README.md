@@ -85,6 +85,10 @@ Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx
 
 Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
+## Design refinement and visual QA
+
+See [Visual Refinement Audit](docs/DESIGN-REFINEMENT.md). CI now uploads 390px and 1440px page screenshots; a separate baseline workflow captures comparable screenshots from the pre-refinement commit. Catalog filters support active chips and a mobile drawer; the homepage and product cards use the new editorial design system. No existing commerce logic was replaced.
+
 ## Before commercial launch
 
 1. Product catalog/media/inventory API, content management and data reconciliation.

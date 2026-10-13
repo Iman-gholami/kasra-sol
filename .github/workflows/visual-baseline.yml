@@ -1,0 +1,56 @@
+name: Pre-Refinement Visual Baseline
+on:
+  push:
+    paths:
+      - 'docs/DESIGN-REFINEMENT.md'
+  workflow_dispatch:
+jobs:
+  capture-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout pinned baseline
+        uses: actions/checkout@v4
+        with:
+          ref: 5d4e0db2622093801525fb3e3561b088053e2fd7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install and build
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          npx playwright install --with-deps chromium
+      - name: Capture baseline routes
+        run: |
+          PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > /tmp/kasra-baseline.log 2>&1 &
+          for i in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:3000/api/health > /dev/null; then break; fi
+            sleep 2
+          done
+          node <<'JS'
+          const { chromium } = require('@playwright/test');
+          const fs = require('node:fs');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            fs.mkdirSync('baseline', {recursive:true});
+            try {
+              for (const width of [390,1440]) {
+                const page = await browser.newPage({viewport:{width,height:width===390?844:900},deviceScaleFactor:1});
+                for (const [name,route] of [['home','/'],['catalog','/shop'],['product','/product/shomiz-01']]) {
+                  await page.goto('http://127.0.0.1:3000'+route,{waitUntil:'networkidle'});
+                  await page.evaluate(async () => Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))));
+                  await page.screenshot({path:'baseline/'+name+'-'+width+'.png',fullPage:true,animations:'disabled'});
+                }
+                await page.close();
+              }
+            } finally { await browser.close(); }
+          })().catch(e => {console.error(e);process.exit(1)});
+          JS
+      - name: Upload original visual baseline
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kasra-baseline-screenshots
+          path: baseline
+          if-no-files-found: ignore
