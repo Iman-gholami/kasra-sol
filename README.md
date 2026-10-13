@@ -89,6 +89,10 @@ Production deployment to a VPS, Docker image verification, browser tests and loa
 
 See [Experience Upgrade 3.0 UX audit and QA](docs/EXPERIENCE-V3.md). This in-place update adds a focused quick-cart dialog, inline example-only size guide, Persian search previews, visual color swatches, keyboard refinements and a clearer demo checkout. All existing commerce data and routing remain in place.
 
+## Design Transformation 4.0
+
+See [Design Transformation 4.0 — UX audit and QA](docs/DESIGN-V4.md) for the implemented responsive redesign, priority issue list, photo provenance, test evidence and reproducible lab measurements. Backend, checkout and VPS integration are intentionally unchanged.
+
 ## Design refinement and visual QA
 
 See [Visual Refinement Audit](docs/DESIGN-REFINEMENT.md). CI now uploads 390px and 1440px page screenshots; a separate baseline workflow captures comparable screenshots from the pre-refinement commit. Catalog filters support active chips and a mobile drawer; the homepage and product cards use the new editorial design system. No existing commerce logic was replaced.
