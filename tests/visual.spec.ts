@@ -47,3 +47,25 @@ test('capture shopping states on mobile', async ({ page }) => {
   await page.goto('/checkout');
   await page.screenshot({path:folder+'/checkout-390.png',fullPage:true,animations:'disabled'});
 });
+
+test('capture discovery overlays at 390px and 1440px',async ({page})=>{
+  const folder='artifacts/screenshots';
+  mkdirSync(folder,{recursive:true});
+  for (const width of [390,1440]){
+    await page.setViewportSize({width,height:844});
+    await page.goto('/');
+    await page.getByRole('button',{name:'جستجوی محصولات'}).click();
+    const dialog=page.getByRole('dialog',{name:'جستجو در محصولات کسری'});
+    await dialog.getByRole('combobox',{name:'عبارت جستجو'}).fill('شومیز');
+    await expect(dialog.locator('.search-preview-item').first()).toBeVisible();
+    await page.screenshot({path:folder+'/discovery-search-'+width+'.png',fullPage:false,animations:'disabled'});
+    await dialog.getByRole('button',{name:'بستن جستجو'}).click();
+    await page.goto('/search?q=شومیز%20سفید');
+    await page.screenshot({path:folder+'/discovery-results-'+width+'.png',fullPage:true,animations:'disabled'});
+    await page.goto('/shop');
+    if(width===390){
+      await page.getByRole('button',{name:'فیلتر محصولات'}).click();
+      await page.screenshot({path:folder+'/discovery-filter-'+width+'.png',fullPage:false,animations:'disabled'});
+    }
+  }
+});

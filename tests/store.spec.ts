@@ -16,7 +16,7 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
   await page.goto('/search?q=لینن');
   await expect(page.locator('.product-card').first()).toBeVisible();
   await page.goto('/search?q=کلمهبدوننتیجه');
-  await expect(page.getByText('محصولی پیدا نشد')).toBeVisible();
+  await expect(page.getByText('محصولی با این انتخاب‌ها پیدا نشد')).toBeVisible();
 });
 
 test('variant stock, cart quantity and demo checkout', async ({ page }) => {
@@ -136,13 +136,13 @@ test('size guide is accessible in place and closes with Escape', async ({ page }
 test('header search previews and full Persian search route', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'جستجوی محصولات' }).click();
-  const search = page.getByRole('search').first();
-  await search.getByRole('searchbox', { name: 'عبارت جستجو' }).fill('لینن');
+  const search = page.getByRole('dialog', { name: 'جستجو در محصولات کسری' });
+  await search.getByRole('combobox', { name: 'عبارت جستجو' }).fill('لینن');
   await expect(page.locator('.search-preview-item').first()).toBeVisible();
   await expect(page.locator('.search-preview-item').first().locator('img')).toBeVisible();
   await page.getByRole('link', { name: /نمایش نتایج «لینن»/ }).click();
   await expect(page).toHaveURL(/\/search\?q=/);
-  await expect(page.getByRole('heading', { name: /نتایج «لینن»/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /نتایج جستجو برای «لینن»/ })).toBeVisible();
 });
 
 test('mobile color swatches persist in shareable filtered URL', async ({ page }) => {
