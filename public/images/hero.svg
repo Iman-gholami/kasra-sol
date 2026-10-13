@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1100" viewBox="0 0 1000 1100">
+ <rect width="1000" height="1100" fill="#cfc0b2"/>
+ <path d="M45 1025 V240 Q45 70 220 70 H790 Q955 70 955 240 V1025Z" fill="#e7ddd1"/>
+ <path d="M115 1025 V275 Q115 148 247 148 H748 Q886 148 886 275 V1025" fill="#dcd0c2"/>
+ <circle cx="688" cy="333" r="165" fill="#f1e8dc" opacity=".56"/>
+ <path d="M115 915 H885" stroke="#b6a498" stroke-width="4"/>
+ <g transform="translate(50 140) scale(.94)">
+  <path d="M365 185 L360 283 L478 283 L476 185" fill="#d2ab92"/>
+  <ellipse cx="421" cy="130" rx="69" ry="95" fill="#d3a98c"/>
+  <path d="M354 145 Q322 12 420 16 Q506 17 490 138 Q471 70 434 70 L365 98Z" fill="#292b2c"/>
+  <path d="M338 280 L235 422 L212 618 M502 282 L598 424 L623 618" stroke="#d3aa90" stroke-width="45" fill="none" stroke-linecap="round"/>
+  <path d="M350 680 L321 960 M488 680 L524 960" stroke="#b79b87" stroke-width="57" fill="none" stroke-linecap="round"/>
+  <path d="M316 961 L266 986 H354 L355 960Z M495 961 L495 986 H581 L535 961Z" fill="#393738"/>
+  <path d="M318 283 L367 251 L472 251 L530 283 L607 412 L560 572 L504 522 L524 861 L310 861 L334 523 L275 573 L232 412Z" fill="#bca391"/>
+  <path d="M365 251 L421 365 L470 251" fill="none" stroke="#f7eee4" stroke-width="22"/>
+  <path d="M420 365 L420 855" stroke="#e9d9c9" stroke-width="3"/>
+  <path d="M311 580 Q420 617 527 580" fill="none" stroke="#e9d9c9" stroke-width="8"/>
+ </g>
+ <path d="M810 859 Q738 793 813 719 M810 859 Q879 805 834 690 M813 802 L747 754 M820 768 L887 718" fill="none" stroke="#938c7b" stroke-width="5" stroke-linecap="round"/>
+ <text x="100" y="1053" font-family="Georgia,serif" font-size="22" letter-spacing="7" fill="#74675c">K A S R A  /  S T U D I O</text>
+ </svg>

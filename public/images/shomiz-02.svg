@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="1000" viewBox="0 0 760 1000">
+    <rect width="760" height="1000" fill="#eee5df"/>
+    <path d="M78 0 H681 V1000 H78" fill="#fff" opacity=".16"/>
+    <ellipse cx="378" cy="953" rx="250" ry="28" fill="#64564f" opacity=".08"/>
+    <path d="M95 132 L663 132 M95 864 L663 864" stroke="#9e8f83" opacity=".25"/>
+    <text x="104" y="115" font-family="Georgia,serif" font-size="24" letter-spacing="6" fill="#8f8073">KASRA</text>
+    <text x="570" y="115" font-family="Arial,sans-serif" font-size="15" fill="#8f8073">/ 02</text>
+    <g transform="translate(0 0)">
+      <path d="M320 218 L323 271 L436 271 L437 218" fill="#cda98e"/>
+      <ellipse cx="379" cy="156" rx="68" ry="91" fill="#d4ad92"/>
+      <path d="M312 177 Q299 74 378 65 Q465 67 450 172 L443 119 Q404 93 345 108 L322 175Z" fill="#39302d"/>
+      <path d="M303 161 Q313 72 349 66" fill="none" stroke="#39302d" stroke-width="26" stroke-linecap="round"/>
+      <path d="M284 267 L208 366 L190 486" fill="none" stroke="#d4ae92" stroke-width="33" stroke-linecap="round"/>
+      <path d="M480 267 L553 367 L571 486" fill="none" stroke="#d4ae92" stroke-width="33" stroke-linecap="round"/>
+      <path d="M332 743 L310 945 M426 743 L449 945" fill="none" stroke="#b59d8b" stroke-width="50" stroke-linecap="round"/>
+      <path d="M290 955 Q308 932 337 946 L354 968 L261 968 Z M418 968 Q420 941 454 946 L496 968 Z" fill="#423935"/>
+      <path d="M250 270 Q292 236 330 235 L430 235 Q475 239 509 271 L597 343 L553 470 L505 441 L512 793 Q380 823 248 793 L255 441 L205 470 L162 343 Z" fill="#d0b7aa" stroke="#52483f" stroke-opacity=".24" stroke-width="3"/>
+  <path d="M331 239 Q380 343 429 239 L410 286 L385 324 L351 284 Z" fill="#eee3d9"/>
+  <path d="M379 324 L378 778" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>
+  <circle cx="379" cy="400" r="4" fill="#f1e9df"/><circle cx="379" cy="485" r="4" fill="#f1e9df"/><circle cx="379" cy="570" r="4" fill="#f1e9df"/>
+  <path d="M259 430 L272 759 M500 430 L488 759" stroke="#fff" stroke-opacity=".25" stroke-width="6"/>
+    </g>
+    <text x="102" y="940" font-family="Arial,sans-serif" font-size="16" letter-spacing="3" fill="#8c7e73">STUDIO SAMPLE · NOT A PHOTOGRAPH</text>
+  </svg>
