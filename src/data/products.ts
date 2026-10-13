@@ -15,6 +15,15 @@ const palette: ProductColor[] = [
   { id: 'white', name: 'سفید', hex: '#f6f3ed' }
 ];
 
+/** Six locally optimized AI-generated fashion photographs.
+ * Reused across mock listings ONLY to evaluate storefront visual design.
+ * Do not treat the pictured clothing as verified photos of individual SKUs. */
+const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
+  shomiz: ['/images/lookbook/shomiz-cream.avif', '/images/lookbook/shomiz-rose.avif'],
+  manto: ['/images/lookbook/manto-black.avif', '/images/lookbook/manto-sage.avif'],
+  tshirt: ['/images/lookbook/tshirt-white.avif', '/images/lookbook/tshirt-blue.avif']
+};
+
 const collections: {
   slug: CategorySlug;
   names: string[];
@@ -65,7 +74,7 @@ export const products: Product[] = collections.flatMap((collection, categoryInde
       price,
       compareAt: i % 4 === 0 ? Math.ceil(price * 1.2 / 10000) * 10000 : undefined,
       description: name + ' با طراحی ساده و جزئیات کاربردی، برای ساختن استایلی شخصی و راحت. تصاویر، قیمت‌ها و مشخصات در این نسخه نمایشی هستند.',
-      images: ['/images/' + slug + '.svg', '/images/' + slug + '-detail.svg'],
+      images: i % 2 === 0 ? [...demoPhotos[collection.slug]] : [...demoPhotos[collection.slug]].reverse(),
       colors: colorList,
       sizes,
       variants: colorList.flatMap((color, colorIndex) =>

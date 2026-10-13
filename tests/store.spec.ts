@@ -67,3 +67,17 @@ test('mobile menu and horizontal overflow', async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
 });
+
+test('optimized model photos are served and used by storefront', async ({ page, request }) => {
+  for (const photo of ['shomiz-cream', 'shomiz-rose', 'manto-black', 'manto-sage', 'tshirt-white', 'tshirt-blue']) {
+    const response = await request.get('/images/lookbook/' + photo + '.avif');
+    expect(response.ok()).toBe(true);
+    expect(response.headers()['content-type']).toContain('image/avif');
+  }
+  await page.goto('/');
+  await expect(page.locator('.hero-visual img')).toHaveAttribute('src', /shomiz-cream.avif/);
+  await page.goto('/category/manto');
+  await expect(page.locator('.product-image-link img').first()).toHaveAttribute('src', /manto-/);
+  await page.goto('/category/tshirt');
+  await expect(page.locator('.product-image-link img').first()).toHaveAttribute('src', /tshirt-/);
+});

@@ -29,7 +29,7 @@ Run Playwright against a built app. Do not use the development server for perfor
 
 ## Included customer flows
 
-- Homepage, three categories, 36 representative products, 3:4 local SVG editorial placeholders
+- Homepage, three categories, 36 representative products, six optimized local AI-generated fashion photographs (3:4)
 - Server-oriented filtered, sorted, paginated catalog with shareable query parameters
 - Persian-friendly search normalization (Arabic/Persian ک/ی forms and numerals)
 - Product gallery, zoom, available color/size variants, quantity and size guide
@@ -68,7 +68,7 @@ To connect a backend, replace `queryProducts` and product lookup methods with ty
 
 ## Data / assets
 
-`src/data/products.ts` defines 12 products per category, each with multiple colors and per-size stock. Product cards reference two local SVG mock illustrations per product. They are intentionally labeled as non-photographic demo assets. Replace them with owned/licensed fashion imagery at stable object-storage/CDN URLs and responsive `next/image` sizes; verify licenses and consent. Real Persian typography should use properly licensed, self-hosted optimized Vazirmatn files when supplied. The current fallback stack supports Persian without remote font loading.
+`src/data/products.ts` defines 12 products per category, each with multiple colors and per-size stock. **Six photorealistic AI-generated model images**, optimized to AVIF and stored locally under `public/images/lookbook/`, are intentionally **reused across the 36 mock products** to evaluate the visual design of the storefront. These images do **not** represent actual inventory or faithfully depict the named clothes, sizes, available colors or variants. The previous SVG illustrations remain in the repository for reference but are no longer used in product displays. Before production, replace this demo mapping with distinct, properly licensed authentic product photos, preferably on an image CDN. Real Persian typography should use properly licensed, self-hosted optimized Vazirmatn files when supplied. The current fallback stack supports Persian without remote font loading.
 
 ## Deployment
 

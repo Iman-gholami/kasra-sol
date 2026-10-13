@@ -43,7 +43,7 @@ export function ProductDetail({ product }: { product: Product }) {
   return <div className="detail-layout">
     <div>
       <button className="gallery-main" type="button" onClick={() => zoom.current?.showModal()} aria-label="بزرگ‌نمایی تصویر محصول">
-        <Image src={product.images[imageIndex]} alt={'تصویرسازی نمایشی ' + product.name} fill priority sizes="(max-width: 600px) 100vw, 50vw" />
+        <Image src={product.images[imageIndex]} alt={'عکس نمایشی ساخته‌شده با هوش مصنوعی ' + product.name} fill priority sizes="(max-width: 600px) 100vw, 50vw" />
       </button>
       <div className="gallery-thumbs">{product.images.map((image, index) =>
         <button key={image} className={'gallery-thumb' + (index === imageIndex ? ' selected' : '')} onClick={() => setImageIndex(index)} type="button" aria-label={'نمایش تصویر ' + (index + 1)} aria-pressed={index === imageIndex}>
@@ -59,6 +59,7 @@ export function ProductDetail({ product }: { product: Product }) {
       <h1>{product.name}</h1>
       <div className="detail-price"><div className="price-line"><strong>{toman(product.price)}</strong>{product.compareAt && <del>{toman(product.compareAt)}</del>}</div>{discount > 0 && <p className="sale">{formatPercent(discount)} تخفیف نمایشی</p>}</div>
       <p className="detail-desc">{product.description}</p>
+      <p className="status-message" style={{ marginBottom: 24 }}>تصاویر مدل با هوش مصنوعی ساخته شده‌اند و صرفاً برای بررسی طراحی فروشگاه هستند؛ ممکن است با نام، رنگ یا جزئیات دقیق محصول یکسان نباشند.</p>
       <div className="variant-group">
         <div className="variant-label">رنگ <span>{color ? '— ' + color.name : '— انتخاب کن'}</span></div>
         <div className="swatch-list">{product.colors.map((entry) => {

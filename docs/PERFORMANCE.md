@@ -11,7 +11,7 @@
 
 - Server Component rendering for catalog and detail routes; paginated adapter limiting result payloads to 9 products
 - URL-driven filters/sort and Persian text normalization on the server layer
-- No animation framework or heavyweight carousel; local SVG artwork, reserved 3:4 aspect ratios, prioritized homepage hero
+- No animation framework or heavyweight carousel; six locally hosted optimized AVIF model images (AI-generated, reused for demo only), reserved 3:4 aspect ratios, prioritized homepage hero
 - Small purpose-built React shopping store, CSS motion with reduced-motion fallback
 - Next standalone Docker runtime, health endpoint, reverse-proxy/CDN caching guidance
 
@@ -30,4 +30,4 @@ GitHub Actions checks are defined in `.github/workflows/ci.yml`. Check the **lat
 5. Test the seven requested viewport widths and keyboard/screen-reader journeys.
 6. Load-test CDN hit and origin-miss scenarios with controlled concurrency and expected product/navigation distribution. Do not issue campaign-scale tests against an unapproved production server.
 
-Known gap: true model photography, licensed optimized self-hosted Persian font and reproducible npm lockfile are still required before release. Current imagery is original vector mock artwork for layout testing.
+Known gap: authentic product-specific photography, licensed optimized self-hosted Persian font and reproducible npm lockfile are still required before release. The currently displayed model photos are **AI-generated, low-bandwidth AVIF demo assets** reused across mock products, so they are not verified representations of those items. The previous vector illustrations are retained but unused.

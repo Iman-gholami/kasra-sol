@@ -16,7 +16,7 @@ export default function HomePage() {
         <div className="hero-actions"><Link href="/shop" className="btn btn-dark btn-large">مشاهده محصولات <ArrowLeft size={19} /></Link><Link href="/category/shomiz" className="text-link">کالکشن شومیز <MoveLeft size={18} /></Link></div>
         <div className="hero-note">KASRA · YOUR EVERYDAY EDIT</div>
       </div>
-      <div className="hero-visual"><Image src="/images/hero.svg" alt="تصویرسازی مد برای معرفی کالکشن نمایشی کسری بوتیک" fill priority sizes="(max-width: 780px) 100vw, 50vw" /><span className="hero-stamp">01 / 03<br />THE EDIT</span></div>
+      <div className="hero-visual"><Image src="/images/lookbook/shomiz-cream.avif" alt="عکس نمایشی مدل با شومیز کرم، ساخته‌شده با هوش مصنوعی" fill priority sizes="(max-width: 780px) 100vw, 50vw" /><span className="hero-stamp">01 / 03<br />THE EDIT</span></div>
     </section>
     <section className="container section-block"><div className="section-heading"><div><p className="eyebrow">DISCOVER YOUR STYLE</p><h2>از کجا شروع کنیم؟</h2></div><p>سه انتخاب ساده برای استایل‌های متفاوت.</p></div>
       <div className="category-grid">{categories.map((category, i) => <Link key={category.slug} className={'category-tile category-' + i} href={'/category/' + category.slug}>
