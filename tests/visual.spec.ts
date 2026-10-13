@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('capture editorial layout on desktop and mobile', async ({ page }) => {
   const folder = 'artifacts/screenshots';
   mkdirSync(folder, { recursive: true });
-  for (const width of [320, 375, 390, 430, 1024, 1440]) {
+  for (const width of [320, 375, 390, 430, 1024, 1440, 1800]) {
     await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
     for (const [name, route] of [
       ['home','/'], ['catalog','/shop'], ['product','/product/shomiz-01']
@@ -24,7 +24,7 @@ test('capture shopping states on mobile', async ({ page }) => {
   mkdirSync(folder, { recursive: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/shop');
-  await page.getByRole('button', { name: 'فیلتر و مرتب‌سازی' }).click();
+  await page.getByRole('button', { name: 'فیلتر محصولات' }).click();
   await page.screenshot({path:folder+'/filters-open-390.png',fullPage:false,animations:'disabled'});
   await page.goto('/product/shomiz-01');
   await page.getByRole('button', { name: 'راهنمای سایز' }).click();

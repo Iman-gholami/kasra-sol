@@ -11,7 +11,7 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
   await expect(page).toHaveURL(/category=manto/);
   await expect(page.locator('.product-category').first()).toContainText('مانتو');
   await page.locator('select[name="sort"]').selectOption('price-asc');
-  await page.getByRole('button', { name: 'اعمال فیلترها' }).click();
+  await page.getByRole('button', { name: 'اعمال', exact: true }).click();
   await expect(page).toHaveURL(/sort=price-asc/);
   await page.goto('/search?q=لینن');
   await expect(page.locator('.product-card').first()).toBeVisible();
@@ -88,14 +88,14 @@ test('optimized model photos are served and used by storefront', async ({ page, 
 test('mobile drawer filters, active chips and Escape', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/shop');
-  await page.getByRole('button', { name: 'فیلتر و مرتب‌سازی' }).click();
+  await page.getByRole('button', { name: 'فیلتر محصولات' }).click();
   const dialog = page.getByRole('dialog', { name: 'فیلترهای محصولات' });
   await expect(dialog).toBeVisible();
   await dialog.locator('select[name="category"]').selectOption('manto');
   await dialog.getByRole('button', { name: 'اعمال فیلترها' }).click();
   await expect(page).toHaveURL(/category=manto/);
   await expect(page.getByRole('link', { name: /مانتو/ }).filter({ has: page.locator('svg') }).last()).toBeVisible();
-  await page.getByRole('button', { name: 'فیلتر و مرتب‌سازی' }).click();
+  await page.getByRole('button', { name: 'فیلتر محصولات' }).click();
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
@@ -146,7 +146,7 @@ test('header search previews and full Persian search route', async ({ page }) =>
 test('mobile color swatches persist in shareable filtered URL', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/shop');
-  await page.getByRole('button', { name: 'فیلتر و مرتب‌سازی' }).click();
+  await page.getByRole('button', { name: 'فیلتر محصولات' }).click();
   const drawer = page.getByRole('dialog', { name: 'فیلترهای محصولات' });
   await drawer.getByRole('radio', { name: 'مشکی' }).check();
   await drawer.getByRole('button', { name: 'اعمال فیلترها' }).click();
@@ -166,4 +166,30 @@ test('mini-cart returns focus and keeps cart totals and demo status clear', asyn
   await drawer.getByRole('link', { name: 'بررسی سبد خرید' }).click();
   await expect(page).toHaveURL(/\/cart/);
   await expect(page.getByText('خلاصه سفارش نمایشی')).toBeVisible();
+});
+
+test('desktop 1800 layout uses space and catalog sort preserves selected filters', async ({page}) => {
+  await page.setViewportSize({width:1800,height:1000});
+  await page.goto('/');
+  const width = await page.locator('.hero').evaluate(el => Math.round(el.getBoundingClientRect().width));
+  expect(width).toBeGreaterThan(1400);
+  await page.goto('/shop?category=manto&color=black&sort=newest');
+  await expect(page.locator('.active-filter-chip')).toHaveCount(3);
+  await page.locator('select[name="sort"]').selectOption('price-desc');
+  await page.getByRole('button', {name:'اعمال',exact:true}).click();
+  await expect(page).toHaveURL(/category=manto/);
+  await expect(page).toHaveURL(/color=black/);
+  await expect(page).toHaveURL(/sort=price-desc/);
+  await expect(page.locator('.product-card').first()).toBeVisible();
+});
+
+test('mobile purchase information is grouped and demo imagery disclosure remains visible', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/product/shomiz-01');
+  const buyPanel = page.getByRole('region', {name:'انتخاب مشخصات و خرید'});
+  await expect(buyPanel.getByText('لباست رو انتخاب کن')).toBeVisible();
+  await expect(page.getByText('تصاویر لباس‌ها با هوش مصنوعی ساخته شده‌اند', {exact:false})).toBeVisible();
+  await buyPanel.getByRole('button', {name:'رنگ کرم'}).click();
+  await buyPanel.getByRole('button', {name:'سایز M'}).click();
+  await expect(buyPanel.getByRole('button', {name:'افزودن به سبد خرید'})).toBeEnabled();
 });

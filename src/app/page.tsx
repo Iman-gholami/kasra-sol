@@ -15,7 +15,7 @@ export default function HomePage() {
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
 
   return <>
-    <section className="hero container" aria-labelledby="hero-title">
+    <section className="hero container wide-editorial" aria-labelledby="hero-title">
       <div className="hero-copy">
         <div className="hero-pretitle"><span className="overline-rule"/><span>انتخاب‌های تازه، هر روز</span></div>
         <h1 id="hero-title">استایل هر روزت، <em>به سبک خودت.</em></h1>
@@ -53,7 +53,7 @@ export default function HomePage() {
       <ProductGrid products={arrivals}/>
     </section>
 
-    <section className="container editorial-band" aria-labelledby="edit-title">
+    <section className="container wide-editorial editorial-band" aria-labelledby="edit-title">
       <div className="editorial-art">
         <Image src="/images/lookbook/manto-black.avif" alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 580px) 100vw, 46vw"/>
         <span className="editorial-image-index" dir="ltr">THE EDIT / 2026</span>
