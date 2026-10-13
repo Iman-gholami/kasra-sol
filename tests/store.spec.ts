@@ -21,10 +21,10 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
 
 test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await page.goto('/product/shomiz-01');
-  await expect(page.getByRole('button', { name: 'سایز S ناموجود' })).toBeDisabled();
   await page.getByRole('button', { name: 'افزودن به سبد' }).click();
   await expect(page.getByRole('alert')).toContainText('انتخاب');
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
+  await expect(page.getByRole('button', { name: 'سایز S ناموجود' })).toBeDisabled();
   await page.getByRole('button', { name: 'سایز M' }).click();
   await page.getByRole('button', { name: 'افزودن به سبد' }).click();
   await expect(page.getByRole('status')).toContainText('سبد');
