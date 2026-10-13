@@ -994,3 +994,17 @@ button, input, select, textarea { font-family: inherit; }
 
 /* Discovery 7.0: accessible inline Toman range validation. */
 .filter-price-error {color:#923d3d;font-size:.82rem;line-height:1.9;margin:0;padding:8px 11px;border-inline-start:3px solid #923d3d;background:#fbf0ee;}
+
+/* Discovery 7.0: keep search results above the fold, without losing editable query. */
+.search-top.search-top-compact {max-width:1440px;margin-block:19px 2px;}
+.search-top-compact .search-line {max-width:780px;margin-top:10px;min-height:48px;}
+.search-top-compact .section-kicker {font-size:.8rem;}
+.search-experience-form input::-webkit-search-cancel-button {display:none;}
+@media (max-width:600px) {
+  .search-top.search-top-compact {margin-block:12px 0;}
+  .search-top-compact .search-line {margin-top:7px;min-height:47px;}
+  .search-top-compact .search-line input {min-height:38px;padding:7px 4px;font-size:16px;}
+  .search-top-compact .search-line .btn {min-height:41px;}
+  .search-top-compact + .catalog-layout .breadcrumbs {margin-top:11px;}
+  .search-top-compact + .catalog-layout .catalog-heading {padding-block:9px 9px;}
+}
