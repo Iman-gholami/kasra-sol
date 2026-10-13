@@ -32,9 +32,9 @@ test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await expect(quickCart).toContainText('شومیز لینن آوید');
   await quickCart.getByRole('button', { name: 'بستن سبد خرید' }).click();
   await page.goto('/cart');
-  await expect(page.getByText('شومیز لینن آوید')).toBeVisible();
+  await expect(page.locator('.cart-item').getByText('شومیز لینن آوید')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('شومیز لینن آوید')).toBeVisible();
+  await expect(page.locator('.cart-item').getByText('شومیز لینن آوید')).toBeVisible();
   await page.getByRole('button', { name: 'افزایش تعداد شومیز لینن آوید' }).click();
   await expect(page.locator('.qty-stepper span').first()).toContainText('۲');
   await page.getByRole('link', { name: /ادامه تا تسویه/ }).click();

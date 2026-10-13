@@ -134,6 +134,7 @@ function MiniCart() {
       closeCart();
     }
   }
+  if (!isCartOpen) return null;
   return <dialog ref={dialog} className="mini-cart-dialog" aria-label="سبد خرید سریع"
       onKeyDown={onDialogKey} onClose={closeCart}
       onClick={event => { if (event.target === dialog.current) closeCart(); }}>
