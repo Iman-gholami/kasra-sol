@@ -27,6 +27,8 @@ test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'سایز S ناموجود' })).toBeDisabled();
   await page.getByRole('button', { name: 'سایز M' }).click();
   await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
+  await expect(page.locator('.purchase-feedback')).toContainText('به سبد نمایشی اضافه شد');
+  await page.getByRole('button', { name: 'سبد سریع' }).click();
   const quickCart = page.getByRole('dialog', { name: 'سبد خرید سریع' });
   await expect(quickCart).toBeVisible();
   await expect(quickCart).toContainText('شومیز لینن آوید');
@@ -125,7 +127,7 @@ test('size guide is accessible in place and closes with Escape', async ({ page }
   await page.getByRole('button', { name: 'راهنمای سایز' }).click();
   const dialog = page.getByRole('dialog', { name: 'راهنمای سایز نمونه' });
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('صرفاً مثال عمومی');
+  await expect(dialog).toContainText('اندازه‌گیری اختصاصی این کالا هنوز ثبت نشده است');
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('button', { name: 'رنگ و سایز رو انتخاب کن' })).toBeVisible();
@@ -159,6 +161,7 @@ test('mini-cart returns focus and keeps cart totals and demo status clear', asyn
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await page.getByRole('button', { name: 'سایز M' }).click();
   await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
+  await page.getByRole('button', { name: 'سبد سریع' }).click();
   const drawer = page.getByRole('dialog', { name: 'سبد خرید سریع' });
   await expect(drawer).toBeVisible();
   await expect(drawer).toContainText('جمع اقلام، بدون ارسال');
@@ -190,7 +193,7 @@ test('mobile purchase information is grouped and demo imagery disclosure remains
   await page.goto('/product/shomiz-01');
   const buyPanel = page.getByRole('region', {name:'انتخاب مشخصات و خرید'});
   await expect(buyPanel.getByText('لباست رو انتخاب کن')).toBeVisible();
-  await expect(page.getByText('تصاویر لباس‌ها با هوش مصنوعی ساخته شده‌اند', {exact:false})).toBeVisible();
+  await expect(page.getByText('عکس‌های مدل با هوش مصنوعی ساخته شده‌اند', {exact:false})).toBeVisible();
   await buyPanel.getByRole('button', {name:'رنگ کرم'}).click();
   await buyPanel.getByRole('button', {name:'سایز M'}).click();
   await expect(buyPanel.getByRole('button', {name:'افزودن به سبد خرید'})).toBeEnabled();
@@ -238,7 +241,7 @@ test('official locally hosted Estedad variable font is applied throughout Persia
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await page.getByRole('button', { name: 'سایز M' }).click();
   await page.getByRole('button', { name: 'افزودن به سبد خرید' }).click();
-  await expect(page.getByRole('dialog', { name: 'سبد خرید سریع' })).toBeVisible();
+  await expect(page.locator('.purchase-feedback')).toContainText('به سبد نمایشی اضافه شد');
   await page.goto('/checkout');
   await expect(page.locator('input').first()).toBeVisible();
   await page.evaluate(async () => { await document.fonts.ready; });

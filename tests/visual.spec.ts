@@ -33,7 +33,13 @@ test('capture shopping states on mobile', async ({ page }) => {
   await page.getByRole('button', {name:'رنگ کرم'}).click();
   await page.getByRole('button', {name:'سایز M'}).click();
   await page.getByRole('button', {name:'افزودن به سبد خرید'}).click();
+  await page.getByRole('button', {name:'سبد سریع'}).click();
   await page.screenshot({path:folder+'/mini-cart-390.png',fullPage:false,animations:'disabled'});
+  await page.goto('/product/shomiz-01');
+  await page.evaluate(() => window.scrollTo(0,0));
+  await page.screenshot({path:folder+'/pdp-gallery-sticky-390.png',fullPage:false,animations:'disabled'});
+  await page.locator('.purchase-row .btn-dark').scrollIntoViewIfNeeded();
+  await page.screenshot({path:folder+'/pdp-options-390.png',fullPage:false,animations:'disabled'});
   await page.goto('/cart');
   await page.screenshot({path:folder+'/cart-390.png',fullPage:true,animations:'disabled'});
   await page.goto('/checkout');
