@@ -459,6 +459,7 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
   .price-line strong {font-size:.77rem;}
   .color-dots span {width:11px;height:11px;}
   .card-bottom .subtle-link {font-size:.62rem;}
+  .purchase-row {margin-inline:-12px;padding-inline:12px;}
 }
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after {scroll-behavior:auto !important;animation-duration:.01ms !important;transition-duration:.01ms !important;}
