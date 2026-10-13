@@ -753,3 +753,23 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
 
 .catalog-photo-note {margin:-13px 0 18px;color:var(--muted);font-size:.78rem;line-height:1.75;}
 @media (max-width:600px) {.catalog-photo-note {margin:-6px 0 14px;font-size:.76rem;}}
+
+/* Reserve meaningful height during a streamed route transition, preventing the footer from
+   appearing inside the first viewport before the actual page arrives (pre-existing CLS). */
+.loading-skeleton {min-height:max(320px,calc(100dvh - 120px));}
+.detail-loading {display:grid;grid-template-columns:minmax(0,1.08fr) minmax(320px,.92fr);gap:clamp(22px,4vw,66px);
+  align-items:start;min-height:max(720px,calc(100dvh - 80px));padding-block:25px 55px;}
+.detail-loading-photo {aspect-ratio:3/4;min-height:350px;background:var(--sand);}
+.detail-loading-info {display:flex;flex-direction:column;gap:16px;padding-block:30px;}
+.detail-loading-line {height:15px;width:100%;background:var(--sand);}
+.detail-loading-line.short {width:35%;}
+.detail-loading-line.heading {height:38px;width:68%;}
+.detail-loading-line.price {height:24px;width:52%;}
+.detail-loading-options {height:150px;margin-top:17px;background:var(--warm-surface);}
+.detail-loading-photo,.detail-loading-line,.detail-loading-options {animation:fade 1.5s ease-in-out infinite;}
+@media (max-width:600px) {
+  .detail-loading {display:block;min-height:calc(100dvh + 130px);padding-top:10px;}
+  .detail-loading-photo {min-height:0;height:auto;aspect-ratio:3/4;}
+  .detail-loading-info {padding:20px 0;}
+  .detail-loading-options {height:100px;}
+}
