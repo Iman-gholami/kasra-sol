@@ -92,6 +92,10 @@ Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx
 
 Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
+## Mobile Product Experience 6.0
+
+See [Mobile PDP Experience 6.0](docs/MOBILE-PDP-V6.md) for an in-place improvement to product-detail pages only: swipe navigation, a compact contained-image gallery, accessible zoom and size guide, inventory-aware variants, a contextual mobile sticky purchase bar, and nonblocking cart confirmation. Existing data, shipping mock, cart store, self-hosted Estedad font, payment-demo boundary and deployment remain unchanged.
+
 ## Experience Upgrade 3.0
 
 See [Experience Upgrade 3.0 UX audit and QA](docs/EXPERIENCE-V3.md). This in-place update adds a focused quick-cart dialog, inline example-only size guide, Persian search previews, visual color swatches, keyboard refinements and a clearer demo checkout. All existing commerce data and routing remain in place.
