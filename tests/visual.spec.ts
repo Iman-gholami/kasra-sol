@@ -37,8 +37,10 @@ test('capture shopping states on mobile', async ({ page }) => {
   await page.screenshot({path:folder+'/mini-cart-390.png',fullPage:false,animations:'disabled'});
   await page.goto('/product/shomiz-01');
   await page.evaluate(() => window.scrollTo(0,0));
+  await expect(page.locator('.pdp-sticky-bar')).toHaveClass(/is-visible/);
   await page.screenshot({path:folder+'/pdp-gallery-sticky-390.png',fullPage:false,animations:'disabled'});
   await page.locator('.purchase-row .btn-dark').scrollIntoViewIfNeeded();
+  await expect(page.locator('.pdp-sticky-bar')).not.toHaveClass(/is-visible/);
   await page.screenshot({path:folder+'/pdp-options-390.png',fullPage:false,animations:'disabled'});
   await page.goto('/cart');
   await page.screenshot({path:folder+'/cart-390.png',fullPage:true,animations:'disabled'});
