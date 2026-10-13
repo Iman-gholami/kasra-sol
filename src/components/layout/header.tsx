@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Heart, Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
@@ -44,7 +44,7 @@ export function Header() {
     return () => { document.body.style.overflow = previous; };
   }, [menuOpen]);
   const closeNavigation = () => setMenuOpen(false);
-  function trapNav(event: React.KeyboardEvent<HTMLElement>) {
+  function trapNav(event: KeyboardEvent<HTMLElement>) {
     if (event.key === 'Escape') {
       event.preventDefault();
       setMenuOpen(false);

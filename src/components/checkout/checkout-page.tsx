@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { byId } from '@/data/products';
@@ -19,6 +19,8 @@ export function CheckoutPage() {
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [agreed, setAgreed] = useState(false);
   const [formError, setFormError] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+  const agreeRef = useRef<HTMLInputElement>(null);
   const lines = cart.flatMap((item) => { const p = byId(item.productId); return p ? [{ item, product: p }] : []; });
   const subtotal = lines.reduce((sum, {item, product}) => sum + product.price * item.quantity, 0);
   const set = (field: Field, value: string) => { setFields((current) => ({...current, [field]: value})); setErrors((e) => ({...e, [field]: undefined})); };
@@ -35,6 +37,11 @@ export function CheckoutPage() {
     setErrors(next);
     if (Object.keys(next).length || !agreed || !lines.length) {
       setFormError(!agreed ? 'برای ادامه باید نمایشی بودن فرایند را تأیید کنی.' : !lines.length ? 'سبد خرید خالی است.' : 'لطفاً خطاهای مشخص‌شده را اصلاح کن.');
+      requestAnimationFrame(() => {
+        if (Object.keys(next).length) {
+          formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+        } else if (!agreed) agreeRef.current?.focus();
+      });
       return;
     }
     // No customer information is sent or stored. This is only a local demo confirmation.
@@ -46,8 +53,13 @@ export function CheckoutPage() {
   if (!lines.length) return <div className="container"><h1 className="page-heading">تسویه‌حساب نمایشی</h1><div className="empty-state"><h2>سبد خرید خالی است</h2><p>برای ادامه ابتدا محصولی به سبد اضافه کن.</p><Link className="btn btn-dark" href="/shop">بازگشت به فروشگاه</Link></div></div>;
 
   return <div className="container"><h1 className="page-heading">تسویه‌حساب <span className="muted small">(فقط نمایش)</span></h1>
+    <ol className="checkout-progress" aria-label="مراحل خرید نمایشی">
+      <li><span>۱</span>سبد خرید</li>
+      <li data-current="true" aria-current="step"><span>۲</span>اطلاعات دریافت‌کننده</li>
+      <li><span>۳</span>پایان آزمایش</li>
+    </ol>
     <div className="checkout-layout">
-      <form className="checkout-card" onSubmit={submit} noValidate>
+      <form className="checkout-card" ref={formRef} onSubmit={submit} noValidate>
         <h2>مشخصات دریافت‌کننده</h2><div className="demo-alert">این فرم فقط برای آزمایش رابط کاربری است. هیچ اطلاعاتی ذخیره یا ارسال نمی‌شود؛ لطفاً از اطلاعات واقعی حساس استفاده نکن.</div>
         <div className="form-grid">
           <label className="form-field">نام و نام خانوادگی <input autoComplete="off" value={fields.name} onChange={(e) => set('name', e.target.value)} aria-invalid={Boolean(errors.name)} />{errors.name && <small role="alert">{errors.name}</small>}</label>
@@ -59,7 +71,7 @@ export function CheckoutPage() {
           <label className="form-field wide">توضیحات اختیاری<textarea value={fields.notes} onChange={(e) => set('notes', e.target.value)} placeholder="در صورت نیاز..." /></label>
         </div>
         <div className="checkout-disclaimer">شیوه و هزینه ارسال در فروشگاه واقعی مشخص خواهد شد. هیچ درگاه پرداخت یا ثبت سفارش واقعی در این نمونه وجود ندارد.</div>
-        <label className="check-row" style={{display:'flex',gap:12,alignItems:'center',fontSize:'.86rem'}}><input type="checkbox" checked={agreed} onChange={(e) => {setAgreed(e.target.checked);setFormError('');}} /> می‌دانم این سفارش واقعی نیست.</label>
+        <label className="check-row" style={{display:'flex',gap:12,alignItems:'center',fontSize:'.86rem'}}><input ref={agreeRef} type="checkbox" checked={agreed} onChange={(e) => {setAgreed(e.target.checked);setFormError('');}} /> می‌دانم این سفارش واقعی نیست.</label>
         {formError && <p className="status-message error" role="alert">{formError}</p>}
         <button className="btn btn-dark form-submit" type="submit">تأیید نمایشی سفارش</button>
       </form>
