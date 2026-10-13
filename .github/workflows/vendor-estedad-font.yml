@@ -1,0 +1,45 @@
+name: Vendor verified Estedad 8.5 font
+
+on:
+  push:
+    paths:
+      - '.github/workflows/vendor-estedad-font.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vendor-font:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Download pinned official variable WOFF2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p src/fonts
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://raw.githubusercontent.com/aminabedi68/Estedad/97d10596b3a260c040336199c2e83a6305d37663/fonts/Estedad%5Bwght%5D.woff2' \
+            --output src/fonts/Estedad-VF.woff2
+          test "$(git hash-object src/fonts/Estedad-VF.woff2)" = "01db924b1aa7dea3ab62814d50e73440957df7d3"
+          test "$(stat -c%s src/fonts/Estedad-VF.woff2)" -eq 120924
+          echo 'Pinned official Estedad v8.5 verified (Git blob SHA and byte size).'
+      - name: Commit font to repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/fonts/Estedad-VF.woff2
+          if git diff --cached --quiet; then
+            echo 'The font is already vendored; nothing to commit.'
+          else
+            git commit -m 'assets: vendor upstream Estedad v8.5 variable WOFF2'
+            git push origin HEAD:main
+          fi
