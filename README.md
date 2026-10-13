@@ -92,6 +92,10 @@ Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx
 
 Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
+## Product Discovery Experience 7.0
+
+Search, catalog filters, category browsing and recovery from empty results have been refined in place. Live search suggestions now use a small server endpoint instead of shipping the entire mock catalog to the client. Read the [discovery UX audit and testing guide](docs/PRODUCT-DISCOVERY-V7.md).
+
 ## Mobile Product Experience 6.0
 
 See [Mobile PDP Experience 6.0](docs/MOBILE-PDP-V6.md) for an in-place improvement to product-detail pages only: swipe navigation, a compact contained-image gallery, accessible zoom and size guide, inventory-aware variants, a contextual mobile sticky purchase bar, and nonblocking cart confirmation. Existing data, shipping mock, cart store, self-hosted Estedad font, payment-demo boundary and deployment remain unchanged.
