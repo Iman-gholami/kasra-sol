@@ -1,4 +1,4 @@
-name: Pre-Refinement Visual Baseline
+name: Kasra V3 Visual and Lab Baseline
 on:
   push:
     paths:
@@ -10,19 +10,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Checkout pinned baseline
+      - name: Checkout metrics tooling from current branch
         uses: actions/checkout@v4
         with:
-          ref: 5d4e0db2622093801525fb3e3561b088053e2fd7
+          path: metrics-tooling
+      - name: Checkout pinned pre-v4 version
+        uses: actions/checkout@v4
+        with:
+          ref: f5030708ae0af0e49c3db5dcb1f5225ff35f8c93
+          path: baseline-code/baseline-code
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install and build
+        working-directory: baseline-code
         run: |
           npm install --no-audit --no-fund
           npm run build
           npx playwright install --with-deps chromium
       - name: Capture baseline routes
+        working-directory: baseline-code
         run: |
           mkdir -p .next/standalone/.next
           cp -R .next/static .next/standalone/.next/static
@@ -52,6 +59,10 @@ jobs:
             } finally { await browser.close(); }
           })().catch(e => {console.error(e);process.exit(1)});
           JS
+      - name: Capture baseline synthetic browser metrics
+        working-directory: baseline-code
+        run: |
+          BASE_URL=http://127.0.0.1:3000 OUTPUT_FILE=baseline/lab-metrics-v3.json node ../metrics-tooling/scripts/measure-lab.cjs
       - name: Upload original visual baseline
         if: always()
         uses: actions/upload-artifact@v4

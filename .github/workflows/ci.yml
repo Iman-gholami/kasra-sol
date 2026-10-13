@@ -24,6 +24,17 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests
         run: npm run test:e2e
+      - name: Capture synthetic browser metrics
+        run: |
+          mkdir -p .next/standalone/.next
+          cp -R .next/static .next/standalone/.next/static
+          cp -R public .next/standalone/public
+          PORT=3100 HOSTNAME=127.0.0.1 node .next/standalone/server.js > /tmp/kasra-v4-metrics.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3100/api/health > /dev/null; then break; fi
+            sleep 2
+          done
+          BASE_URL=http://127.0.0.1:3100 OUTPUT_FILE=artifacts/screenshots/lab-metrics-v4.json node scripts/measure-lab.cjs
       - name: Upload visual review screenshots
         if: always()
         uses: actions/upload-artifact@v4
