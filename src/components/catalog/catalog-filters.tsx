@@ -67,6 +67,12 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
       minInput.current?.focus();
       return;
     }
+    // Submit normalized Latin digits in URLs; retain native GET routing and link sharing.
+    for (const input of [minInput.current, maxInput.current]) {
+      if (input && input.value.trim()) {
+        input.value = toLatinDigits(input.value).replace(/[\s,٬،]/g, '');
+      }
+    }
     setPriceError('');
   }
 
