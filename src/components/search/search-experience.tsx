@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
-import { categories } from '@/data/products';
+import { categories } from '@/data/facets';
 import { toman, normalizePersian } from '@/lib/format';
 
 type SuggestionProduct = { id:string; name:string; category:string; image:string; price:number; href:string };

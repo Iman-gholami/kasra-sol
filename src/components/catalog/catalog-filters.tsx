@@ -3,15 +3,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import { ArrowDownWideNarrow, SlidersHorizontal, X } from 'lucide-react';
-import { categories } from '@/data/products';
+import { categories, palette, standardSizes } from '@/data/facets';
 import type { CatalogFilters } from '@/types/store';
 
 type Props = { filters: CatalogFilters; action: string; fixedCategory?: boolean; count: number };
-const colors = [
-  {id:'cream',label:'کرم',hex:'#e7d8c2'}, {id:'black',label:'مشکی',hex:'#34312f'},
-  {id:'rose',label:'رز خاکی',hex:'#b98a83'}, {id:'sage',label:'سبز سدری',hex:'#84958a'},
-  {id:'blue',label:'آبی دودی',hex:'#7c929d'}, {id:'white',label:'سفید',hex:'#f6f3ed'}
-];
+
 
 export function CatalogFilters({ filters, action, fixedCategory }: Props) {
   const [open, setOpen] = useState(false);
@@ -88,7 +84,7 @@ export function CatalogFilters({ filters, action, fixedCategory }: Props) {
         </label>}
         <label>سایز
           <select name="size" defaultValue={filters.size ?? ''}><option value="">همه سایزها</option>
-            {['S','M','L','XL'].map(size => <option key={size} value={size}>{size}</option>)}</select>
+            {standardSizes.map(size => <option key={size} value={size}>{size}</option>)}</select>
         </label>
         <fieldset className="filter-color-fieldset">
           <legend>رنگ</legend>
@@ -97,10 +93,10 @@ export function CatalogFilters({ filters, action, fixedCategory }: Props) {
               <input type="radio" name="color" value="" defaultChecked={!filters.color}/>
               <span className="filter-color-dot filter-color-any" aria-hidden="true">×</span><span>همه</span>
             </label>
-            {colors.map(color => <label key={color.id} className="filter-color-choice">
+            {palette.map(color => <label key={color.id} className="filter-color-choice">
               <input type="radio" name="color" value={color.id} defaultChecked={filters.color===color.id}/>
               <span className="filter-color-dot" style={{backgroundColor:color.hex}} aria-hidden="true"/>
-              <span>{color.label}</span>
+              <span>{color.name}</span>
             </label>)}
           </div>
         </fieldset>

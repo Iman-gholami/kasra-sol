@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import { Heart, Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
-import { categories } from '@/data/products';
+import { categories } from '@/data/facets';
 import { SearchExperience } from '@/components/search/search-experience';
 import { useShop } from '@/components/shop-provider';
 
