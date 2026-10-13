@@ -49,3 +49,5 @@ Desktop and mobile design review should inspect downloaded screenshots from `sto
 5. All existing backend, payment, support and legal launch prerequisites listed in the README.
 
 Do not present the prototype as a production storefront or the placeholder visuals as real product evidence.
+
+The pinned baseline's standalone runtime is assembled with its public and static directories before screenshot capture, to avoid photographing missing styles or broken image links.

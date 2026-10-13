@@ -23,6 +23,9 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Capture baseline routes
         run: |
+          mkdir -p .next/standalone/.next
+          cp -R .next/static .next/standalone/.next/static
+          cp -R public .next/standalone/public
           PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > /tmp/kasra-baseline.log 2>&1 &
           for i in $(seq 1 50); do
             if curl -fsS http://127.0.0.1:3000/api/health > /dev/null; then break; fi
