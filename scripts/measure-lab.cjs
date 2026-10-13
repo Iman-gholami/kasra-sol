@@ -14,7 +14,7 @@ const routes = [['home','/'],['catalog','/shop'],['product','/product/shomiz-01'
 
 async function collect(page, route) {
   await page.addInitScript(() => {
-    const state = { lcpMs: 0, cls: 0 };
+    const state = { lcpMs: 0, cls: 0, shifts: [] };
     window.__kasraLab = state;
     try {
       new PerformanceObserver(list => {
@@ -24,7 +24,19 @@ async function collect(page, route) {
     try {
       new PerformanceObserver(list => {
         for (const entry of list.getEntries()) {
-          if (!entry.hadRecentInput) state.cls += entry.value;
+          if (!entry.hadRecentInput) {
+            state.cls += entry.value;
+            state.shifts.push({
+              value: Math.round(entry.value * 10000) / 10000,
+              atMs: Math.round(entry.startTime),
+              sources: (entry.sources || []).slice(0, 5).map(source => ({
+                selector: source.node ? source.node.tagName.toLowerCase() +
+                  (typeof source.node.className === 'string' ? '.' + source.node.className.slice(0, 80).replace(/\s+/g,'.') : '') : null,
+                previous: source.previousRect ? [source.previousRect.x, source.previousRect.y, source.previousRect.width, source.previousRect.height] : null,
+                current: source.currentRect ? [source.currentRect.x, source.currentRect.y, source.currentRect.width, source.currentRect.height] : null
+              }))
+            });
+          }
         }
       }).observe({ type: 'layout-shift', buffered: true });
     } catch { /* Unsupported API: recorded as null */ }
@@ -36,11 +48,12 @@ async function collect(page, route) {
     const navigation = performance.getEntriesByType('navigation')[0];
     const resources = performance.getEntriesByType('resource');
     const total = selector => resources.filter(selector).reduce((sum, item) => sum + (item.transferSize || 0), 0);
-    const state = window.__kasraLab || { lcpMs:0, cls:0 };
+    const state = window.__kasraLab || { lcpMs:0, cls:0, shifts:[] };
     return {
       fcpMs: paint ? Math.round(paint.startTime) : null,
       lcpMs: state.lcpMs ? Math.round(state.lcpMs) : null,
       cls: Math.round(state.cls * 10000) / 10000,
+      shifts: state.shifts.slice(0,10),
       domContentLoadedMs: navigation ? Math.round(navigation.domContentLoadedEventEnd) : null,
       resourceTransferBytes: total(() => true),
       scriptTransferBytes: total(entry => entry.initiatorType === 'script'),
