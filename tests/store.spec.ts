@@ -251,3 +251,36 @@ test('official locally hosted Estedad variable font is applied throughout Persia
   const family = await page.evaluate(() => Array.from(document.fonts).map(f => f.family.toLowerCase()));
   expect(family.some(name => name.includes('estedad'))).toBe(true);
 });
+
+test('Persian price boundaries reject reversed ranges without losing filter state', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/shop?category=manto&color=black');
+  await page.getByRole('button',{name:'فیلتر محصولات'}).click();
+  const drawer=page.getByRole('dialog',{name:'فیلترهای محصولات'});
+  await drawer.locator('input[name="min"]').fill('۹۰۰٬۰۰۰');
+  await drawer.locator('input[name="max"]').fill('۵۰۰٬۰۰۰');
+  await drawer.getByRole('button',{name:'اعمال فیلترها'}).click();
+  await expect(drawer.getByRole('alert')).toContainText('حداقل قیمت');
+  await expect(drawer.locator('input[name="min"]')).toBeFocused();
+  await expect(page).toHaveURL(/color=black/);
+  await drawer.locator('input[name="max"]').fill('۲٬۰۰۰٬۰۰۰');
+  await drawer.getByRole('button',{name:'اعمال فیلترها'}).click();
+  await expect(page).toHaveURL(/category=manto/);
+  await expect(page).toHaveURL(/min=900/);
+  await expect(page).toHaveURL(/max=2/);
+});
+
+test('category navigation preserves filters and empty state can relax them', async ({page}) => {
+  await page.goto('/category/manto?size=M&color=black&sort=price-asc');
+  await page.getByRole('navigation',{name:'دسته‌بندی‌های محصولات'}).getByRole('link',{name:'همه محصولات'}).click();
+  await expect(page).toHaveURL(/\/shop\?/);
+  await expect(page).toHaveURL(/size=M/);
+  await expect(page).toHaveURL(/color=black/);
+  await expect(page).toHaveURL(/sort=price-asc/);
+  await page.goto('/search?q=شومیز&min=99999999');
+  await expect(page.getByRole('heading',{name:'محصولی با این انتخاب‌ها پیدا نشد'})).toBeVisible();
+  await page.getByRole('link',{name:'حذف محدودیت‌ها و دیدن محصولات'}).click();
+  await expect(page).toHaveURL(/q=/);
+  await expect(page).not.toHaveURL(/min=/);
+  await expect(page.locator('.product-card').first()).toBeVisible();
+});
