@@ -10,7 +10,7 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
   await page.getByRole('button', { name: 'اعمال فیلترها' }).click();
   await expect(page).toHaveURL(/category=manto/);
   await expect(page.locator('.product-category').first()).toContainText('مانتو');
-  await page.locator('select[name="sort"]').selectOption('price-asc');
+  await page.locator('.catalog-sort-form select[name="sort"]').selectOption('price-asc');
   await page.getByRole('button', { name: 'اعمال', exact: true }).click();
   await expect(page).toHaveURL(/sort=price-asc/);
   await page.goto('/search?q=لینن');
@@ -177,7 +177,7 @@ test('desktop 1800 layout uses space and catalog sort preserves selected filters
   ).toBeGreaterThan(1400);
   await page.goto('/shop?category=manto&color=black&sort=newest');
   await expect(page.locator('.active-filter-chip')).toHaveCount(3);
-  await page.locator('select[name="sort"]').selectOption('price-desc');
+  await page.locator('.catalog-sort-form select[name="sort"]').selectOption('price-desc');
   await page.getByRole('button', {name:'اعمال',exact:true}).click();
   await expect(page).toHaveURL(/category=manto/);
   await expect(page).toHaveURL(/color=black/);
@@ -205,4 +205,22 @@ test('full catalog pagination uses balanced product rows on wide desktop', async
   await page.getByRole('link', {name:'صفحه بعد'}).click();
   await expect(page).toHaveURL(/page=2/);
   await expect(page.locator('.product-card')).toHaveCount(12);
+});
+
+test('mobile shopping toolbar reaches products sooner and keeps sort filters', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/shop');
+  const first = page.locator('.product-card').first();
+  await expect(first).toBeVisible();
+  const top = await first.evaluate(el => el.getBoundingClientRect().top);
+  expect(top).toBeLessThan(510);
+  await expect(page.getByRole('button',{name:'فیلتر محصولات'})).toBeVisible();
+  await page.locator('.catalog-mobile-sort select[name="sort"]').selectOption('price-desc');
+  await page.getByRole('button',{name:'اعمال مرتب‌سازی موبایل'}).click();
+  await expect(page).toHaveURL(/sort=price-desc/);
+  await page.goto('/shop?color=black&sort=featured');
+  await page.locator('.catalog-mobile-sort select[name="sort"]').selectOption('newest');
+  await page.getByRole('button',{name:'اعمال مرتب‌سازی موبایل'}).click();
+  await expect(page).toHaveURL(/color=black/);
+  await expect(page).toHaveURL(/sort=newest/);
 });

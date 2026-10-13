@@ -773,3 +773,34 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
   .detail-loading-info {padding:20px 0;}
   .detail-loading-options {height:100px;}
 }
+
+/* Mobile discovery bar: filtering and sorting share one compact row, shortening time-to-products. */
+.filter-mobile-short {display:none;}
+@media (max-width:820px) {
+  .catalog-mobile-controls {display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:9px;margin-bottom:10px;}
+  .catalog-mobile-sort {display:flex;flex:1;min-width:0;gap:6px;align-items:center;justify-content:flex-end;}
+  .catalog-mobile-sort svg {flex-shrink:0;color:var(--muted);}
+  .catalog-mobile-sort select {flex:1;min-width:0;width:100%;max-width:190px;height:44px;padding:7px;background:var(--surface);border:1px solid var(--border);color:var(--ink);font-size:.83rem;}
+  .catalog-mobile-sort button {height:44px;min-width:49px;padding:5px 8px;background:var(--ink);color:white;border:0;font-size:.78rem;font-weight:700;}
+  .catalog-mobile-sort button:hover {background:#4b413c;}
+  .catalog-toolbar {display:none;}
+}
+@media (max-width:600px) {
+  .breadcrumbs {margin-top:15px;}
+  .catalog-heading {padding-block:11px 10px;align-items:baseline;gap:7px;}
+  .catalog-heading h1 {font-size:1.92rem;line-height:1.27;margin:2px 0 5px;}
+  .catalog-heading .muted {font-size:.78rem;line-height:1.55;margin:3px 0 0;}
+  .catalog-count {display:block;align-self:flex-start;margin:15px 0 0;font-size:.69rem;white-space:nowrap;}
+  .catalog-mobile-controls {gap:6px;margin-bottom:9px;}
+  .catalog-mobile-controls .filter-open-button {min-height:44px;padding:8px 11px;gap:5px;font-size:.8rem;}
+  .filter-mobile-full {display:none;}
+  .filter-mobile-short {display:inline;}
+  .catalog-mobile-sort {gap:4px;}
+  .catalog-mobile-sort select {font-size:.75rem;padding-inline:4px;max-width:none;}
+  .catalog-mobile-sort button {font-size:.75rem;min-width:44px;padding:5px 6px;}
+  .catalog-category-nav {margin-bottom:8px;gap:5px;}
+  .catalog-category-nav a {min-height:34px;padding:4px 10px;font-size:.75rem;}
+  .catalog-photo-note {margin:0 0 10px;font-size:.74rem;line-height:1.65;}
+  .catalog-results .active-filter-list {margin-bottom:10px;}
+  .category-tile:last-child img {object-position:center 0%;}
+}

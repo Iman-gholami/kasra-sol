@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { ArrowDownWideNarrow, SlidersHorizontal, X } from 'lucide-react';
 import { categories } from '@/data/products';
 import type { CatalogFilters } from '@/types/store';
 
@@ -13,7 +13,7 @@ const colors = [
   {id:'blue',label:'آبی دودی',hex:'#7c929d'}, {id:'white',label:'سفید',hex:'#f6f3ed'}
 ];
 
-export function CatalogFilters({ filters, action, fixedCategory, count }: Props) {
+export function CatalogFilters({ filters, action, fixedCategory }: Props) {
   const [open, setOpen] = useState(false);
   const panel = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -52,10 +52,25 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
   return <>
     <div className="catalog-mobile-controls">
       <button type="button" className="btn btn-outline filter-open-button" ref={trigger}
-        onClick={() => setOpen(true)} aria-expanded={open} aria-controls="catalog-filter-panel">
-        <SlidersHorizontal size={17}/> فیلتر محصولات
+        onClick={() => setOpen(true)} aria-expanded={open} aria-controls="catalog-filter-panel" aria-label="فیلتر محصولات">
+        <SlidersHorizontal size={17}/><span className="filter-mobile-short">فیلتر</span><span className="filter-mobile-full">فیلتر محصولات</span>
       </button>
-      <span className="catalog-mobile-count">{count.toLocaleString('fa-IR')} محصول</span>
+      <form className="catalog-mobile-sort" method="get" action={action}>
+        {filters.q && <input type="hidden" name="q" value={filters.q}/>}
+        {filters.category && !fixedCategory && <input type="hidden" name="category" value={filters.category}/>}
+        {filters.size && <input type="hidden" name="size" value={filters.size}/>}
+        {filters.color && <input type="hidden" name="color" value={filters.color}/>}
+        {filters.min !== undefined && <input type="hidden" name="min" value={String(filters.min)}/>}
+        {filters.max !== undefined && <input type="hidden" name="max" value={String(filters.max)}/>}
+        {filters.inStock && <input type="hidden" name="stock" value="1"/>}
+        {filters.discounted && <input type="hidden" name="sale" value="1"/>}
+        <ArrowDownWideNarrow size={17} strokeWidth={1.75} aria-hidden="true"/>
+        <select name="sort" defaultValue={filters.sort ?? 'featured'} aria-label="مرتب‌سازی محصولات">
+          <option value="featured">پیشنهادی</option><option value="newest">تازه‌ترین</option>
+          <option value="price-asc">قیمت: کم به زیاد</option><option value="price-desc">قیمت: زیاد به کم</option>
+        </select>
+        <button type="submit" aria-label="اعمال مرتب‌سازی موبایل">اعمال</button>
+      </form>
     </div>
     {open && <button type="button" className="filter-backdrop" aria-label="بستن فیلترها" onClick={close}/>}
     <aside id="catalog-filter-panel" ref={panel} className={'filters-panel'+(open?' is-open':'')}
