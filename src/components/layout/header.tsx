@@ -2,15 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Heart, Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
-import { categories } from '@/data/products';
+import { categories, products } from '@/data/products';
+import { normalizePersian } from '@/lib/format';
 import { useShop } from '@/components/shop-provider';
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
   const searchButton = useRef<HTMLButtonElement>(null);
+  const mobileNav = useRef<HTMLElement>(null);
+  const matches = query.trim().length >= 2
+    ? products.filter(product => normalizePersian(product.name + ' ' + product.description).includes(normalizePersian(query))).slice(0,4)
+    : [];
   const { cartCount, wishlist, hydrated } = useShop();
 
   useEffect(() => {
@@ -29,7 +36,29 @@ export function Header() {
     return () => document.removeEventListener('keydown', onKey);
   }, [searchOpen]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    mobileNav.current?.querySelector<HTMLElement>('a')?.focus();
+    return () => { document.body.style.overflow = previous; };
+  }, [menuOpen]);
   const closeNavigation = () => setMenuOpen(false);
+  function trapNav(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setMenuOpen(false);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const links = mobileNav.current?.querySelectorAll<HTMLElement>('a[href]');
+    if (!links?.length) return;
+    if (event.shiftKey && document.activeElement === links[0]) {
+      event.preventDefault(); links[links.length-1].focus();
+    } else if (!event.shiftKey && document.activeElement === links[links.length-1]) {
+      event.preventDefault(); links[0].focus();
+    }
+  }
   const closeSearch = () => { setSearchOpen(false); searchButton.current?.focus(); };
 
   return (
@@ -71,19 +100,28 @@ export function Header() {
         {searchOpen && <div className="header-search-wrap" id="header-search">
           <div className="container header-search">
             <div className="search-topline"><span>جستجو در کالکشن کسری</span><button type="button" className="icon-button" aria-label="بستن جستجو" onClick={closeSearch}><X size={19}/></button></div>
-            <form action="/search" role="search" className="search-line">
-              <Search aria-hidden size={21}/><input ref={searchRef} type="search" name="q" placeholder="شومیز، مانتو، تیشرت..." aria-label="عبارت جستجو"/>
+            <form action="/search" role="search" className="search-line" onSubmit={() => setSearchOpen(false)}>
+              <Search aria-hidden size={21}/><input ref={searchRef} type="search" name="q" value={query} onChange={event => setQuery(event.target.value)} placeholder="مثلاً شومیز مشکی..." aria-label="عبارت جستجو"/>
               <button className="btn btn-dark" type="submit">جستجو</button>
             </form>
-            <div className="search-suggestions"><span>پیشنهادها</span>
+            {query.trim().length >= 2 ? <div className="search-preview">
+              <p className="search-preview-heading">پیشنهادهای مرتبط <span>از محصولات نمایشی</span></p>
+              {matches.length ? <div className="search-preview-list">{matches.map(product =>
+                <Link key={product.id} href={'/product/'+product.slug} className="search-preview-item" onClick={closeSearch}>
+                  <span className="search-preview-image"><Image src={product.images[0]} fill sizes="50px" alt=""/></span>
+                  <span>{product.name}<small>{product.category==='shomiz'?'شومیز':product.category==='manto'?'مانتو':'تیشرت'}</small></span>
+                </Link>)}</div> :
+                <p className="search-preview-empty">موردی در پیشنهادهای سریع پیدا نشد؛ جستجوی کامل رو امتحان کن.</p>}
+              <Link className="search-all-link" href={'/search?q='+encodeURIComponent(query.trim())} onClick={closeSearch}>نمایش نتایج «{query.trim()}» ←</Link>
+            </div> : <div className="search-suggestions"><span>دسته‌بندی‌های محبوب</span>
               {categories.map(item => <Link key={item.slug} href={'/category/'+item.slug} onClick={closeSearch}>{item.title}</Link>)}
-            </div>
+            </div>}
           </div>
         </div>}
 
         {menuOpen && <>
           <button type="button" className="navigation-backdrop" aria-label="بستن منوی موبایل" onClick={closeNavigation}/>
-          <nav id="mobile-navigation" className="mobile-menu" aria-label="منوی موبایل">
+          <nav id="mobile-navigation" ref={mobileNav} onKeyDown={trapNav} className="mobile-menu" aria-label="منوی موبایل">
             <p className="mobile-menu-title">کالکشن‌ها <span>COLLECTIONS</span></p>
             <Link onClick={closeNavigation} href="/shop">همه محصولات</Link>
             {categories.map(item => <Link key={item.slug} onClick={closeNavigation} href={'/category/'+item.slug}>{item.title}</Link>)}
