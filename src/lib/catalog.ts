@@ -1,5 +1,7 @@
 import { products } from '@/data/products';
-import { normalizePersian, toLatinDigits } from '@/lib/format';
+import { toLatinDigits } from '@/lib/format';
+import { rankProduct } from '@/lib/search';
+import { categories } from '@/data/products';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
 
 export const PAGE_SIZE = 12;
@@ -7,18 +9,20 @@ type SearchParams = Record<string, string | string[] | undefined>;
 const one = (value?: string | string[]) => typeof value === 'string' ? value : value?.[0];
 const numeric = (value?: string) => {
   if (!value) return undefined;
-  const n = Number(toLatinDigits(value));
-  return Number.isFinite(n) && n >= 0 ? n : undefined;
+  const normalized = toLatinDigits(value).replace(/[\s,٬،]/g, '');
+  if (!/^\d+$/.test(normalized)) return undefined;
+  const n = Number(normalized);
+  return Number.isSafeInteger(n) && n >= 0 ? n : undefined;
 };
 
 export const parseFilters = (params: SearchParams, category?: CategorySlug): CatalogFilters => {
   const requestedCategory = one(params.category);
   const sort = one(params.sort);
   return {
-    category: category ?? (['shomiz', 'manto', 'tshirt'].includes(requestedCategory ?? '') ? requestedCategory as CategorySlug : undefined),
+    category: category ?? (categories.some(c => c.slug === requestedCategory) ? requestedCategory as CategorySlug : undefined),
     q: one(params.q)?.trim().slice(0, 100),
-    size: ['S', 'M', 'L', 'XL'].includes(one(params.size) ?? '') ? one(params.size) : undefined,
-    color: one(params.color),
+    size: products.some(p => p.sizes.includes(one(params.size) ?? '')) ? one(params.size) : undefined,
+    color: products.some(p => p.colors.some(c => c.id === one(params.color))) ? one(params.color) : undefined,
     min: numeric(one(params.min)),
     max: numeric(one(params.max)),
     inStock: one(params.stock) === '1',
@@ -32,7 +36,7 @@ export const parseFilters = (params: SearchParams, category?: CategorySlug): Cat
 export async function queryProducts(filters: CatalogFilters): Promise<{ items: Product[]; total: number; page: number; pages: number }> {
   let result = products.filter((product) => {
     if (filters.category && product.category !== filters.category) return false;
-    if (filters.q && !normalizePersian(product.name + ' ' + product.description).includes(normalizePersian(filters.q))) return false;
+    if (filters.q && rankProduct(product, filters.q) === null) return false;
     if (filters.min !== undefined && product.price < filters.min) return false;
     if (filters.max !== undefined && product.price > filters.max) return false;
     if (filters.discounted && !product.compareAt) return false;
@@ -47,6 +51,8 @@ export async function queryProducts(filters: CatalogFilters): Promise<{ items: P
     if (filters.sort === 'price-asc') return a.price - b.price;
     if (filters.sort === 'price-desc') return b.price - a.price;
     if (filters.sort === 'newest') return b.createdAt.localeCompare(a.createdAt);
+    if (filters.q) return (rankProduct(a, filters.q) ?? 999) - (rankProduct(b, filters.q) ?? 999) ||
+      Number(b.featured) - Number(a.featured) || b.createdAt.localeCompare(a.createdAt);
     return Number(b.featured) - Number(a.featured) || b.createdAt.localeCompare(a.createdAt);
   });
   const total = result.length;

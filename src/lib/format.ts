@@ -3,9 +3,10 @@ export const toLatinDigits = (value: string): string =>
     .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
 
 export const normalizePersian = (value: string): string =>
-  toLatinDigits(value).replace(/ي/g, 'ی').replace(/ك/g, 'ک')
-    .replace(/[\u064B-\u065F\u0670]/g, '').replace(/\s+/g, ' ')
-    .trim().toLocaleLowerCase('fa-IR');
+  toLatinDigits(value.normalize('NFKC')).replace(/[يى]/g, 'ی').replace(/ك/g, 'ک')
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g, '')
+    .replace(/[\u200C\u200D]/g, ' ').replace(/[،,؛;:!؟?«»()[\]{}]/g, ' ')
+    .replace(/\s+/g, ' ').trim().toLocaleLowerCase('fa-IR');
 
 export const formatNumber = (value: number): string =>
   new Intl.NumberFormat('fa-IR').format(value);
