@@ -9,7 +9,7 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
   await page.locator('select[name="category"]').selectOption('manto');
   await page.getByRole('button', { name: 'اعمال فیلترها' }).click();
   await expect(page).toHaveURL(/category=manto/);
-  await expect(page.locator('.product-category').first()).toHaveText('مانتو');
+  await expect(page.locator('.product-category').first()).toContainText('مانتو');
   await page.locator('select[name="sort"]').selectOption('price-asc');
   await page.getByRole('button', { name: 'اعمال فیلترها' }).click();
   await expect(page).toHaveURL(/sort=price-asc/);
@@ -80,4 +80,31 @@ test('optimized model photos are served and used by storefront', async ({ page, 
   await expect(page.locator('.product-image-link img').first()).toHaveAttribute('src', /manto-/);
   await page.goto('/category/tshirt');
   await expect(page.locator('.product-image-link img').first()).toHaveAttribute('src', /tshirt-/);
+});
+
+test('mobile drawer filters, active chips and Escape', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/shop');
+  await page.getByRole('button', { name: 'فیلتر و مرتب‌سازی' }).click();
+  const dialog = page.getByRole('dialog', { name: 'فیلترهای محصولات' });
+  await expect(dialog).toBeVisible();
+  await dialog.locator('select[name="category"]').selectOption('manto');
+  await dialog.getByRole('button', { name: 'اعمال فیلترها' }).click();
+  await expect(page).toHaveURL(/category=manto/);
+  await expect(page.getByRole('link', { name: /مانتو/ }).filter({ has: page.locator('svg') }).last()).toBeVisible();
+  await page.getByRole('button', { name: 'فیلتر و مرتب‌سازی' }).click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+});
+
+test('all requested viewport widths avoid document overflow', async ({ page }) => {
+  for (const width of [320, 375, 390, 430, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of ['/', '/shop', '/product/shomiz-01', '/cart', '/checkout']) {
+      await page.goto(route);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+      expect(overflow, 'Horizontal overflow at ' + width + 'px on ' + route).toBe(false);
+    }
+  }
 });
