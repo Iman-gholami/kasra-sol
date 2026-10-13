@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'docs/DESIGN-REFINEMENT.md'
+      - '.github/workflows/visual-baseline.yml'
   workflow_dispatch:
 jobs:
   capture-baseline:
