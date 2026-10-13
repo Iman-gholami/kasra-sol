@@ -66,8 +66,12 @@ test('PDP sticky mobile action prompts and focuses missing selection, then hides
   await expect(page.getByRole('button',{name:'رنگ کرم'})).toBeFocused();
   await expect(page.locator('.purchase-feedback')).toContainText('اول رنگ');
   await page.getByRole('button',{name:'رنگ کرم'}).click();
-  await expect(sticky.getByRole('button',{name:'انتخاب رنگ و سایز از نوار پایین'})).toContainText('انتخاب سایز');
+  await page.evaluate(() => window.scrollTo(0,0));
+  await expect(sticky).toHaveClass(/is-visible/);
+  await expect(sticky.getByRole('button',{name:'انتخاب سایز از نوار پایین'})).toContainText('انتخاب سایز');
   await page.getByRole('button',{name:'سایز M'}).click();
+  await page.evaluate(() => window.scrollTo(0,0));
+  await expect(sticky).toHaveClass(/is-visible/);
   await expect(sticky.getByRole('button',{name:'افزودن به سبد خرید از نوار پایین'})).toBeVisible();
   await page.locator('.purchase-row .btn-dark').scrollIntoViewIfNeeded();
   await expect(sticky).not.toHaveClass(/is-visible/);

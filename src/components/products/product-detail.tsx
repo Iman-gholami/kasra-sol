@@ -168,9 +168,9 @@ export function ProductDetail({ product }: { product: Product }) {
         </button>
         {product.images.length > 1 && <>
           <button type="button" className="pdp-gallery-arrow pdp-gallery-prev"
-            aria-label="تصویر قبلی" onClick={() => showImage(imageIndex - 1)}><ChevronRight size={22}/></button>
+            aria-label="تصویر قبلی" onClick={() => { consumedSwipe.current = false; showImage(imageIndex - 1); }}><ChevronRight size={22}/></button>
           <button type="button" className="pdp-gallery-arrow pdp-gallery-next"
-            aria-label="تصویر بعدی" onClick={() => showImage(imageIndex + 1)}><ChevronLeft size={22}/></button>
+            aria-label="تصویر بعدی" onClick={() => { consumedSwipe.current = false; showImage(imageIndex + 1); }}><ChevronLeft size={22}/></button>
           <div className="pdp-gallery-counter" aria-live="polite" aria-atomic="true">
             {(imageIndex + 1).toLocaleString('fa-IR')} / {product.images.length.toLocaleString('fa-IR')}
           </div>
@@ -297,7 +297,7 @@ export function ProductDetail({ product }: { product: Product }) {
       <div className="pdp-sticky-inner">
         <div className="pdp-sticky-price"><span>قیمت نمایشی</span><strong>{toman(product.price)}</strong></div>
         <button type="button" className="btn btn-dark" onClick={onStickyClick}
-          aria-label={ready ? 'افزودن به سبد خرید از نوار پایین' : 'انتخاب رنگ و سایز از نوار پایین'}>
+          aria-label={ready ? 'افزودن به سبد خرید از نوار پایین' : (!colorId ? 'انتخاب رنگ و سایز از نوار پایین' : 'انتخاب سایز از نوار پایین')}>
           <ShoppingBag size={18}/>{ready ? 'افزودن به سبد' : (!colorId ? 'انتخاب رنگ و سایز' : 'انتخاب سایز')}
         </button>
       </div>
