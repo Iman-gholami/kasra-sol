@@ -114,3 +114,14 @@ test('discovery layouts never overflow tested viewports, including opened panels
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   }
 });
+
+test('search results use a compact editable query without competing duplicate headings',async ({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/search?q='+encodeURIComponent('شومیز سفید'));
+  await expect(page.locator('.search-top-compact')).toBeVisible();
+  await expect(page.getByRole('search').first().getByRole('searchbox',{name:'جستجوی محصولات'})).toHaveValue('شومیز سفید');
+  await expect(page.getByRole('heading',{level:1})).toHaveCount(1);
+  await expect(page.locator('.product-card').first()).toBeVisible();
+  const top=await page.locator('.product-card').first().evaluate(el=>Math.round(el.getBoundingClientRect().top));
+  expect(top).toBeLessThan(680);
+});
