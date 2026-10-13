@@ -750,3 +750,6 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
 @media (max-width:600px) {
   .buy-panel .purchase-row {position:static;margin:9px 0 0;padding:0;border:0;background:transparent;}
 }
+
+.catalog-photo-note {margin:-13px 0 18px;color:var(--muted);font-size:.78rem;line-height:1.75;}
+@media (max-width:600px) {.catalog-photo-note {margin:-6px 0 14px;font-size:.76rem;}}
