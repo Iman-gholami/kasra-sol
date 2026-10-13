@@ -42,7 +42,8 @@ jobs:
                 const page = await browser.newPage({viewport:{width,height:width===390?844:900},deviceScaleFactor:1});
                 for (const [name,route] of [['home','/'],['catalog','/shop'],['product','/product/shomiz-01']]) {
                   await page.goto('http://127.0.0.1:3000'+route,{waitUntil:'networkidle'});
-                  await page.evaluate(async () => Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))));
+                  await page.locator('main').waitFor({state:'visible'});
+                  await page.waitForTimeout(350);
                   await page.screenshot({path:'baseline/'+name+'-'+width+'.png',fullPage:true,animations:'disabled'});
                 }
                 await page.close();
