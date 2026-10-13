@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+.next
+.env*
+!.env.production.example
+test-results
+playwright-report
+*.log
+README.md
+docs
+tests
