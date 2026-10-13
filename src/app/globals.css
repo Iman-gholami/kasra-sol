@@ -107,7 +107,7 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
 .hero-actions { display:flex; flex-wrap:wrap;align-items:center;gap:25px; }
 .hero-note { margin-top:auto; padding-top:35px; font:600 10px/1.5 Arial,sans-serif; color:#8c7d73;letter-spacing:.16em; }
 .hero-visual { min-height:545px;position:relative; background:var(--sand); overflow:hidden; }
-.hero-visual img { object-fit:cover; object-position:50% 30%; }
+.hero-visual img { object-fit:cover; object-position:50% 0%; }
 .hero-stamp { position:absolute; bottom:18px; left:19px; display:flex;flex-direction:column;gap:6px;background:rgba(250,248,245,.94);padding:12px 15px;color:#4b4039;letter-spacing:.1em;font:10px Arial,sans-serif; }
 .hero-stamp span { color:var(--quiet); }
 
@@ -119,7 +119,7 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
 .category-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px; }
 .category-tile { display:flex; flex-direction:column; justify-content:space-between; position:relative;min-height:365px;padding:20px 23px;overflow:hidden;background:var(--sand);color:#fff; isolation:isolate; }
 .category-tile::after { content:""; position:absolute;inset:0;z-index:-1; background:linear-gradient(180deg,rgba(24,22,20,.14) 0%,transparent 35%,rgba(22,19,17,.72) 100%); }
-.category-tile > img { object-fit:cover;object-position:center 22%;z-index:-2;transition:transform 420ms ease; }
+.category-tile > img { object-fit:cover;object-position:center 0%;z-index:-2;transition:transform 420ms ease; }
 .category-tile:hover > img { transform:scale(1.045); }
 .category-index { font:11px Arial,sans-serif;letter-spacing:.11em;color:rgba(255,255,255,.9); }
 .category-description { margin-top:auto;padding-bottom:6px; }
@@ -376,7 +376,7 @@ h1,h2,h3,h4,p { overflow-wrap: break-word; }
   .header-actions .icon-button {width:40px;min-width:40px;height:42px;}
   .hero {display:flex;flex-direction:column-reverse;padding-block:14px 10px;min-height:0;}
   .hero-visual {min-height:0;height: min(104vw,510px);aspect-ratio:3/3.65;}
-  .hero-visual img {object-position:center 30%;}
+  .hero-visual img {object-position:center 0%;}
   .hero-stamp {bottom:13px;left:12px;padding:8px 10px;}
   .hero-copy {padding:27px 2px 24px;}
   .hero-pretitle {font-size:9px;}
