@@ -55,25 +55,37 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
   }
 
   function validatePrice(event: import('react').FormEvent<HTMLFormElement>) {
-    const valueOf = (input: HTMLInputElement | null) => {
-      const raw = toLatinDigits(input?.value ?? '').replace(/[\s,٬،]/g, '');
-      return raw && /^\d+$/.test(raw) ? Number(raw) : undefined;
-    };
-    const min = valueOf(minInput.current);
-    const max = valueOf(maxInput.current);
+    event.preventDefault();
+    const rawMin = minInput.current?.value.trim() ?? '';
+    const rawMax = maxInput.current?.value.trim() ?? '';
+    const normalizeAmount = (value: string) => toLatinDigits(value).replace(/[\s,٬،]/g, '');
+    const minText = normalizeAmount(rawMin);
+    const maxText = normalizeAmount(rawMax);
+    const valid = (value: string) => !value || (/^\d+$/.test(value) && Number.isSafeInteger(Number(value)));
+    if (!valid(minText) || !valid(maxText)) {
+      setPriceError('برای قیمت، تنها عددهای معتبر وارد کن.');
+      (valid(minText) ? maxInput : minInput).current?.focus();
+      return;
+    }
+    const min = minText ? Number(minText) : undefined;
+    const max = maxText ? Number(maxText) : undefined;
     if (min !== undefined && max !== undefined && min > max) {
-      event.preventDefault();
       setPriceError('حداقل قیمت نباید بیشتر از حداکثر قیمت باشد.');
       minInput.current?.focus();
       return;
     }
-    // Submit normalized Latin digits in URLs; retain native GET routing and link sharing.
-    for (const input of [minInput.current, maxInput.current]) {
-      if (input && input.value.trim()) {
-        input.value = toLatinDigits(input.value).replace(/[\s,٬،]/g, '');
-      }
-    }
     setPriceError('');
+    // Building the URL explicitly avoids React restoring localized input values
+    // before the browser serializes the native GET form.
+    const destination = new URL(event.currentTarget.action, window.location.href);
+    const params = new URLSearchParams();
+    for (const [name, value] of new FormData(event.currentTarget)) {
+      if (typeof value !== 'string') continue;
+      const normalized = name === 'min' ? minText : name === 'max' ? maxText : value;
+      if (normalized.trim()) params.set(name, normalized);
+    }
+    destination.search = params.toString();
+    window.location.assign(destination.toString());
   }
 
   return <>
