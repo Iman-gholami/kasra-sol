@@ -92,7 +92,7 @@ export function SearchExperience({onClose}:{onClose:()=>void}) {
         ? <div className="search-suggestions search-experience-popular">
             <span>دسته‌بندی‌ها</span>
             {categories.map(c=><Link href={'/category/'+c.slug} key={c.slug}
-              onClick={()=>go('/category/'+c.slug)}>{c.title}</Link>)}
+              onClick={close}>{c.title}</Link>)}
           </div>
         : <div className="search-preview">
             <p className="search-preview-heading">پیشنهادهای مرتبط
@@ -103,7 +103,7 @@ export function SearchExperience({onClose}:{onClose:()=>void}) {
                 key={entry.id} id={listId+'-'+index} role="option" aria-selected={active===index}
                 className={'search-preview-item'+(active===index?' is-active':'')}
                 href={entry.href} onMouseEnter={()=>setActive(index)}
-                onClick={event=>{event.preventDefault();go(entry.href);}}>
+                onClick={close}>
                 {entry.kind==='product'
                   ? <span className="search-preview-image">
                       <Image src={suggestions.products.find(p=>p.href===entry.href)!.image}
@@ -120,7 +120,7 @@ export function SearchExperience({onClose}:{onClose:()=>void}) {
               {loading && <p className="search-preview-empty" role="status">در حال یافتن محصولات مرتبط...</p>}
             </div>
             <Link className="search-all-link" href={'/search?q='+encodeURIComponent(query.trim())}
-              onClick={event=>{event.preventDefault();go('/search?q='+encodeURIComponent(query.trim()));}}>
+              onClick={close}>
               نمایش نتایج «{query.trim()}» ←
             </Link>
           </div>}
