@@ -71,3 +71,31 @@ V4 does not add runtime dependencies or build a backend, and retains Server Comp
 6. Real ParsPack VPS Docker/Nginx deployment smoke test. No live server deployment was performed in this task.
 
 Local smoke test: `git pull origin main && npm install && npm run dev`. Browser address: `http://localhost:3000`.
+
+## Final polish and measured comparison (2026-10-13)
+
+An additional **mobile shopping discovery pass** placed the filter drawer trigger and an independent URL-preserving sort form on the same control row. The category chips remain discoverable and the AI-image disclaimer stays visible without a large warning box. In actual 390px Chromium screenshots, the first product row appears around y=378px versus approximately y=570px in the earlier V4 treatment. This is a screenshot observation, not a user-timing metric. The full-width T-shirt category crop was also anchored to the top to keep the model's face visible.
+
+The earlier stream-loading **footer CLS** issue (also present in pinned V3) was traced to an undersized initial loading state. A product-specific image-and-copy skeleton plus reserved minimum height in the generic loading state now prevent this observed issue.
+
+### Identical-method synthetic comparison
+
+The following were taken from workflow artifacts using **unthrottled Chromium on separate GitHub Actions runners**. Observations are not calibrated, concurrent, statistically sufficient, real mobile field metrics or Lighthouse/Core Web Vitals scores.
+
+| Sample / metric | Pinned V3 | Final V4 |
+| --- | ---: | ---: |
+| Product at 390px — nonzero-CLS samples | 2 / 5 | **0 / 5** |
+| Product at 390px — highest CLS observed | 0.4028 | **0** |
+| Home at 1440px — observed CLS (one sample) | 0.42 | **0** |
+| Product at 1440px — observed CLS (one sample) | 0.42 | **0** |
+| Home at 390px — script transfer | 154,440 bytes | 154,450 bytes |
+| Catalog at 390px — script transfer | 161,732 bytes | 162,103 bytes |
+| Product at 390px — script transfer | 158,575 bytes | 158,695 bytes |
+| Home at 390px — total transferred resources | 210,566 bytes | 217,646 bytes |
+| Catalog at 390px — total transferred resources | 219,920 bytes | 233,035 bytes |
+
+Resources reflect caching, browser transfer accounting and changes in CSS/imagery. JavaScript transfer is near-flat; total resource transfer is somewhat higher for home/catalog. **LCP varied significantly between the independent CI runs**; mobile catalog LCP was 184ms in the single V3 observation and 460ms in the single V4 observation. Those figures do not establish a reliable regression or improvement, and no performance-score promise is made. A controlled throttled lab study and field measurements remain outstanding.
+
+Verification: [final V4 GitHub Actions CI run](https://github.com/Iman-gholami/kasra-sol/actions/runs/38374653836) — ESLint, TypeScript, Next.js production build, **17/17 Playwright tests** and synthetic capture passed. [Pinned V3 baseline run](https://github.com/Iman-gholami/kasra-sol/actions/runs/38371896983). The **storefront-screenshots** artifact contains 320/375/390/430/1024/1440/1800px screenshots, open modals and `lab-metrics-v4.json`. The baseline artifact contains `lab-metrics-v3.json` and comparison source screenshots.
+
+All prices, stocks, delivery and checkout remain mock-only. The six generated fashion portraits are demo images, **not authenticated item photography**; that asset limitation remains the most important unresolved visual-commerce gap.
