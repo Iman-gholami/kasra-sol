@@ -25,7 +25,7 @@ export function Header() {
   }, [searchOpen]);
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
         if (searchOpen) searchButton.current?.focus();
         setSearchOpen(false);
