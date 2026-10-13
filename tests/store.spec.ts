@@ -171,8 +171,10 @@ test('mini-cart returns focus and keeps cart totals and demo status clear', asyn
 test('desktop 1800 layout uses space and catalog sort preserves selected filters', async ({page}) => {
   await page.setViewportSize({width:1800,height:1000});
   await page.goto('/');
-  const width = await page.locator('.hero').evaluate(el => Math.round(el.getBoundingClientRect().width));
-  expect(width).toBeGreaterThan(1400);
+  await expect(page.locator('.hero')).toBeVisible();
+  await expect.poll(async () =>
+    page.locator('.hero').evaluate(el => Math.round(el.getBoundingClientRect().width))
+  ).toBeGreaterThan(1400);
   await page.goto('/shop?category=manto&color=black&sort=newest');
   await expect(page.locator('.active-filter-chip')).toHaveCount(3);
   await page.locator('select[name="sort"]').selectOption('price-desc');
