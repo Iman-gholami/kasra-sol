@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Heart, Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
 import { categories } from '@/data/products';
@@ -9,38 +9,56 @@ import { useShop } from '@/components/shop-provider';
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const searchButton = useRef<HTMLButtonElement>(null);
   const { cartCount, wishlist, hydrated } = useShop();
+
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { setMenuOpen(false); setSearchOpen(false); }
+      if (event.key === 'Escape') {
+        if (searchOpen) searchButton.current?.focus();
+        setSearchOpen(false);
+        setMenuOpen(false);
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [searchOpen]);
+
+  const closeNavigation = () => setMenuOpen(false);
+  const closeSearch = () => { setSearchOpen(false); searchButton.current?.focus(); };
+
   return (
     <>
       <a className="skip-link" href="#main-content">رفتن به محتوای اصلی</a>
-      <div className="announcement">نسخه نمایشی کسری بوتیک — سفارش و پرداخت واقعی انجام نمی‌شود</div>
+      <div className="announcement">نمایش آزمایشی کسری بوتیک · پرداخت و ثبت سفارش واقعی فعال نیست</div>
       <header className="site-header">
         <div className="container header-inner">
           <div className="header-leading">
-            <button className="icon-button mobile-only" aria-label={menuOpen ? 'بستن منو' : 'باز کردن منو'} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
-              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            <button type="button" className="icon-button mobile-only" aria-label={menuOpen ? 'بستن منو' : 'باز کردن منو'} aria-expanded={menuOpen} aria-controls="mobile-navigation"
+              onClick={() => { setMenuOpen(!menuOpen); setSearchOpen(false); }}>
+              {menuOpen ? <X size={23} /> : <Menu size={23} />}
             </button>
-            <Link href="/" className="brand" onClick={() => setMenuOpen(false)} aria-label="کسری بوتیک، صفحه اصلی">
-              <span className="brand-mark">K</span><span><strong>کسری</strong><small>KASRA BOUTIQUE</small></span>
+            <Link href="/" className="brand" aria-label="کسری بوتیک، صفحه اصلی" onClick={closeNavigation}>
+              <span className="brand-monogram" aria-hidden="true">K</span>
+              <span className="brand-type"><strong dir="ltr">KASRA</strong><small dir="ltr">B O U T I Q U E</small></span>
             </Link>
           </div>
+
           <nav className="desktop-nav" aria-label="دسته‌بندی‌های اصلی">
             <Link href="/shop">همه محصولات</Link>
-            {categories.map((item) => <Link key={item.slug} href={'/category/' + item.slug}>{item.title}</Link>)}
-            <Link href="/about">درباره ما</Link>
+            {categories.map(item => <Link key={item.slug} href={'/category/' + item.slug}>{item.title}</Link>)}
+            <Link href="/about">درباره کسری</Link>
           </nav>
+
           <div className="header-actions">
-            <button className="icon-button" aria-expanded={searchOpen} aria-label="جستجوی محصولات" onClick={() => setSearchOpen(!searchOpen)}>
-              <Search size={21} />
-            </button>
-            <Link className="icon-button desktop-action" aria-label="حساب نمایشی" href="/account"><UserRound size={21} /></Link>
+            <button type="button" ref={searchButton} className="icon-button" aria-expanded={searchOpen} aria-controls="header-search" aria-label={searchOpen ? 'بستن جستجو' : 'جستجوی محصولات'}
+              onClick={() => { setSearchOpen(!searchOpen); setMenuOpen(false); }}><Search size={21} /></button>
+            <Link className="icon-button desktop-action" aria-label="حساب کاربری نمایشی" href="/account"><UserRound size={20} /></Link>
             <Link className="icon-button count-wrap" href="/wishlist" aria-label="علاقه‌مندی‌ها">
               <Heart size={21} />{hydrated && wishlist.length > 0 && <span className="count">{wishlist.length}</span>}
             </Link>
@@ -49,22 +67,31 @@ export function Header() {
             </Link>
           </div>
         </div>
-        {searchOpen && (
-          <div className="header-search container">
+
+        {searchOpen && <div className="header-search-wrap" id="header-search">
+          <div className="container header-search">
+            <div className="search-topline"><span>جستجو در کالکشن کسری</span><button type="button" className="icon-button" aria-label="بستن جستجو" onClick={closeSearch}><X size={19}/></button></div>
             <form action="/search" role="search" className="search-line">
-              <Search aria-hidden size={20} />
-              <input autoFocus type="search" name="q" placeholder="دنبال چه لباسی می‌گردی؟" aria-label="عبارت جستجو" />
+              <Search aria-hidden size={21}/><input ref={searchRef} type="search" name="q" placeholder="شومیز، مانتو، تیشرت..." aria-label="عبارت جستجو"/>
               <button className="btn btn-dark" type="submit">جستجو</button>
             </form>
-            <p className="muted small">پیشنهاد: <Link href="/category/shomiz" onClick={() => setSearchOpen(false)}>شومیز</Link> · <Link href="/category/manto" onClick={() => setSearchOpen(false)}>مانتو</Link></p>
+            <div className="search-suggestions"><span>پیشنهادها</span>
+              {categories.map(item => <Link key={item.slug} href={'/category/'+item.slug} onClick={closeSearch}>{item.title}</Link>)}
+            </div>
           </div>
-        )}
-        {menuOpen && <nav className="mobile-menu container" aria-label="منوی موبایل">
-          <Link onClick={() => setMenuOpen(false)} href="/shop">همه محصولات</Link>
-          {categories.map((item) => <Link key={item.slug} onClick={() => setMenuOpen(false)} href={'/category/' + item.slug}>{item.title}</Link>)}
-          <Link onClick={() => setMenuOpen(false)} href="/about">درباره ما</Link>
-          <Link onClick={() => setMenuOpen(false)} href="/account">حساب کاربری (نمایشی)</Link>
-        </nav>}
+        </div>}
+
+        {menuOpen && <>
+          <button type="button" className="navigation-backdrop" aria-label="بستن منوی موبایل" onClick={closeNavigation}/>
+          <nav id="mobile-navigation" className="mobile-menu" aria-label="منوی موبایل">
+            <p className="mobile-menu-title">کالکشن‌ها <span>COLLECTIONS</span></p>
+            <Link onClick={closeNavigation} href="/shop">همه محصولات</Link>
+            {categories.map(item => <Link key={item.slug} onClick={closeNavigation} href={'/category/'+item.slug}>{item.title}</Link>)}
+            <div className="mobile-menu-divider"/>
+            <Link onClick={closeNavigation} href="/about">درباره کسری</Link>
+            <Link onClick={closeNavigation} href="/account">حساب کاربری (نمایشی)</Link>
+          </nav>
+        </>}
       </header>
     </>
   );
