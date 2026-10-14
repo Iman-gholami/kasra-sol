@@ -71,3 +71,23 @@ test('capture discovery overlays at 390px and 1440px',async ({page})=>{
     }
   }
 });
+
+test('capture Shop by Color at all viewports and two selected states',async ({page})=>{
+  test.setTimeout(90000);
+  const folder='artifacts/screenshots';
+  mkdirSync(folder,{recursive:true});
+  for(const width of [320,375,390,430,768,1440]){
+    await page.setViewportSize({width,height:width<=430?844:900});
+    await page.goto('/');
+    const section=page.getByRole('region',{name:'خرید بر اساس رنگ'});
+    await expect(section.getByRole('button',{name:'نمایش محصولات رنگ کرم'}))
+      .toHaveAttribute('aria-pressed','true');
+    await section.screenshot({path:folder+'/shop-by-color-cream-'+width+'.png',animations:'disabled'});
+    if(width===390||width===1440){
+      await section.getByRole('button',{name:'نمایش محصولات رنگ مشکی'}).click();
+      await expect(section.getByRole('button',{name:'نمایش محصولات رنگ مشکی'}))
+        .toHaveAttribute('aria-pressed','true');
+      await section.screenshot({path:folder+'/shop-by-color-black-'+width+'.png',animations:'disabled'});
+    }
+  }
+});
