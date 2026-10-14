@@ -38,7 +38,7 @@ export default function HomePage() {
         </nav>
       </div>
       <div className="hero-visual">
-        <Image src="/images/lookbook/shomiz-cream.avif" alt="عکس نمایشی مدل با شومیز روشن، ساخته‌شده با هوش مصنوعی" fill priority
+        <Image src="/images/lookbook/shomiz-cream.avif" alt="عکس نمایشی مدل با شومیز روشن، ساخته‌شده با هوش مصنوعی" fill preload fetchPriority="high"
           sizes="(max-width: 600px) 100vw, (max-width: 1520px) 56vw, 860px"/>
       </div>
     </section>

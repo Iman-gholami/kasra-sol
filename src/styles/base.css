@@ -9,8 +9,8 @@ html {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
-/* Scroll lock for any open modal dialog (menu, filters, search, cart, zoom, size guide). */
-html:has(dialog[open]:modal) { overflow: hidden; }
+/* Scroll lock while any modal sheet is open (set by components/ui/document-flags). */
+html[data-modal-open] { overflow: hidden; }
 
 body {
   margin: 0;
@@ -30,8 +30,7 @@ button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 a { color: inherit; text-decoration: none; }
 img { display: block; }
-h1, h2, h3, h4 { line-height: var(--leading-heading); font-weight: var(--font-weight-bold); text-wrap: balance; }
-p, li { text-wrap: pretty; }
+h1, h2, h3, h4 { line-height: var(--leading-heading); font-weight: var(--font-weight-bold); }
 h1, h2, h3, h4, p { overflow-wrap: break-word; }
 ::selection { background: var(--color-accent-wash); color: var(--color-text); }
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; border-radius: var(--radius-xs); }

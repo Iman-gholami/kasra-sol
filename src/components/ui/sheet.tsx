@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode, type RefObject } from 'react';
+import { markModal } from '@/components/ui/document-flags';
 
 type Swipe = 'down' | 'start' | 'end';
 
@@ -39,16 +40,21 @@ export function Sheet({ open, onClose, label, labelledBy, className, children, i
     if (open && !node.open) {
       previous.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       node.showModal();
+      markModal(true);
       const target = latest.current.initialFocus?.current ?? node.querySelector<HTMLElement>('[data-autofocus]');
       target?.focus({ preventScroll: true });
     } else if (!open && node.open) {
       node.close();
+      markModal(false);
       const back = latest.current.returnFocus?.() ?? previous.current;
       if (back?.isConnected) back.focus({ preventScroll: true });
     }
   }, [open]);
 
-  useEffect(() => () => { if (dialog.current?.open) dialog.current.close(); }, []);
+  useEffect(() => {
+    const node = dialog.current;
+    return () => { if (node?.open) { node.close(); markModal(false); } };
+  }, []);
 
   function setDrag(value: number) {
     const node = dialog.current;

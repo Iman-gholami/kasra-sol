@@ -192,7 +192,7 @@
     transition: clip-path var(--duration-base) var(--ease-exit), visibility var(--duration-base) allow-discrete;
   }
   .pdp-sticky-bar.is-visible { clip-path: inset(-20px 0 0 0); visibility: visible; transition-timing-function: var(--ease-enter); }
-  html:has(dialog[open]) .pdp-sticky-bar { visibility: hidden; }
+  html[data-modal-open] .pdp-sticky-bar { visibility: hidden; }
   .pdp-sticky-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); inline-size: 100%; max-inline-size: 560px; margin-inline: auto; }
   .pdp-sticky-price { display: flex; flex-direction: column; min-inline-size: 0; }
   .pdp-sticky-price strong { font-size: var(--text-md); font-weight: var(--font-weight-bold); white-space: nowrap; }

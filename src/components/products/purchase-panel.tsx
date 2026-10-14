@@ -7,6 +7,7 @@ import { getVariant } from '@/data/products';
 import { useShop } from '@/components/shop-provider';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
+import { useBottomBar } from '@/components/ui/document-flags';
 import { formatNumber, toman } from '@/lib/format';
 import type { Product } from '@/types/store';
 
@@ -33,6 +34,8 @@ export function PurchasePanel({ product }: { product: Product }) {
   const variant = getVariant(product, colorId, size);
   const isFavorite = hydrated && wishlist.includes(product.id);
   const ready = Boolean(colorId && size && variant?.stock && variant.stock >= quantity);
+
+  useBottomBar('pdp');
 
   // Reserve exactly the bar's height (it grows by one line while confirming an add) so it never covers content.
   useEffect(() => {

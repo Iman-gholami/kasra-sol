@@ -8,6 +8,7 @@ import { categories } from '@/data/facets';
 import { LineDetails } from '@/components/cart/line-details';
 import { useCartLines } from '@/components/cart/use-cart-lines';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
+import { useBottomBar } from '@/components/ui/document-flags';
 import { formatNumber, toman } from '@/lib/format';
 
 /** Cart contents. The page heading is server-rendered; until the browser store is read this renders a
@@ -15,6 +16,7 @@ import { formatNumber, toman } from '@/lib/format';
 export function CartPage() {
   const { hydrated, rows, lines, subtotal, savings, units, remove, undo, updateQuantity } = useCartLines();
   const list = useRef<HTMLDivElement>(null);
+  useBottomBar('cart', hydrated && lines.length > 0);
   const focusIn = (selector: string) => requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(selector)?.focus());
 
   if (!hydrated) return <CartSkeleton/>;

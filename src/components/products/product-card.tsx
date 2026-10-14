@@ -11,8 +11,12 @@ export type ProductCardData = Pick<Product,
 
 const SIZES = '(max-width: 600px) 46vw, (max-width: 1080px) 31vw, (max-width: 1439px) 24vw, 330px';
 
+/** How the card image loads: `lcp` = preloaded at high fetch priority (the page's LCP candidate),
+ * `eager` = above the fold but not competing with the LCP image, `lazy` = below the fold. */
+export type CardImageLoading = 'lcp' | 'eager' | 'lazy';
+
 /** Server-rendered card: one stretched title link (one tab stop) plus the wishlist toggle island. */
-export function ProductCard({ product, priority = false, sizes = SIZES }: { product: ProductCardData; priority?: boolean; sizes?: string }) {
+export function ProductCard({ product, loading = 'lazy', sizes = SIZES }: { product: ProductCardData; loading?: CardImageLoading; sizes?: string }) {
   const discount = discountPercent(product.price, product.compareAt);
   const category = categories.find(item => item.slug === product.category)?.title ?? '';
   const soldOut = product.variants ? !product.variants.some(variant => variant.stock > 0) : false;
@@ -20,7 +24,8 @@ export function ProductCard({ product, priority = false, sizes = SIZES }: { prod
   return <article className={'product-card' + (soldOut ? ' is-sold-out' : '')}>
     <div className="product-visual">
       <Link className="product-image-link" href={href} tabIndex={-1} aria-hidden="true">
-        <Image src={product.images[0]} alt="" fill sizes={sizes} priority={priority}/>
+        <Image src={product.images[0]} alt="" fill sizes={sizes} preload={loading === 'lcp'}
+          fetchPriority={loading === 'lcp' ? 'high' : undefined} loading={loading === 'eager' ? 'eager' : undefined}/>
       </Link>
       {soldOut ? <span className="product-badge">ناموجود</span>
         : discount > 0 && <span className="product-badge discount-tag">{formatPercent(discount)} تخفیف</span>}

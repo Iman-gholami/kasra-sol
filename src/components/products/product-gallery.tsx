@@ -76,7 +76,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
             aria-label={'بزرگ‌نمایی تصویر ' + formatNumber(i + 1) + ' محصول'}
             onClick={() => { setIndex(i); setZoomOpen(true); }}>
             <Image src={image} alt={'تصویر نمایشی ساخته‌شده با هوش مصنوعی برای ' + name + '، تصویر ' + formatNumber(i + 1)}
-              fill priority={i === 0} loading={i === 0 ? undefined : 'lazy'}
+              fill preload={i === 0} fetchPriority={i === 0 ? 'high' : undefined} loading={i === 0 ? undefined : 'lazy'}
               sizes="(max-width: 600px) 100vw, (max-width: 1080px) 48vw, 620px"/>
           </button>)}
         </div>

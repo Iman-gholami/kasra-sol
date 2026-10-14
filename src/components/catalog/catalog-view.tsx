@@ -79,7 +79,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
           <Link className="link-button clear-filter-link" href={clearHref}>پاک کردن همه</Link>
         </div>}
         <p className="catalog-photo-note"><ImageIcon size={15} aria-hidden="true"/> عکس‌ها نمونه‌اند و ممکن است با جزئیات کالای نام‌برده یکسان نباشند.</p>
-        {data.items.length ? <ProductGrid products={data.items} priorityCount={4}/> :
+        {data.items.length ? <ProductGrid products={data.items} eagerCount={4}/> :
           <div className="empty-state">
             <h2>محصولی با این انتخاب‌ها پیدا نشد</h2>
             <p>می‌تونی یکی از فیلترها رو برداری، یا جستجوی تازه‌ای انجام بدی.</p>

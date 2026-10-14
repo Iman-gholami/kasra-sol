@@ -182,11 +182,11 @@
   .bottom-nav-icon { position: relative; display: inline-grid; }
   .bottom-nav .count { inset-block-start: -6px; inset-inline-end: -12px; }
   /* Keyboard up: the bottom nav would cover the field being edited. */
-  html:has(input:focus, textarea:focus, select:focus) .bottom-nav { display: none; }
+  .bottom-nav[data-keyboard] { display: none; }
 
-  html:has(.bottom-nav) { --bottom-bar-space: calc(60px + var(--safe-bottom)); }
-  html:has(.pdp-sticky-bar) { --bottom-bar-space: var(--pdp-bar-h, calc(76px + var(--safe-bottom))); }
-  html:has(.cart-task-bar) { --bottom-bar-space: calc(74px + var(--safe-bottom)); }
+  html[data-bottom-bar="nav"] { --bottom-bar-space: calc(60px + var(--safe-bottom)); }
+  html[data-bottom-bar="pdp"] { --bottom-bar-space: var(--pdp-bar-h, calc(76px + var(--safe-bottom))); }
+  html[data-bottom-bar="cart"] { --bottom-bar-space: calc(74px + var(--safe-bottom)); }
   .site-shell { padding-block-end: var(--bottom-bar-space, 0px); }
 }
 @media (max-width: 360px) {
