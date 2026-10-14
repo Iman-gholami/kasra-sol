@@ -155,11 +155,11 @@
   .brand-type strong { font-size: 19px; }
   .brand-type small { font-size: 8px; letter-spacing: 0.26em; }
   .breadcrumbs { margin-block-start: var(--space-2); }
-  .breadcrumbs a { min-block-size: var(--touch); }
+  .breadcrumbs a { min-block-size: var(--touch); min-inline-size: var(--touch); }
   .footer { padding-block-start: var(--space-6); }
   .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-4); padding-block-end: var(--space-5); }
   .footer nav:last-child { grid-column: 1 / -1; }
-  .footer nav a { min-block-size: var(--touch); }
+  .footer nav a { display: flex; min-block-size: var(--touch); }
 
   .bottom-nav {
     display: block; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: var(--z-bottom-bar);
@@ -184,9 +184,9 @@
   /* Keyboard up: the bottom nav would cover the field being edited. */
   html:has(input:focus, textarea:focus, select:focus) .bottom-nav { display: none; }
 
-  body:has(.bottom-nav) { --bottom-bar-space: calc(60px + var(--safe-bottom)); }
-  body:has(.pdp-sticky-bar) { --bottom-bar-space: calc(76px + var(--safe-bottom)); }
-  body:has(.cart-task-bar) { --bottom-bar-space: calc(74px + var(--safe-bottom)); }
+  html:has(.bottom-nav) { --bottom-bar-space: calc(60px + var(--safe-bottom)); }
+  html:has(.pdp-sticky-bar) { --bottom-bar-space: var(--pdp-bar-h, calc(76px + var(--safe-bottom))); }
+  html:has(.cart-task-bar) { --bottom-bar-space: calc(74px + var(--safe-bottom)); }
   .site-shell { padding-block-end: var(--bottom-bar-space, 0px); }
 }
 @media (max-width: 360px) {

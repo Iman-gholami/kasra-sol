@@ -2,6 +2,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Focused or scrolled-to elements never hide under the sticky header or a bottom bar (WCAG 2.4.11). */
+  scroll-padding-block: calc(var(--header-h) + var(--space-3)) calc(var(--bottom-bar-space, 0px) + var(--space-3));
   scrollbar-gutter: stable;
   font-synthesis: none;
   -webkit-text-size-adjust: 100%;
@@ -76,7 +78,7 @@ bdi { unicode-bidi: isolate; }
 }
 .page-heading .count-note { font-size: var(--text-sm); font-weight: var(--font-weight-regular); color: var(--color-text-muted); }
 .price { font-variant-numeric: proportional-nums; white-space: nowrap; }
-.currency { font-size: 0.8em; font-weight: var(--font-weight-medium); color: var(--color-text-muted); }
+.currency { font-size: max(var(--text-xs), 0.8em); font-weight: var(--font-weight-medium); color: var(--color-text-muted); }
 #main-content:focus { outline: none; }
 
 @media (max-width: 600px) {
