@@ -12,6 +12,8 @@ export type Product = {
   price: number;
   compareAt?: number;
   images: string[];
+  /** Color-specific preview imagery keyed by actual variant color ID (when available). */
+  colorPreviewImages?: Record<string, string>;
   colors: ProductColor[];
   sizes: string[];
   variants: ProductVariant[];
