@@ -1,10 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { ShoppingBag, X } from 'lucide-react';
-import { toman, formatNumber } from '@/lib/format';
+import { createContext, useCallback, useContext, useMemo, useState, useSyncExternalStore } from 'react';
 import { byId, getVariant } from '@/data/products';
 import type { CartItem } from '@/types/store';
 
@@ -89,85 +85,16 @@ function toggleWishlist(id: string) {
 type CartUI = { isCartOpen: boolean; openCart: () => void; closeCart: () => void };
 const CartUIContext = createContext<CartUI | null>(null);
 
+/** Holds the browser-only store and the quick-cart open state. The quick cart itself
+ * (`components/cart/mini-cart.tsx`) is rendered by the root layout; focus return is handled by its dialog. */
 export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setCartOpen] = useState(false);
-  const previousFocus = useRef<HTMLElement | null>(null);
-  const openCart = useCallback(() => {
-    if (document.activeElement instanceof HTMLElement) previousFocus.current = document.activeElement;
-    setCartOpen(true);
-  }, []);
-  const closeCart = useCallback(() => {
-    setCartOpen(false);
-    // Wait for the native modal to close before returning keyboard focus.
-    requestAnimationFrame(() => previousFocus.current?.focus());
-  }, []);
-  return <CartUIContext.Provider value={{ isCartOpen, openCart, closeCart }}>
-    {children}
-    <MiniCart />
-  </CartUIContext.Provider>;
+  const openCart = useCallback(() => setCartOpen(true), []);
+  const closeCart = useCallback(() => setCartOpen(false), []);
+  const ui = useMemo(() => ({ isCartOpen, openCart, closeCart }), [isCartOpen, openCart, closeCart]);
+  return <CartUIContext.Provider value={ui}>{children}</CartUIContext.Provider>;
 }
 
-function MiniCart() {
-  const { isCartOpen, closeCart } = useCartUI();
-  const { cart, hydrated, removeFromCart } = useShop();
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const node = dialog.current;
-    if (!node) return;
-    if (isCartOpen && !node.open) node.showModal();
-    if (!isCartOpen && node.open) node.close();
-  }, [isCartOpen]);
-  useEffect(() => {
-    if (!isCartOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
-  }, [isCartOpen]);
-  const lines = cart.flatMap(item => {
-    const product = byId(item.productId);
-    return product ? [{ item, product }] : [];
-  });
-  const total = lines.reduce((sum, {item, product}) => sum + product.price * item.quantity, 0);
-  function onDialogKey(event: KeyboardEvent<HTMLDialogElement>) {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeCart();
-    }
-  }
-  if (!isCartOpen) return null;
-  return <dialog ref={dialog} className="mini-cart-dialog" aria-label="سبد خرید سریع"
-      onKeyDown={onDialogKey} onClose={closeCart}
-      onClick={event => { if (event.target === dialog.current) closeCart(); }}>
-    <div className="mini-cart-sheet">
-      <div className="mini-cart-heading">
-        <div><p className="eyebrow">YOUR SELECTION</p><h2>سبد خرید <span>({hydrated ? formatNumber(cart.length) : '۰'})</span></h2></div>
-        <button type="button" className="icon-button" onClick={closeCart} aria-label="بستن سبد خرید"><X size={21}/></button>
-      </div>
-      <p className="mini-cart-demo">سبد نمایشی است؛ هزینه ارسال و پرداخت واقعی در این نسخه وجود ندارد.</p>
-      <div className="mini-cart-items">
-        {lines.length ? lines.map(({item,product}) => <article className="mini-cart-item" key={item.productId+':'+item.colorId+':'+item.size}>
-          <Link href={'/product/'+product.slug} onClick={closeCart} className="mini-cart-thumb">
-            <Image src={product.images[0]} alt={'عکس نمایشی '+product.name} fill sizes="80px" />
-          </Link>
-          <div className="mini-cart-item-info">
-            <h3><Link href={'/product/'+product.slug} onClick={closeCart}>{product.name}</Link></h3>
-            <p>{product.colors.find(c => c.id===item.colorId)?.name} · {item.size} · {formatNumber(item.quantity)} عدد</p>
-            <strong>{toman(product.price*item.quantity)}</strong>
-            <button type="button" className="link-button" onClick={()=>removeFromCart(item)}>حذف</button>
-          </div>
-        </article>) :
-          <div className="mini-cart-empty"><ShoppingBag size={29} strokeWidth={1.5}/><p>سبدت هنوز خالیه.</p>
-            <button type="button" className="btn btn-outline" onClick={closeCart}>ادامه دیدن لباس‌ها</button></div>}
-      </div>
-      {lines.length > 0 && <div className="mini-cart-footer">
-        <div className="mini-cart-subtotal"><span>جمع اقلام، بدون ارسال</span><strong>{toman(total)}</strong></div>
-        <Link href="/cart" className="btn btn-dark" onClick={closeCart}>بررسی سبد خرید</Link>
-        <Link href="/checkout" className="mini-cart-checkout" onClick={closeCart}>ادامه تا تسویه‌حساب نمایشی ←</Link>
-        <button type="button" className="mini-cart-continue" onClick={closeCart}>ادامه خرید</button>
-      </div>}
-    </div>
-  </dialog>;
-}
 function useCartUI(): CartUI {
   const value = useContext(CartUIContext);
   if (!value) throw new Error('ShopProvider is missing');
