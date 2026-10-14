@@ -299,5 +299,5 @@ select.control {
 }
 
 /* Gesture surfaces: drawers keep vertical scrolling and hand horizontal drags to the dismiss gesture. */
-.sheet-start, .sheet-end { touch-action: pan-y; }
+.sheet-start, .sheet-end, .sheet-start .sheet-body, .sheet-end .sheet-body { touch-action: pan-y; }
 [data-sheet-drag] { touch-action: none; }
