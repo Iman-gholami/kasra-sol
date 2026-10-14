@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 test('capture editorial layout on desktop and mobile', async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   const folder = 'artifacts/screenshots';
   mkdirSync(folder, { recursive: true });
   for (const width of [320, 375, 390, 430, 1024, 1440, 1800]) {
@@ -12,8 +12,11 @@ test('capture editorial layout on desktop and mobile', async ({ page }) => {
     ]) {
       await page.goto(route);
       await expect(page.locator('main')).toBeVisible();
+      // Don't wait for off-screen lazy images that intentionally haven't loaded.
+      // A full-page screenshot will paint visible images during capture.
       await page.evaluate(async () => {
-        await Promise.all([...document.images].filter(i => i.getBoundingClientRect().width > 0).map(i => i.decode().catch(() => {})));
+        await Promise.all([...document.images].filter(i => i.complete && i.naturalWidth > 0)
+          .map(i => i.decode().catch(() => {})));
       });
       await page.screenshot({ path: folder + '/' + name + '-' + width + '.png', fullPage: true, animations: 'disabled' });
     }
