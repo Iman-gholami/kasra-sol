@@ -1,4 +1,8 @@
-/* Homepage sections: hero, collections, shop by color, editorial band, service links, closing CTA. */
+/* Homepage sections: phone quick start, hero, collections, shop by color, editorial band, service links, closing CTA. */
+
+/* Phone quick start (≤ 600px only; the header's field-styled trigger and category tiles serve wider screens).
+   Lazy thumbnails inside display:none are never fetched on desktop. */
+.home-quick-start { display: none; }
 
 .hero {
   display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr); align-items: stretch;
@@ -108,14 +112,50 @@
   .editorial-band { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 600px) {
+  .home-quick-start { display: block; padding-block-start: var(--space-3); --quick-size: clamp(56px, 16.5vw, 68px); }
+  .home-search-trigger {
+    display: flex; align-items: center; gap: var(--space-2); inline-size: 100%; min-block-size: 48px; padding-inline: 16px;
+    border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface-raised);
+    color: var(--color-text-muted); font-size: var(--text-sm); text-align: start; touch-action: manipulation;
+    transition: border-color var(--duration-fast) var(--ease-standard);
+  }
+  .home-search-trigger svg { flex-shrink: 0; color: var(--color-text); }
+  .home-search-trigger:active { border-color: var(--color-border-strong); }
+  /* Bleeds to the screen edges so a scrolling row is visibly cut off, while its first circle aligns with the page. */
+  .quick-categories { margin-block-start: var(--space-3); margin-inline: calc(var(--gutter) * -1); }
+  .quick-categories ul {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(66px, 1fr); gap: 6px; margin: 0; padding: 0 var(--gutter);
+    list-style: none; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+    scroll-snap-type: x proximity; scroll-padding-inline: var(--gutter);
+  }
+  .quick-categories ul::-webkit-scrollbar { display: none; }
+  .quick-categories li { display: flex; justify-content: center; scroll-snap-align: start; }
+  .quick-category {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; padding-block: 2px;
+    font-size: var(--text-sm); font-weight: var(--font-weight-semibold); line-height: 1.5; white-space: nowrap;
+  }
+  /* The ring is drawn outside the circle (an ivory gap, then a hairline), so the photo can be clipped and
+     zoomed onto the garment instead of showing a tiny full-length figure. */
+  .quick-category-photo {
+    display: block; inline-size: var(--quick-size); block-size: var(--quick-size); margin: 3px; overflow: hidden;
+    border-radius: 50%; background: var(--color-surface-sunken);
+    box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-border);
+    transition: box-shadow var(--duration-fast) var(--ease-standard);
+  }
+  .quick-category-photo img { inline-size: 100%; block-size: 100%; object-fit: cover; object-position: center 0; scale: 1.5; transform-origin: 50% 26%; }
+  .quick-category:hover .quick-category-photo { box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-accent-soft); }
+  .quick-category:focus-visible { outline-offset: 2px; border-radius: var(--radius-sm); }
+
   .hero { display: flex; flex-direction: column-reverse; min-block-size: 0; padding-block: var(--space-3) var(--space-2); }
-  .hero-visual { min-block-size: 0; block-size: min(78vw, 320px); }
-  .hero-copy { padding: var(--space-5) 0 var(--space-3); }
+  /* A little shorter than before the quick start existed, so the headline still opens above the fold. */
+  .hero-visual { min-block-size: 0; block-size: min(70vw, 288px); }
+  .hero-copy { padding: var(--space-4) 0 var(--space-3); }
   .hero h1 { margin-block: var(--space-3) var(--space-2); font-size: clamp(2.1rem, 9vw, 2.8rem); }
   .hero-lede { margin-block-end: var(--space-4); font-size: var(--text-base); }
   .hero-actions { inline-size: 100%; gap: var(--space-2) var(--space-4); }
   .hero-actions .btn { flex: 1 1 auto; }
-  .hero-category-links { margin-block-start: var(--space-4); padding-block-start: var(--space-2); gap: 0 var(--space-5); }
+  /* The quick categories above the hero carry these same links on phones. */
+  .hero-category-links { display: none; }
   .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
   .category-tile, .category-grid li:nth-child(2) .category-tile { min-block-size: 220px; padding: var(--space-3); }
   .category-grid li:last-child { grid-column: 1 / -1; }

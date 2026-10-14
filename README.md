@@ -92,6 +92,10 @@ Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx
 
 Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
+## Mobile Experience 9.0
+
+On phones (≤ 600px) the storefront now has a configurable announcement strip (`src/data/announcements.ts`), a header with a truly centered wordmark, a homepage search entry and quick category circles, and a persistent five-item bottom navigation (خانه · فروشگاه · جستجو · علاقه‌مندی · سبد) on every route except checkout. The product purchase bar and the cart total bar stack on top of the nav through one documented bottom-of-screen contract that counts the safe area once; modals and the on-screen keyboard temporarily hide the fixed layers. All three search entry points open the same dialog, and the header and nav cart badges read the same store. Desktop is unchanged. See the [implementation notes, layering contract, active-state policy and A/B measurements](docs/MOBILE-EXPERIENCE-V9.md).
+
 ## UX Overhaul 9.0
 
 V9 rebuilds the presentation and interaction layer for desktop and mobile; data, store contract, routes, query parameters, APIs, deployment and the demo-only checkout are unchanged. It adds a token stylesheet (`src/styles/`), one native-`<dialog>` sheet primitive for every overlay, a header disclosure panel, a search combobox, instant sidebar filters with a live-count bottom sheet on phones, an RTL scroll-snap gallery with magnify-and-pan zoom, cart undo, inline checkout validation, and bottom navigation on mobile browsing pages. Read the [audit](docs/UX-AUDIT-V9.md) and the [implementation notes, test and Lighthouse evidence](docs/UX-V9.md). Accessibility is checked with axe-core in `tests/a11y.spec.ts`; screenshots and a DOM probe can be regenerated with `node scripts/capture-ux.cjs`.

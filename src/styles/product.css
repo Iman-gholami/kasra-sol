@@ -183,23 +183,23 @@
   .size-guide-dialog .sheet-header { flex-wrap: wrap; padding-block-start: 0; }
   .size-guide-dialog .sheet-body { padding-block-end: calc(var(--space-5) + var(--safe-bottom)); }
 
+  /* Task bar: sits directly on top of the bottom nav (tokens.css bottom contract), compact so the two read as one dock. */
   .pdp-sticky-bar {
-    position: fixed; z-index: var(--z-bottom-bar); inset-inline: 0; inset-block-end: 0; display: flex; flex-direction: column;
-    padding: var(--space-2) max(var(--gutter), var(--safe-start)) calc(var(--space-2) + var(--safe-bottom)) max(var(--gutter), var(--safe-end));
-    background: rgb(250 248 245 / 0.97); border-block-start: 1px solid var(--color-border); box-shadow: var(--shadow-1);
+    position: fixed; z-index: var(--z-task-bar); inset-inline: 0; inset-block-end: var(--task-bar-offset); display: flex; flex-direction: column;
+    padding: var(--task-bar-pad) max(var(--gutter), var(--safe-start)) calc(var(--task-bar-pad) + var(--task-bar-safe)) max(var(--gutter), var(--safe-end));
+    background: var(--color-surface); border-block-start: 1px solid var(--color-border); box-shadow: var(--shadow-1);
     /* Reveal without moving the box: the bar's geometry is final the moment it becomes visible. */
     clip-path: inset(100% 0 0 0); visibility: hidden;
     transition: clip-path var(--duration-base) var(--ease-exit), visibility var(--duration-base) allow-discrete;
   }
   .pdp-sticky-bar.is-visible { clip-path: inset(-20px 0 0 0); visibility: visible; transition-timing-function: var(--ease-enter); }
-  html[data-modal-open] .pdp-sticky-bar { visibility: hidden; }
   .pdp-sticky-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); inline-size: 100%; max-inline-size: 560px; margin-inline: auto; }
-  .pdp-sticky-price { display: flex; flex-direction: column; min-inline-size: 0; }
+  .pdp-sticky-price { display: flex; flex-direction: column; min-inline-size: 0; line-height: 1.5; }
   .pdp-sticky-price strong { font-size: var(--text-md); font-weight: var(--font-weight-bold); white-space: nowrap; }
   .pdp-sticky-price span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-muted); font-size: var(--text-xs); }
   .pdp-sticky-price span.is-empty { color: var(--color-text-subtle); }
-  .pdp-sticky-inner .btn { flex: 0 1 auto; min-block-size: 50px; padding-inline: 18px; }
-  .pdp-sticky-confirm { display: flex; align-items: center; gap: var(--space-2); inline-size: 100%; max-inline-size: 560px; margin: 0 auto var(--space-2); color: var(--color-success); font-size: var(--text-sm); }
+  .pdp-sticky-inner .btn { flex: 0 1 auto; min-block-size: 46px; padding-inline: 18px; }
+  .pdp-sticky-confirm { display: flex; align-items: center; gap: var(--space-2); inline-size: 100%; max-inline-size: 560px; margin: 0 auto var(--space-1); color: var(--color-success); font-size: var(--text-sm); }
   .pdp-sticky-confirm a { display: inline-flex; align-items: center; min-block-size: 36px; margin-inline-start: auto; color: var(--color-text); font-weight: var(--font-weight-bold); text-decoration: underline; text-underline-offset: 4px; }
 
   .detail-loading { display: flex; flex-direction: column; padding-block-start: var(--space-2); }

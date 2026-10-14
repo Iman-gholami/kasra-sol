@@ -1,56 +1,85 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, House, LayoutGrid, Search, ShoppingBag } from 'lucide-react';
+import { Heart, House, Search, ShoppingBag, Store, type LucideIcon } from 'lucide-react';
 import { useShop } from '@/components/shop-provider';
-import { OPEN_SEARCH_EVENT } from '@/components/search/search-launcher';
-import { formatNumber } from '@/lib/format';
-import { useBottomBar } from '@/components/ui/document-flags';
+import { openSearch, useSearchOpen } from '@/components/search/search-launcher';
+import { CountBadge, countLabel, useCountBump } from '@/components/layout/count-badge';
+import { useBottomNav, useKeyboardFlag } from '@/components/ui/document-flags';
 
-/** Task pages own the bottom of the screen with their own action bar, so the bottom nav steps aside there. */
-const TASK_PAGES = [/^\/product\//, /^\/cart\/?$/, /^\/checkout\/?$/];
+type Destination = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  /** Routes inside this destination's section (marked current, but not as "the page"). */
+  section?: string[];
+  /** Badge source and the link's accessible name with its count. */
+  count?: { source: 'cart' | 'wishlist'; name: string; unit: string };
+};
 
-/** Phone-only (≤ 600px) bottom navigation for browsing pages. */
+/** Right to left in the RTL bar. Search is an action (opens the shared dialog); the rest are links. */
+const DESTINATIONS: Destination[] = [
+  { label: 'خانه', href: '/', icon: House },
+  { label: 'فروشگاه', href: '/shop', icon: Store, section: ['/category/', '/product/'] },
+  { label: 'جستجو', href: '/search', icon: Search },
+  { label: 'علاقه‌مندی', href: '/wishlist', icon: Heart, count: { source: 'wishlist', name: 'علاقه‌مندی‌ها', unit: 'مورد' } },
+  { label: 'سبد', href: '/cart', icon: ShoppingBag, count: { source: 'cart', name: 'سبد خرید', unit: 'کالا' } }
+];
+
+/** Checkout is a focused form with its own sticky submit bar and the keyboard up most of the time. */
+const HIDDEN_ON = /^\/checkout\/?$/;
+
+/** Active-state policy, derived from the route on every render (never stored):
+ *  - the route is a destination (/, /shop, /search, /wishlist, /cart) → aria-current="page"
+ *  - the route is inside the shop section (/category/…, /product/…) → فروشگاه gets aria-current="true"
+ *  - anything else (content pages, order confirmation, 404) → no item is current. */
+function currentState(item: Destination, pathname: string): 'page' | 'true' | undefined {
+  const path = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
+  if (path === item.href) return 'page';
+  if (item.section?.some(prefix => path.startsWith(prefix))) return 'true';
+  return undefined;
+}
+
+/** Phone-only (≤ 600px) primary navigation, fixed to the bottom on every route except checkout. Task bars
+ * (product purchase bar, cart total) stack on top of it through the contract in styles/tokens.css. */
 export function BottomNav() {
   const pathname = usePathname();
   const { cartCount, wishlist, hydrated } = useShop();
-  const [keyboard, setKeyboard] = useState(false);
-  const taskPage = TASK_PAGES.some(pattern => pattern.test(pathname));
-  useBottomBar('nav', !taskPage);
+  const searchOpen = useSearchOpen();
+  const counts = { cart: hydrated ? cartCount : 0, wishlist: hydrated ? wishlist.length : 0 };
+  const cartBump = useCountBump(counts.cart, hydrated);
+  const hidden = HIDDEN_ON.test(pathname);
+  useBottomNav(!hidden);
+  useKeyboardFlag(pathname);
 
-  // Hide while a text field has focus: on phones the on-screen keyboard is up and the bar would cover the field.
-  useEffect(() => {
-    const isField = (target: EventTarget | null) => target instanceof HTMLElement && target.matches('input, textarea, select');
-    const onFocusIn = (event: FocusEvent) => { if (isField(event.target)) setKeyboard(true); };
-    const onFocusOut = (event: FocusEvent) => { if (isField(event.target)) setKeyboard(false); };
-    document.addEventListener('focusin', onFocusIn);
-    document.addEventListener('focusout', onFocusOut);
-    return () => { document.removeEventListener('focusin', onFocusIn); document.removeEventListener('focusout', onFocusOut); };
-  }, []);
+  if (hidden) return null;
 
-  if (taskPage) return null;
-  const current = (match: boolean) => (match ? 'page' as const : undefined);
+  return <nav className="bottom-nav" aria-label="ناوبری اصلی موبایل">
+    <ul>
+      {DESTINATIONS.map(item => {
+        const Icon = item.icon;
+        const current = currentState(item, pathname);
+        const count = item.count ? counts[item.count.source] : 0;
+        const icon = <span className="bottom-nav-icon">
+          <Icon size={22} aria-hidden="true"/>
+          {item.count && <CountBadge count={count} bump={item.count.source === 'cart' && cartBump}/>}
+        </span>;
 
-  // Page space is reserved in CSS (--bottom-bar-space), so the bar never covers the footer.
-  return <nav className="bottom-nav" aria-label="ناوبری پایین صفحه" data-keyboard={keyboard || undefined}>
-      <ul>
-        <li><Link href="/" aria-current={current(pathname === '/')}><House size={22} aria-hidden="true"/><span>خانه</span></Link></li>
-        <li><Link href="/shop" aria-current={current(pathname === '/shop' || pathname.startsWith('/category/'))}>
-          <LayoutGrid size={22} aria-hidden="true"/><span>دسته‌ها</span></Link></li>
-        <li><button type="button" aria-haspopup="dialog" aria-current={current(pathname === '/search')}
-          onClick={event => window.dispatchEvent(new CustomEvent(OPEN_SEARCH_EVENT, { detail: { opener: event.currentTarget } }))}>
-          <Search size={22} aria-hidden="true"/><span>جستجو</span></button></li>
-        <li><Link href="/wishlist" aria-current={current(pathname === '/wishlist')}
-          aria-label={'علاقه‌مندی‌ها' + (hydrated && wishlist.length ? '، ' + formatNumber(wishlist.length) + ' مورد' : '')}>
-          <span className="bottom-nav-icon"><Heart size={22} aria-hidden="true"/>
-            {hydrated && wishlist.length > 0 && <span className="count" aria-hidden="true">{formatNumber(wishlist.length)}</span>}</span>
-          <span aria-hidden="true">علاقه‌مندی</span></Link></li>
-        <li><Link href="/cart" aria-label={'سبد خرید' + (hydrated && cartCount ? '، ' + formatNumber(cartCount) + ' کالا' : '')}>
-          <span className="bottom-nav-icon"><ShoppingBag size={22} aria-hidden="true"/>
-            {hydrated && cartCount > 0 && <span className="count" aria-hidden="true">{formatNumber(cartCount)}</span>}</span>
-          <span aria-hidden="true">سبد خرید</span></Link></li>
-      </ul>
-    </nav>;
+        if (item.href === '/search') return <li key={item.href}>
+          <button type="button" className="bottom-nav-item" aria-haspopup="dialog" aria-expanded={searchOpen}
+            aria-current={current} onClick={event => openSearch(event.currentTarget)}>
+            {icon}<span>{item.label}</span>
+          </button>
+        </li>;
+
+        return <li key={item.href}>
+          <Link href={item.href} className="bottom-nav-item" aria-current={current}
+            aria-label={item.count ? countLabel(item.count.name, count, item.count.unit) : undefined}>
+            {icon}<span aria-hidden={item.count ? true : undefined}>{item.label}</span>
+          </Link>
+        </li>;
+      })}
+    </ul>
+  </nav>;
 }

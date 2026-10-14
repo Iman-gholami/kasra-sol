@@ -7,14 +7,15 @@ import { getVariant } from '@/data/products';
 import { useShop } from '@/components/shop-provider';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
-import { useBottomBar } from '@/components/ui/document-flags';
+import { useTaskBar } from '@/components/ui/document-flags';
 import { formatNumber, toman } from '@/lib/format';
 import type { Product } from '@/types/store';
 
 type Notice = { text: string; error: boolean };
 
-/** Buy box: color → size → quantity → add. On phones a compact bar keeps the action in the thumb
- * zone whenever the main button is off-screen; it never covers content (the page reserves its height). */
+/** Buy box: color → size → quantity → add. On phones a compact bar keeps the action in the thumb zone,
+ * stacked on top of the bottom nav, whenever the main button is not visible; it never covers content
+ * (the page reserves its height through useTaskBar). */
 export function PurchasePanel({ product }: { product: Product }) {
   const { addToCart, openCart, wishlist, toggleWishlist, hydrated } = useShop();
   const [colorId, setColorId] = useState('');
@@ -35,24 +36,17 @@ export function PurchasePanel({ product }: { product: Product }) {
   const isFavorite = hydrated && wishlist.includes(product.id);
   const ready = Boolean(colorId && size && variant?.stock && variant.stock >= quantity);
 
-  useBottomBar('pdp');
-
-  // Reserve exactly the bar's height (it grows by one line while confirming an add) so it never covers content.
-  useEffect(() => {
-    const bar = stickyBar.current;
-    if (!bar || typeof ResizeObserver === 'undefined') return;
-    const root = document.documentElement;
-    const observer = new ResizeObserver(() => {
-      if (bar.offsetHeight) root.style.setProperty('--pdp-bar-h', bar.offsetHeight + 'px');
-    });
-    observer.observe(bar);
-    return () => { observer.disconnect(); root.style.removeProperty('--pdp-bar-h'); };
-  }, []);
+  // Reserves exactly the bar's height (it grows by one line while confirming an add).
+  useTaskBar('pdp', stickyBar);
 
   useEffect(() => {
     const button = buyButton.current;
     if (!button || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(([entry]) => setStickyVisible(!entry.isIntersecting), { threshold: 0.45 });
+    // A main button sitting behind the bottom nav is not visible: shrink the viewport by the nav's height.
+    const nav = document.querySelector('.bottom-nav');
+    const covered = nav ? Math.round(nav.getBoundingClientRect().height) : 0;
+    const observer = new IntersectionObserver(([entry]) => setStickyVisible(!entry.isIntersecting),
+      { threshold: 0.45, rootMargin: '0px 0px -' + covered + 'px 0px' });
     observer.observe(button);
     return () => observer.disconnect();
   }, []);

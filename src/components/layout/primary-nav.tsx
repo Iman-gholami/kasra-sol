@@ -7,11 +7,6 @@ import { usePathname } from 'next/navigation';
 import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { categories, palette } from '@/data/facets';
 
-const categoryPhotos: Record<string, string> = {
-  shomiz: '/images/lookbook/shomiz-rose.avif',
-  manto: '/images/lookbook/manto-sage.avif',
-  tshirt: '/images/lookbook/tshirt-blue.avif'
-};
 const OPEN_DELAY = 150;
 const CLOSE_DELAY = 250;
 
@@ -99,7 +94,7 @@ export function PrimaryNav() {
               <ul>
                 {categories.map(category => <li key={category.slug}>
                   <Link href={'/category/' + category.slug} className="nav-panel-card" onClick={close}>
-                    <span className="nav-panel-photo"><Image src={categoryPhotos[category.slug]} alt="" fill sizes="96px"/></span>
+                    <span className="nav-panel-photo"><Image src={category.photo} alt="" fill sizes="96px"/></span>
                     <span><strong>{category.title}</strong><small>{category.description}</small></span>
                   </Link>
                 </li>)}

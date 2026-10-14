@@ -5,41 +5,35 @@ import Link from 'next/link';
 import { Heart, ShoppingBag } from 'lucide-react';
 import { useShop } from '@/components/shop-provider';
 import { SearchLauncher } from '@/components/search/search-launcher';
+import { CountBadge, countLabel, useCountBump } from '@/components/layout/count-badge';
 import { formatNumber } from '@/lib/format';
 
-/** Header icons. Badges use Persian digits; cart changes after hydration are announced politely. */
+/** Header icons. Badges use Persian digits; cart changes after hydration are announced politely here
+ * (only here — the bottom nav shows the same count without a second announcement). */
 export function HeaderActions() {
   const { cartCount, wishlist, hydrated } = useShop();
   const [announcement, setAnnouncement] = useState('');
-  const [bump, setBump] = useState(false);
   const previous = useRef<number | null>(null);
+  const bump = useCountBump(cartCount, hydrated);
 
   useEffect(() => {
     if (!hydrated) return;
-    if (previous.current !== null && previous.current !== cartCount) {
-      setAnnouncement('سبد خرید: ' + formatNumber(cartCount) + ' کالا');
-      if (cartCount > previous.current) {
-        setBump(true);
-        const timer = window.setTimeout(() => setBump(false), 400);
-        previous.current = cartCount;
-        return () => window.clearTimeout(timer);
-      }
-    }
+    if (previous.current !== null && previous.current !== cartCount) setAnnouncement('سبد خرید: ' + formatNumber(cartCount) + ' کالا');
     previous.current = cartCount;
   }, [cartCount, hydrated]);
 
-  const cartLabel = 'سبد خرید' + (hydrated && cartCount ? '، ' + formatNumber(cartCount) + ' کالا' : '');
-  const wishLabel = 'علاقه‌مندی‌ها' + (hydrated && wishlist.length ? '، ' + formatNumber(wishlist.length) + ' مورد' : '');
+  const cart = hydrated ? cartCount : 0;
+  const saved = hydrated ? wishlist.length : 0;
 
   return <div className="header-actions">
     <SearchLauncher />
-    <Link className="icon-button header-wishlist" href="/wishlist" aria-label={wishLabel}>
+    <Link className="icon-button header-wishlist" href="/wishlist" aria-label={countLabel('علاقه‌مندی‌ها', saved, 'مورد')}>
       <Heart size={21} aria-hidden="true"/>
-      {hydrated && wishlist.length > 0 && <span className="count" aria-hidden="true">{formatNumber(wishlist.length)}</span>}
+      <CountBadge count={saved}/>
     </Link>
-    <Link className="icon-button" href="/cart" aria-label={cartLabel}>
+    <Link className="icon-button header-cart" href="/cart" aria-label={countLabel('سبد خرید', cart, 'کالا')}>
       <ShoppingBag size={21} aria-hidden="true"/>
-      {hydrated && cartCount > 0 && <span className="count" data-bump={bump} aria-hidden="true">{formatNumber(cartCount)}</span>}
+      <CountBadge count={cart} bump={bump}/>
     </Link>
     <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
   </div>;
