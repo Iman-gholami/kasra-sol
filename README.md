@@ -92,6 +92,10 @@ Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx
 
 Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
+## UX Overhaul 9.0
+
+V9 rebuilds the presentation and interaction layer for desktop and mobile; data, store contract, routes, query parameters, APIs, deployment and the demo-only checkout are unchanged. It adds a token stylesheet (`src/styles/`), one native-`<dialog>` sheet primitive for every overlay, a header disclosure panel, a search combobox, instant sidebar filters with a live-count bottom sheet on phones, an RTL scroll-snap gallery with magnify-and-pan zoom, cart undo, inline checkout validation, and bottom navigation on mobile browsing pages. Read the [audit](docs/UX-AUDIT-V9.md) and the [implementation notes, test and Lighthouse evidence](docs/UX-V9.md). Accessibility is checked with axe-core in `tests/a11y.spec.ts`; screenshots and a DOM probe can be regenerated with `node scripts/capture-ux.cjs`.
+
 ## Shop by Color 8.0
 
 The homepage now includes a responsive, interactive **خرید بر اساس رنگ** section between categories and new arrivals. Color options come from product variants via the server-only `getShopByColorResults` adapter (at most four lightweight product cards per color), with URL-compatible **/shop?color=...** navigation. The existing product-card and wishlist UI is reused. See [Shop by Color 8.0 implementation notes](docs/SHOP-BY-COLOR-V8.md) for data contracts, accessibility, test evidence, preview-image limitations and backend integration.

@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ProductDetail } from '@/components/products/product-detail';
 import { ProductGrid } from '@/components/products/product-grid';
-import { bySlug, products } from '@/data/products';
+import { Breadcrumbs } from '@/components/layout/breadcrumbs';
+import { bySlug, categories, products } from '@/data/products';
 
 type Props = { params: Promise<{ slug: string }> };
 export function generateStaticParams() { return products.map(({ slug }) => ({ slug })); }
@@ -23,9 +23,13 @@ export default async function ProductPage({ params }: Props) {
     .map(category => products.find(candidate => candidate.category === category)!)
     .filter(Boolean);
   const related = [...sameCategory, ...otherCategories];
+  const category = categories.find(item => item.slug === product.category);
   return <div className="container">
-    <div className="breadcrumbs"><Link href="/">خانه</Link><span>/</span><Link href="/shop">محصولات</Link><span>/</span><span>{product.name}</span></div>
-    <ProductDetail product={product} />
-    <section className="related"><div className="section-heading"><div><p className="section-kicker">ایده برای کنار هم پوشیدن</p><h2>این‌ها رو هم ببین</h2></div></div><ProductGrid products={related} /></section>
+    <Breadcrumbs items={[{ label: 'خانه', href: '/' }, { label: category?.title ?? 'محصولات', href: '/category/' + product.category }, { label: product.name }]}/>
+    <ProductDetail product={product}/>
+    <section className="related section-block" aria-labelledby="related-title">
+      <div className="section-heading"><div><p className="section-kicker">ایده برای کنار هم پوشیدن</p><h2 id="related-title">این‌ها رو هم ببین</h2></div></div>
+      <ProductGrid products={related}/>
+    </section>
   </div>;
 }

@@ -1,1 +1,2 @@
-export default function Loading() { return <div className="container loading-skeleton" role="status" aria-label="بارگذاری صفحه" />; }
+import { PageSkeleton } from '@/components/ui/skeletons';
+export default function Loading() { return <PageSkeleton/>; }

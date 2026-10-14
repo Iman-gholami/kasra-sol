@@ -1,0 +1,189 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { Check, Heart, Info, Ruler, ShoppingBag, X } from 'lucide-react';
+import { getVariant } from '@/data/products';
+import { useShop } from '@/components/shop-provider';
+import { QuantityStepper } from '@/components/ui/quantity-stepper';
+import { Sheet, useMountedOnce } from '@/components/ui/sheet';
+import { useBottomBar } from '@/components/ui/document-flags';
+import { formatNumber, toman } from '@/lib/format';
+import type { Product } from '@/types/store';
+
+type Notice = { text: string; error: boolean };
+
+/** Buy box: color → size → quantity → add. On phones a compact bar keeps the action in the thumb
+ * zone whenever the main button is off-screen; it never covers content (the page reserves its height). */
+export function PurchasePanel({ product }: { product: Product }) {
+  const { addToCart, openCart, wishlist, toggleWishlist, hydrated } = useShop();
+  const [colorId, setColorId] = useState('');
+  const [size, setSize] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [sizeNotice, setSizeNotice] = useState('');
+  const [stickyVisible, setStickyVisible] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const guideMounted = useMountedOnce(guideOpen);
+  const buyButton = useRef<HTMLButtonElement>(null);
+  const stickyBar = useRef<HTMLDivElement>(null);
+  const colorOptions = useRef<HTMLDivElement>(null);
+  const sizeOptions = useRef<HTMLDivElement>(null);
+
+  const color = product.colors.find(entry => entry.id === colorId);
+  const variant = getVariant(product, colorId, size);
+  const isFavorite = hydrated && wishlist.includes(product.id);
+  const ready = Boolean(colorId && size && variant?.stock && variant.stock >= quantity);
+
+  useBottomBar('pdp');
+
+  // Reserve exactly the bar's height (it grows by one line while confirming an add) so it never covers content.
+  useEffect(() => {
+    const bar = stickyBar.current;
+    if (!bar || typeof ResizeObserver === 'undefined') return;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() => {
+      if (bar.offsetHeight) root.style.setProperty('--pdp-bar-h', bar.offsetHeight + 'px');
+    });
+    observer.observe(bar);
+    return () => { observer.disconnect(); root.style.removeProperty('--pdp-bar-h'); };
+  }, []);
+
+  useEffect(() => {
+    const button = buyButton.current;
+    if (!button || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => setStickyVisible(!entry.isIntersecting), { threshold: 0.45 });
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, []);
+
+  function focusOption(which: 'color' | 'size') {
+    const container = which === 'color' ? colorOptions.current : sizeOptions.current;
+    const button = container?.querySelector<HTMLButtonElement>('button:not(:disabled)');
+    container?.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    button?.focus({ preventScroll: true });
+  }
+
+  function chooseColor(id: string) {
+    setColorId(id);
+    const invalidated = Boolean(size && !getVariant(product, id, size)?.stock);
+    if (invalidated) setSize('');
+    setSizeNotice(invalidated ? 'سایز قبلی برای این رنگ ناموجود است؛ دوباره سایز انتخاب کن.' : '');
+    setQuantity(1);
+    setNotice(null);
+  }
+
+  function add() {
+    if (!colorId || !size) {
+      const missing = !colorId ? 'color' : 'size';
+      setNotice({ text: missing === 'color' ? 'اول رنگ موردنظرت رو انتخاب کن.' : 'برای ادامه یک سایز موجود انتخاب کن.', error: true });
+      focusOption(missing);
+      return;
+    }
+    if (!variant?.stock || quantity > variant.stock) {
+      setNotice({ text: 'این ترکیب ناموجود است یا تعداد انتخاب‌شده بیشتر از موجودی نمونه است.', error: true });
+      focusOption('size');
+      return;
+    }
+    const success = addToCart({ productId: product.id, colorId, size, quantity });
+    setNotice({ text: success ? 'انتخابت به سبد نمایشی اضافه شد.' : 'افزودن به سبد خرید ممکن نیست.', error: !success });
+  }
+
+  const summary = color ? color.name + (size ? '، سایز ' + size : '') : 'رنگ و سایز انتخاب نشده';
+  const stickyLabel = ready ? 'افزودن به سبد خرید از نوار پایین' : !colorId ? 'انتخاب رنگ و سایز از نوار پایین' : 'انتخاب سایز از نوار پایین';
+
+  return <>
+    <section className="buy-panel" aria-label="انتخاب مشخصات و خرید">
+      <div className="variant-group">
+        <div className="variant-label" id="pdp-color-label">رنگ <span className="variant-value">{color ? color.name : 'انتخاب کن'}</span></div>
+        <div className="swatch-list" ref={colorOptions} role="group" aria-labelledby="pdp-color-label">
+          {product.colors.map(entry => {
+            const available = product.variants.some(v => v.colorId === entry.id && v.stock > 0);
+            return <button key={entry.id} type="button" disabled={!available}
+              className={'swatch' + (colorId === entry.id ? ' selected' : '') + (!available ? ' unavailable' : '')}
+              aria-label={'رنگ ' + entry.name + (!available ? ' ناموجود' : '')} aria-pressed={colorId === entry.id}
+              onClick={() => chooseColor(entry.id)}>
+              <span className="swatch-color" style={{ backgroundColor: entry.hex }} aria-hidden="true"/>
+              <small aria-hidden="true">{entry.name}</small>
+            </button>;
+          })}
+        </div>
+      </div>
+      <div className="variant-group">
+        <div className="variant-label">
+          <span id="pdp-size-label">سایز <span className="variant-value">{size ? <span dir="ltr">{size}</span> : 'انتخاب کن'}</span></span>
+          <button type="button" className="size-guide-trigger" onClick={() => setGuideOpen(true)}>
+            <Ruler size={16} aria-hidden="true"/> راهنمای سایز
+          </button>
+        </div>
+        <div className="size-list" dir="ltr" ref={sizeOptions} role="group" aria-labelledby="pdp-size-label">
+          {product.sizes.map(entry => {
+            const available = colorId ? Boolean(getVariant(product, colorId, entry)?.stock) : product.variants.some(v => v.size === entry && v.stock > 0);
+            return <button key={entry} type="button" disabled={!available}
+              className={'size-option' + (size === entry ? ' selected' : '')} aria-pressed={size === entry}
+              aria-label={'سایز ' + entry + (available ? '' : ' ناموجود')}
+              onClick={() => { setSize(entry); setSizeNotice(''); setQuantity(1); setNotice(null); }}>
+              {entry}
+            </button>;
+          })}
+        </div>
+        {sizeNotice && <p className="pdp-size-notice" role="status"><Info size={16} aria-hidden="true"/>{sizeNotice}</p>}
+      </div>
+      <div className="quantity-row">
+        <span className="variant-label">تعداد</span>
+        <QuantityStepper value={quantity} max={variant?.stock ?? 1} onChange={value => setQuantity(Math.max(1, value))}/>
+        {variant?.stock ? <span className="stock-note">موجودی نمونه: {formatNumber(variant.stock)}</span> : null}
+      </div>
+      {notice && <div role={notice.error ? 'alert' : 'status'} className={'status-message purchase-feedback' + (notice.error ? ' error' : '')}>
+        {!notice.error && <Check size={18} aria-hidden="true"/>}
+        <span>{notice.text}</span>
+        {!notice.error && <span className="purchase-feedback-actions">
+          <Link className="link-button" href="/cart">مشاهده سبد خرید</Link>
+          <button type="button" className="link-button pdp-quick-cart-link" onClick={openCart}>سبد سریع</button>
+        </span>}
+      </div>}
+      <div className="purchase-row">
+        <button ref={buyButton} type="button" className="btn btn-primary btn-dark btn-lg" onClick={add}>
+          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : 'رنگ و سایز رو انتخاب کن'}
+        </button>
+        <button type="button" className={'btn btn-secondary btn-lg pdp-wishlist' + (isFavorite ? ' is-liked' : '')}
+          aria-label={isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'} aria-pressed={isFavorite}
+          onClick={() => toggleWishlist(product.id)}>
+          <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} aria-hidden="true"/>
+        </button>
+      </div>
+      <p className="buy-panel-note"><Info size={15} aria-hidden="true"/> رنگ، سایز، موجودی و قیمت در این نسخه نمایشی‌اند و سفارشی ثبت نمی‌شود.</p>
+    </section>
+
+    {guideMounted && <Sheet open={guideOpen} onClose={() => setGuideOpen(false)} labelledBy="size-guide-title"
+      className="sheet-center size-guide-dialog" swipe="down">
+      <div className="sheet-inner">
+        <div className="sheet-header" data-sheet-drag>
+          <span className="sheet-handle" aria-hidden="true"/>
+          <h2 className="sheet-title" id="size-guide-title">راهنمای سایز نمونه</h2>
+          <button type="button" className="icon-button" aria-label="بستن راهنمای سایز" onClick={() => setGuideOpen(false)}><X size={22} aria-hidden="true"/></button>
+        </div>
+        <div className="sheet-body size-guide-body">
+          <p>اندازه‌گیری اختصاصی این کالا هنوز ثبت نشده است؛ بدون جدول واقعی، پیشنهاد سایز قطعی نمی‌دهیم.</p>
+          <p>برای انتخاب بهتر، دور سینه، کمر و باسن را با متر نرم و بدون کشیدن اندازه بگیر. پیش از خرید واقعی، این اعداد باید با اندازه‌های همین مدل مقایسه شوند.</p>
+          <Link href="/size-guide" className="text-link" onClick={() => setGuideOpen(false)}>مطالعه راهنمای عمومی سایز</Link>
+        </div>
+      </div>
+    </Sheet>}
+
+    <div ref={stickyBar} className={'pdp-sticky-bar' + (stickyVisible ? ' is-visible' : '')} aria-hidden={!stickyVisible} inert={!stickyVisible}>
+      {notice && !notice.error && <div className="pdp-sticky-confirm" role="status">
+        <Check size={16} aria-hidden="true"/><span>به سبد خرید اضافه شد</span><Link href="/cart">مشاهده سبد خرید</Link>
+      </div>}
+      <div className="pdp-sticky-inner">
+        <div className="pdp-sticky-price">
+          <strong className="price">{toman(product.price)}</strong>
+          <span className={color ? undefined : 'is-empty'}>{summary}</span>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={add} aria-label={stickyLabel}>
+          <ShoppingBag size={18} aria-hidden="true"/>{ready ? 'افزودن به سبد' : (!colorId ? 'انتخاب رنگ و سایز' : 'انتخاب سایز')}
+        </button>
+      </div>
+    </div>
+  </>;
+}

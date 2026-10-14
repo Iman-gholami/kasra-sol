@@ -13,7 +13,9 @@ test('capture editorial layout on desktop and mobile', async ({ page }) => {
       await page.goto(route);
       await expect(page.locator('main')).toBeVisible();
       await page.evaluate(async () => {
-        await Promise.all([...document.images].filter(i => i.getBoundingClientRect().width > 0).map(i => i.decode().catch(() => {})));
+        // decode() never settles for lazy images that have not started loading, so cap the wait.
+        const decoded = Promise.all([...document.images].filter(i => i.getBoundingClientRect().width > 0).map(i => i.decode().catch(() => {})));
+        await Promise.race([decoded, new Promise(resolve => setTimeout(resolve, 3000))]);
       });
       await page.screenshot({ path: folder + '/' + name + '-' + width + '.png', fullPage: true, animations: 'disabled' });
     }

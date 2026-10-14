@@ -1,0 +1,110 @@
+/* KASRA V9 design tokens — single source for color, space, type, shape, depth, layering and motion.
+   Theme tokens are declared through Tailwind 4 `@theme`, so they exist as CSS variables and as
+   utilities; component CSS reads them with var(). Breakpoints used in media queries:
+   600px (phone) · 820px (tablet) · 1080px (small laptop) · 1440px (wide). */
+
+@theme {
+  /* Color roles (contrast ratios measured against surface-muted, the darkest text background) */
+  --color-surface: #faf8f5;          /* page canvas */
+  --color-surface-raised: #ffffff;   /* cards, inputs, sheets */
+  --color-surface-muted: #f1ece6;    /* bands, summaries, notices */
+  --color-surface-sunken: #e8dfd4;   /* image placeholders */
+  --color-text: #222222;             /* 13.6:1 */
+  --color-text-muted: #615852;       /* 5.9:1 */
+  --color-text-subtle: #6b6158;      /* 5.1:1 */
+  --color-accent: #7d453f;           /* 6.4:1, links and emphasis */
+  --color-accent-soft: #b8847c;      /* decorative only — never text */
+  --color-accent-wash: #f6e9e6;
+  --color-border: #ded8d1;           /* dividers */
+  --color-border-strong: #8c8178;    /* form controls and chips, 3.8:1 on white */
+  --color-success: #2e6b4c;
+  --color-success-wash: #e8f1ec;
+  --color-warning: #865a0f;
+  --color-warning-wash: #f8efdf;
+  --color-danger: #9b2f2a;
+  --color-danger-wash: #fbeeec;
+  --color-focus: #7d453f;
+  --color-inverse: #ffffff;
+  --color-scrim: rgb(28 24 21 / 0.48);
+
+  /* Type */
+  --font-sans: var(--font-estedad), Tahoma, "Segoe UI", sans-serif;
+  --font-wordmark: Georgia, "Times New Roman", serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: clamp(0.9375rem, 0.9rem + 0.15vw, 1rem);
+  --text-md: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
+  --text-lg: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --text-xl: clamp(1.25rem, 1.12rem + 0.55vw, 1.5rem);
+  --text-2xl: clamp(1.5rem, 1.28rem + 0.95vw, 2rem);
+  --text-3xl: clamp(1.75rem, 1.38rem + 1.55vw, 2.625rem);
+  --text-display: clamp(2.25rem, 1.5rem + 3.1vw, 4.25rem);
+  --leading-body: 1.85;
+  --leading-snug: 1.55;
+  --leading-heading: 1.4;
+
+  /* Shape and depth */
+  --radius-xs: 2px;
+  --radius-sm: 6px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow-1: 0 -1px 0 rgb(34 34 34 / 0.06), 0 -6px 18px rgb(36 30 26 / 0.06);
+  --shadow-2: 0 10px 30px rgb(36 30 26 / 0.12), 0 2px 6px rgb(36 30 26 / 0.06);
+  --shadow-3: 0 24px 70px rgb(30 24 20 / 0.24);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+:root {
+  color-scheme: light;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --gutter: clamp(16px, 4vw, 48px);
+  --section-gap: clamp(40px, 3rem + 2vw, 88px);
+
+  /* Layout */
+  --container-page: 1440px;
+  --container-editorial: 1520px;
+  --container-checkout: 1200px;
+  --measure: 68ch;
+  --header-h: 68px;
+  --touch: 44px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-start: env(safe-area-inset-right, 0px);
+  --safe-end: env(safe-area-inset-left, 0px);
+
+  /* Layering (overlays use the native top layer, so they need no z-index) */
+  --z-raised: 2;
+  --z-sticky: 20;
+  --z-header: 40;
+  --z-bottom-bar: 45;
+  --z-toast: 60;
+  --z-skip: 80;
+
+  /* Motion durations */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+}
+
+@media (max-width: 600px) {
+  :root { --header-h: 58px; }
+}
