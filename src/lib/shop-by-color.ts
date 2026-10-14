@@ -25,9 +25,12 @@ export function colorFamilyId(color: ProductColor): string {
 }
 
 /** Use actual variants, never a product's category or photographic hue. */
+export function variantMatchesColorFamily(product: Product, variantColorId: string, family: string): boolean {
+  return product.colors.some(color => color.id === variantColorId && colorFamilyId(color) === family);
+}
+
 export function hasColorFamily(product: Product, family: string): boolean {
-  const shadeIds = new Set(product.colors.filter(c => colorFamilyId(c) === family).map(c => c.id));
-  return product.variants.some(variant => shadeIds.has(variant.colorId));
+  return product.variants.some(variant => variantMatchesColorFamily(product, variant.colorId, family));
 }
 
 function previewProduct(product: Product): ProductCardData {

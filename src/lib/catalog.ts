@@ -2,7 +2,7 @@ import { products } from '@/data/products';
 import { toLatinDigits } from '@/lib/format';
 import { rankProduct } from '@/lib/search';
 import { categories } from '@/data/products';
-import { hasColorFamily } from '@/lib/shop-by-color';
+import { variantMatchesColorFamily } from '@/lib/shop-by-color';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
 
 export const PAGE_SIZE = 12;
@@ -43,7 +43,7 @@ export async function queryProducts(filters: CatalogFilters): Promise<{ items: P
     if (filters.discounted && !product.compareAt) return false;
     const variants = product.variants.filter((variant) =>
       (!filters.size || variant.size === filters.size) &&
-      (!filters.color || hasColorFamily({ ...product, variants: [variant] }, filters.color)));
+      (!filters.color || variantMatchesColorFamily(product, variant.colorId, filters.color)));
     if ((filters.size || filters.color) && !variants.length) return false;
     if (filters.inStock && !variants.some((variant) => variant.stock > 0)) return false;
     return true;
