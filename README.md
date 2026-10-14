@@ -92,6 +92,10 @@ Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx
 
 Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
+## Shop by Color 8.0
+
+The homepage now includes a responsive, interactive **خرید بر اساس رنگ** section between categories and new arrivals. Color options come from product variants via the server-only `getShopByColorResults` adapter (at most four lightweight product cards per color), with URL-compatible **/shop?color=...** navigation. The existing product-card and wishlist UI is reused. See [Shop by Color 8.0 implementation notes](docs/SHOP-BY-COLOR-V8.md) for data contracts, accessibility, test evidence, preview-image limitations and backend integration.
+
 ## Product Discovery Experience 7.0
 
 Search, catalog filters, category browsing and recovery from empty results have been refined in place. Live search suggestions now use a small server endpoint instead of shipping the entire mock catalog to the client. Read the [discovery UX audit and testing guide](docs/PRODUCT-DISCOVERY-V7.md).
