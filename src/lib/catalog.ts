@@ -2,7 +2,7 @@ import { products } from '@/data/products';
 import { toLatinDigits } from '@/lib/format';
 import { rankProduct } from '@/lib/search';
 import { categories } from '@/data/products';
-import { variantMatchesColorFamily } from '@/lib/shop-by-color';
+import { colorFamilyId, hasColorFamily } from '@/lib/shop-by-color';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
 
 export const PAGE_SIZE = 12;
