@@ -81,3 +81,35 @@ for (const [name, use] of [
     });
   });
 }
+
+test.describe('reduced motion', () => {
+  test.use({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('overlays and the gallery work without animation', async ({ page }) => {
+    const instant = (value: string) => value.split(',').every(part => parseFloat(part) < 0.001);
+    await page.goto('/product/shomiz-01');
+    const gallery = page.locator('.pdp-gallery');
+    const track = page.locator('.pdp-track');
+    await gallery.getByRole('button', { name: 'تصویر بعدی' }).click();
+    await expect(gallery.locator('.pdp-gallery-counter')).toContainText('۲ / ۲');
+    // The track jumps straight to the next slide instead of smooth-scrolling.
+    const [left, width] = await track.evaluate(node => [Math.abs(node.scrollLeft), node.clientWidth]);
+    expect(Math.abs(left - width)).toBeLessThanOrEqual(2);
+
+    await page.getByRole('button', { name: 'راهنمای سایز' }).click();
+    const guide = page.getByRole('dialog', { name: 'راهنمای سایز نمونه' });
+    await expect(guide).toBeVisible();
+    expect(instant(await guide.evaluate(node => getComputedStyle(node).transitionDuration))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(guide).toBeHidden();
+
+    await page.goto('/');
+    const opener = page.getByRole('button', { name: 'باز کردن منو' });
+    await opener.click();
+    const menu = page.getByRole('navigation', { name: 'منوی موبایل' });
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(opener).toBeFocused();
+  });
+});

@@ -20,9 +20,10 @@
 .brand { display: inline-flex; align-items: center; gap: 12px; min-block-size: var(--touch); direction: ltr; padding-inline: 2px; }
 .brand-monogram { inline-size: 38px; block-size: 40px; display: grid; place-items: center; border: 1px solid #292725; font: 26px/0.9 var(--font-wordmark); }
 .brand-type { display: flex; flex-direction: column; align-items: center; }
-.brand-type strong { font: 500 24px/0.95 var(--font-wordmark); letter-spacing: 0.17em; padding-left: 0.17em; }
-/* Logotype detail: part of the wordmark image, aria-hidden — the one documented exception to the 12px floor. */
-.brand-type small { font: 600 9px/2 Arial, sans-serif; letter-spacing: 0.32em; padding-left: 0.32em; color: var(--color-text-muted); }
+.brand-type strong { font: 500 24px/0.95 var(--font-wordmark); letter-spacing: 0.17em; padding-inline-start: 0.17em; }
+/* Logotype detail: part of the wordmark image, aria-hidden — the one documented exception to the 12px floor.
+   The wordmark is LTR, so inline-start padding balances the trailing letter-spacing on the left. */
+.brand-type small { font: 600 9px/2 Arial, sans-serif; letter-spacing: 0.32em; padding-inline-start: 0.32em; color: var(--color-text-muted); }
 
 .desktop-nav > ul { display: flex; align-items: center; gap: clamp(8px, 1.6vw, 28px); margin: 0; padding: 0; list-style: none; }
 .desktop-nav > ul > li { display: flex; align-items: center; }
