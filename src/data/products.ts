@@ -12,6 +12,16 @@ const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
   tshirt: ['/images/lookbook/tshirt-white.avif', '/images/lookbook/tshirt-blue.avif']
 };
 
+/** Demonstration photos are category styling examples, not verified SKU imagery.
+ * Attach a preview only where the photographed garment matches the actual variant shade.
+ * Missing variants deliberately use a labeled color placeholder in the color-filtered UI.
+ */
+const colorPreviewPhotos: Record<CategorySlug, Partial<Record<string, string>>> = {
+  shomiz: { cream: demoPhotos.shomiz[0], rose: demoPhotos.shomiz[1] },
+  manto: { black: demoPhotos.manto[0], sage: demoPhotos.manto[1] },
+  tshirt: { white: demoPhotos.tshirt[0], blue: demoPhotos.tshirt[1] }
+};
+
 const collections: {
   slug: CategorySlug;
   names: string[];
@@ -63,6 +73,10 @@ export const products: Product[] = collections.flatMap((collection, categoryInde
       compareAt: i % 4 === 0 ? Math.ceil(price * 1.2 / 10000) * 10000 : undefined,
       description: name + ' با طراحی ساده و جزئیات کاربردی، برای ترکیب‌های روزمره و استایلی شخصی.',
       images: i % 2 === 0 ? [...demoPhotos[collection.slug]] : [...demoPhotos[collection.slug]].reverse(),
+      colorPreviewImages: Object.fromEntries(colorList.flatMap(color => {
+        const image = colorPreviewPhotos[collection.slug][color.id];
+        return image ? [[color.id, image]] : [];
+      })),
       colors: colorList,
       sizes,
       variants: colorList.flatMap((color, colorIndex) =>
