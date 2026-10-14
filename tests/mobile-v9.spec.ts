@@ -20,10 +20,10 @@ async function touchDrag(page: Page, x: number, y: number, dx: number, dy: numbe
   await cdp.detach();
 }
 
-test('bottom navigation on browsing pages only, never covering content, with Persian badges', async ({ page }) => {
+test('bottom navigation on every route except checkout, never covering content, with Persian badges', async ({ page }) => {
   await seed(page, [{ productId: 'shomiz-01', colorId: 'cream', size: 'M', quantity: 2 }], ['manto-03']);
   await page.goto('/');
-  const nav = page.getByRole('navigation', { name: 'ناوبری پایین صفحه' });
+  const nav = page.getByRole('navigation', { name: 'ناوبری اصلی موبایل' });
   await expect(nav).toBeVisible();
   await expect(nav.getByRole('link', { name: 'خانه' })).toHaveAttribute('aria-current', 'page');
   await expect(nav.getByRole('link', { name: 'سبد خرید، ۲ کالا' })).toBeVisible();
@@ -42,14 +42,18 @@ test('bottom navigation on browsing pages only, never covering content, with Per
   expect(box.width).toBeGreaterThanOrEqual(388);
   await page.keyboard.press('Escape');
   await expect(search).toBeHidden();
-  await nav.getByRole('link', { name: 'دسته‌ها' }).click();
+  await nav.getByRole('link', { name: 'فروشگاه' }).click();
   await expect(page).toHaveURL(/\/shop$/);
-  await expect(nav.getByRole('link', { name: 'دسته‌ها' })).toHaveAttribute('aria-current', 'page');
-  for (const route of ['/product/shomiz-01', '/cart', '/checkout']) {
+  await expect(nav.getByRole('link', { name: 'فروشگاه' })).toHaveAttribute('aria-current', 'page');
+  // Mobile Experience 9.0: product and cart keep the nav (their task bars stack on it); checkout stays focused.
+  for (const route of ['/product/shomiz-01', '/cart']) {
     await page.goto(route);
     await expect(page.locator('main')).toBeVisible();
-    await expect(nav).toHaveCount(0);
+    await expect(nav).toBeVisible();
   }
+  await page.goto('/checkout');
+  await expect(page.locator('main')).toBeVisible();
+  await expect(nav).toHaveCount(0);
 });
 
 test('menu drawer: focus stays inside, swipe toward its edge closes and focus returns', async ({ page }) => {

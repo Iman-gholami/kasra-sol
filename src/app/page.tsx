@@ -4,13 +4,10 @@ import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
 import { categories, products } from '@/data/products';
 import { ProductGrid } from '@/components/products/product-grid';
 import { ShopByColor } from '@/components/home/shop-by-color';
+import { HomeSearchEntry } from '@/components/home/home-search-entry';
+import { QuickCategories } from '@/components/home/quick-categories';
 import { getShopByColorResults } from '@/lib/shop-by-color';
 
-const categoryPhotos = [
-  '/images/lookbook/shomiz-rose.avif',
-  '/images/lookbook/manto-sage.avif',
-  '/images/lookbook/tshirt-blue.avif'
-];
 // The first tile is wider on desktop; the last spans the full width on phones.
 const categorySizes = [
   '(max-width: 600px) 50vw, (max-width: 1520px) 40vw, 600px',
@@ -24,6 +21,12 @@ export default function HomePage() {
   const colors = getShopByColorResults();
 
   return <>
+    {/* Phone quick start (≤ 600px): the same search dialog as the header icon, then category shortcuts. */}
+    <div className="container home-quick-start">
+      <HomeSearchEntry/>
+      <QuickCategories newestPhoto={arrivals[0].images[0]}/>
+    </div>
+
     <section className="hero container wide-editorial" aria-labelledby="hero-title">
       <div className="hero-copy">
         <p className="hero-pretitle"><span className="overline-rule" aria-hidden="true"/>انتخاب‌های تازه، هر روز</p>
@@ -51,7 +54,7 @@ export default function HomePage() {
       <ul className="category-grid">
         {categories.map((category, i) => <li key={category.slug}>
           <Link href={'/category/' + category.slug} className={'category-tile category-' + i}>
-            <Image src={categoryPhotos[i]} alt="" fill sizes={categorySizes[i]}/>
+            <Image src={category.photo} alt="" fill sizes={categorySizes[i]}/>
             <span className="category-description"><span className="category-name">{category.title}</span><span>{category.description}</span></span>
             <span className="category-arrow" aria-hidden="true"><ArrowUpLeft size={20}/></span>
           </Link>

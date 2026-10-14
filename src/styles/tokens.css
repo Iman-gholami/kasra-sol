@@ -1,7 +1,8 @@
 /* KASRA V9 design tokens — single source for color, space, type, shape, depth, layering and motion.
    Theme tokens are declared through Tailwind 4 `@theme`, so they exist as CSS variables and as
    utilities; component CSS reads them with var(). Breakpoints used in media queries:
-   600px (phone) · 820px (tablet) · 1080px (small laptop) · 1440px (wide). */
+   600px (phone: centered header, homepage quick start, bottom nav) · 820px (tablet) · 1080px (small laptop)
+   · 1440px (wide). */
 
 @theme {
   /* Color roles (contrast ratios measured against surface-muted, the darkest text background) */
@@ -25,6 +26,8 @@
   --color-danger-wash: #fbeeec;
   --color-focus: #7d453f;
   --color-inverse: #ffffff;
+  --color-surface-inverse: #292725;  /* announcement strip */
+  --color-text-on-inverse: #f8f4f0;  /* warm white, 13.6:1 on surface-inverse */
   --color-scrim: rgb(28 24 21 / 0.48);
 
   /* Type */
@@ -91,11 +94,15 @@
   --safe-start: env(safe-area-inset-right, 0px);
   --safe-end: env(safe-area-inset-left, 0px);
 
-  /* Layering (overlays use the native top layer, so they need no z-index) */
+  /* Layering, lowest to highest: page content · raised (card badges) · sticky (filter pill, checkout submit)
+     · header · task bar (PDP purchase bar, cart total) · bottom nav · toast · skip link. The task bar and the
+     bottom nav never overlap (the task bar sits on top of the nav), so their order only decides whose edge
+     shadow wins. Backdrops, dialogs, drawers and the search overlay use the native top layer, above all of these. */
   --z-raised: 2;
   --z-sticky: 20;
   --z-header: 40;
-  --z-bottom-bar: 45;
+  --z-task-bar: 44;
+  --z-bottom-nav: 45;
   --z-toast: 60;
   --z-skip: 80;
 
@@ -107,4 +114,34 @@
 
 @media (max-width: 600px) {
   :root { --header-h: 58px; }
+}
+
+/* Phone bottom-of-screen contract (≤ 600px). Each fixed layer owns one term; the device safe area is counted
+   exactly once, by whichever layer touches the screen edge.
+   --bottom-nav-h        height of the bottom nav including its top border, without the safe area
+   --task-bar-pad        block padding above and below a task bar's content (task bars also have a 1px top border)
+   --task-bar-content-h  measured content height of the active task bar (published by useTaskBar)
+   --task-bar-offset     distance from the screen bottom to the task bar: the nav plus the safe area when the
+                         nav is shown, otherwise 0
+   --task-bar-safe       safe-area padding the task bar adds itself: 0 when the nav below it already pads it
+   --bottom-bar-space    everything fixed at the bottom (nav + task bar + safe area); the page reserves it as
+                         end padding and scroll padding, and toasts and the filter pill float above it
+   <html data-bottom-nav> and <html data-task-bar="pdp|cart"> switch the terms on (components/ui/document-flags). */
+@media (max-width: 600px) {
+  :root {
+    --bottom-nav-h: 60px;
+    --task-bar-pad: var(--space-2);
+    --task-bar-offset: 0px;
+    --task-bar-safe: var(--safe-bottom);
+  }
+  html[data-bottom-nav] {
+    --nav-space: var(--bottom-nav-h);
+    --task-bar-offset: calc(var(--bottom-nav-h) + var(--safe-bottom));
+    --task-bar-safe: 0px;
+  }
+  /* Measured content + padding + the bar's 1px top border. */
+  html[data-task-bar] { --task-space: calc(var(--task-bar-content-h, 46px) + 2 * var(--task-bar-pad) + 1px); }
+  html[data-bottom-nav], html[data-task-bar] {
+    --bottom-bar-space: calc(var(--nav-space, 0px) + var(--task-space, 0px) + var(--safe-bottom));
+  }
 }

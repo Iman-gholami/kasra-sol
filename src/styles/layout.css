@@ -1,10 +1,13 @@
-/* Layout chrome: announcement, header, desktop nav panel, mobile menu, footer, breadcrumbs, bottom bars. */
+/* Layout chrome: announcement, header, desktop nav panel, mobile menu, footer, breadcrumbs, bottom layers. */
 
+/* One quiet line; its height is fixed by the type, so it never shifts the header. */
 .announcement {
-  background: #292725; color: #f8f4f0; text-align: center;
-  padding: max(6px, var(--safe-top)) var(--gutter) 6px;
+  display: grid; place-items: center; min-block-size: calc(32px + var(--safe-top));
+  padding: var(--safe-top) var(--gutter) 0; background: var(--color-surface-inverse); color: var(--color-text-on-inverse); text-align: center;
 }
-.announcement p { margin: 0; font-size: var(--text-xs); line-height: 1.7; }
+.announcement p { margin: 0; padding-block: 5px; font-size: var(--text-xs); line-height: 1.8; letter-spacing: 0.01em; }
+.announcement a { text-decoration: underline; text-decoration-color: rgb(248 244 240 / 0.5); text-underline-offset: 4px; }
+.announcement a:hover { text-decoration-color: currentColor; }
 
 /* ---------- Header ---------- */
 .site-header {
@@ -127,7 +130,7 @@
 .footer-bottom { border-block-start: 1px solid var(--color-border); padding-block: var(--space-5) var(--space-6); }
 .footer-bottom p { margin: 0; color: var(--color-text-subtle); font-size: var(--text-xs); }
 
-/* ---------- Bottom navigation (phones, browsing pages) ---------- */
+/* ---------- Bottom navigation (phones, every route except checkout) ---------- */
 .bottom-nav { display: none; }
 
 @media (max-width: 1080px) {
@@ -148,8 +151,14 @@
 }
 
 @media (max-width: 600px) {
-  .header-inner { gap: var(--space-2); }
-  .header-actions { gap: 0; }
+  /* Equal outer tracks put the wordmark on the viewport's true center whatever the icon groups weigh.
+     A track only grows past 1fr if its icons would not fit, so nothing can overlap on narrow phones.
+     Outer icons reach 10px into the gutter so their glyphs, not their 44px targets, align with the page edge. */
+  .header-inner { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-1); }
+  .header-start { display: contents; }
+  .menu-trigger { grid-column: 1; justify-self: start; margin-inline-start: -10px; }
+  .brand { grid-column: 2; }
+  .header-actions { grid-column: 3; justify-self: end; gap: 0; margin-inline-end: -10px; }
   .header-wishlist { display: none; }
   .brand { gap: 8px; }
   .brand-monogram { inline-size: 31px; block-size: 33px; font-size: 21px; }
@@ -162,35 +171,45 @@
   .footer nav:last-child { grid-column: 1 / -1; }
   .footer nav a { display: flex; min-block-size: var(--touch); }
 
+  /* The nav is the layer touching the screen edge, so it alone pads the safe area (tokens.css contract). */
   .bottom-nav {
-    display: block; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: var(--z-bottom-bar);
+    display: block; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: var(--z-bottom-nav);
     padding-block-end: var(--safe-bottom); padding-inline: var(--safe-start) var(--safe-end);
-    background: rgb(250 248 245 / 0.96); border-block-start: 1px solid var(--color-border);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    background: var(--color-surface); border-block-start: 1px solid var(--color-border);
   }
-  .bottom-nav ul { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
-  .bottom-nav a, .bottom-nav button {
-    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    inline-size: 100%; min-block-size: 60px; padding: 6px 2px 4px; border: 0; background: transparent;
-    color: var(--color-text-muted); font-size: var(--text-xs); font-weight: var(--font-weight-medium); line-height: 1.4;
-    touch-action: manipulation;
+  /* --bottom-nav-h includes the 1px top border, so the reserved space and the task bar offset match exactly. */
+  .bottom-nav ul { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); block-size: calc(var(--bottom-nav-h) - 1px); margin: 0; padding: 0; list-style: none; }
+  .bottom-nav li { display: flex; min-inline-size: 0; }
+  .bottom-nav-item {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    inline-size: 100%; padding: 4px 2px 2px; border: 0; border-radius: 0; background: transparent;
+    color: var(--color-text-muted); font-size: var(--text-xs); font-weight: var(--font-weight-medium); line-height: 1.3;
+    white-space: nowrap; touch-action: manipulation; transition: color var(--duration-fast) var(--ease-standard);
   }
-  .bottom-nav a:active, .bottom-nav button:active { background: var(--color-surface-muted); }
-  .bottom-nav [aria-current="page"] { color: var(--color-accent); font-weight: var(--font-weight-bold); }
-  .bottom-nav [aria-current="page"]::before {
-    content: ""; position: absolute; inset-block-start: 0; inset-inline: 30%; block-size: 2px; border-radius: 0 0 2px 2px; background: var(--color-accent);
+  .bottom-nav-item svg { stroke-width: 1.75; }
+  .bottom-nav-item:active { background: var(--color-surface-muted); }
+  .bottom-nav-item:focus-visible { outline-offset: -4px; border-radius: var(--radius-sm); }
+  /* Current destination or section: accent color, heavier label and stroke, and a short rule on the top edge —
+     three cues besides hue. */
+  .bottom-nav-item[aria-current] { color: var(--color-accent); font-weight: var(--font-weight-bold); }
+  .bottom-nav-item[aria-current] svg { stroke-width: 2.25; }
+  .bottom-nav-item[aria-current]::before {
+    content: ""; position: absolute; inset-block-start: -1px; inset-inline: 0; margin-inline: auto; inline-size: 24px; block-size: 2px;
+    border-radius: 0 0 2px 2px; background: currentColor;
   }
   .bottom-nav-icon { position: relative; display: inline-grid; }
   .bottom-nav .count { inset-block-start: -6px; inset-inline-end: -12px; }
-  /* Keyboard up: the bottom nav would cover the field being edited. */
-  .bottom-nav[data-keyboard] { display: none; }
 
-  html[data-bottom-bar="nav"] { --bottom-bar-space: calc(60px + var(--safe-bottom)); }
-  html[data-bottom-bar="pdp"] { --bottom-bar-space: var(--pdp-bar-h, calc(76px + var(--safe-bottom))); }
-  html[data-bottom-bar="cart"] { --bottom-bar-space: calc(74px + var(--safe-bottom)); }
+  /* Fixed bottom layers step aside while a modal is open (the top layer owns the screen) and while the
+     on-screen keyboard is up (they would cover the field or ride on the keyboard). Their space stays reserved,
+     so nothing in the page moves. */
+  html:is([data-modal-open], [data-keyboard]) :is(.bottom-nav, .pdp-sticky-bar, .task-bar) { visibility: hidden; }
+
   .site-shell { padding-block-end: var(--bottom-bar-space, 0px); }
 }
 @media (max-width: 360px) {
-  .brand-type small { display: none; }
-  .brand-type strong { font-size: 18px; }
+  .brand { gap: 7px; }
+  .brand-monogram { inline-size: 29px; block-size: 31px; font-size: 20px; }
+  .brand-type strong { font-size: 17px; }
+  .brand-type small { font-size: 7.5px; letter-spacing: 0.22em; padding-inline-start: 0.22em; }
 }

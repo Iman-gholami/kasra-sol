@@ -8,7 +8,7 @@ import { categories } from '@/data/facets';
 import { LineDetails } from '@/components/cart/line-details';
 import { useCartLines } from '@/components/cart/use-cart-lines';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
-import { useBottomBar } from '@/components/ui/document-flags';
+import { useTaskBar } from '@/components/ui/document-flags';
 import { formatNumber, toman } from '@/lib/format';
 
 /** Cart contents. The page heading is server-rendered; until the browser store is read this renders a
@@ -16,7 +16,8 @@ import { formatNumber, toman } from '@/lib/format';
 export function CartPage() {
   const { hydrated, rows, lines, subtotal, savings, units, remove, undo, updateQuantity } = useCartLines();
   const list = useRef<HTMLDivElement>(null);
-  useBottomBar('cart', hydrated && lines.length > 0);
+  const taskBar = useRef<HTMLDivElement>(null);
+  useTaskBar('cart', taskBar, hydrated && lines.length > 0);
   const focusIn = (selector: string) => requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(selector)?.focus());
 
   if (!hydrated) return <CartSkeleton/>;
@@ -78,7 +79,7 @@ export function CartPage() {
         <p>پرداخت واقعی و ثبت سفارش انجام نمی‌شود.</p>
       </aside>}
     </div>
-    {lines.length > 0 && <div className="task-bar cart-task-bar">
+    {lines.length > 0 && <div ref={taskBar} className="task-bar cart-task-bar">
       <div className="task-bar-total"><span>جمع اقلام</span><strong className="price">{toman(subtotal)}</strong></div>
       <Link href="/checkout" className="btn btn-primary">ادامه تا تسویه‌حساب <ArrowLeft size={18} aria-hidden="true"/></Link>
     </div>}

@@ -1,15 +1,32 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { Search } from 'lucide-react';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
 import { SearchExperience } from '@/components/search/search-experience';
 
-export const OPEN_SEARCH_EVENT = 'kasra:open-search';
+const OPEN_SEARCH_EVENT = 'kasra:open-search';
+
+/** Opens the one search dialog from any trigger (homepage field, bottom nav); focus returns to `opener`. */
+export function openSearch(opener: HTMLElement) {
+  window.dispatchEvent(new CustomEvent(OPEN_SEARCH_EVENT, { detail: { opener } }));
+}
+
+/* Whether the dialog is open, for the other triggers' aria-expanded. Mirrors SearchLauncher's own state. */
+let searchOpen = false;
+const openListeners = new Set<() => void>();
+function publishOpen(value: boolean) {
+  if (searchOpen === value) return;
+  searchOpen = value;
+  openListeners.forEach(listener => listener());
+}
+const subscribeOpen = (listener: () => void) => { openListeners.add(listener); return () => { openListeners.delete(listener); }; };
+export const useSearchOpen = () => useSyncExternalStore(subscribeOpen, () => searchOpen, () => false);
 
 /** Header search: a field-styled trigger on desktop, an icon on phones. Opens one combobox in an
- * anchored dropdown (desktop) or a full-screen overlay (phone). Also opened by "/" and the bottom nav. */
+ * anchored dropdown (desktop) or a full-screen overlay (phone). Also opened by "/", the homepage search
+ * field and the bottom nav, all through `openSearch`, so there is only ever one search state. */
 export function SearchLauncher() {
   const [open, setOpen] = useState(false);
   const mounted = useMountedOnce(open);
@@ -39,6 +56,8 @@ export function SearchLauncher() {
     document.addEventListener('keydown', onKey);
     return () => { window.removeEventListener(OPEN_SEARCH_EVENT, onRequest); document.removeEventListener('keydown', onKey); };
   }, []);
+
+  useEffect(() => publishOpen(open), [open]);
 
   return <>
     <button type="button" ref={trigger} className="search-trigger" aria-expanded={open} aria-haspopup="dialog"

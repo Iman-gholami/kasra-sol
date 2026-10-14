@@ -88,7 +88,8 @@ already existed in its state.
    - Price applies on Enter or its button, after validation.
    - In the sheet, changes apply behind it (`replace` after the first change) so the footer shows
      the real count, not an estimate.
-3. **Bottom navigation only on browsing pages.**
+3. **Bottom navigation only on browsing pages.** *(Superseded by [Mobile Experience 9.0](MOBILE-EXPERIENCE-V9.md):
+   the nav now stays on product and cart, with their task bars stacked on top of it; only checkout leaves it out.)*
    - Product, cart and checkout replace it with their task bar, so two bars never stack.
    - It hides while a text field is focused, because the on-screen keyboard would push it up.
    - Its height is reserved through `--bottom-bar-space`. `scroll-padding-block` keeps focused
