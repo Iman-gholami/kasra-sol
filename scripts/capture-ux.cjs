@@ -58,10 +58,10 @@ async function settle(page, full) {
     await page.evaluate(async () => {
       const step = Math.max(300, innerHeight * 0.8);
       for (let y = 0; y < document.documentElement.scrollHeight; y += step) {
-        window.scrollTo(0, y);
+        window.scrollTo({ top: y, behavior: 'instant' });
         await new Promise(r => setTimeout(r, 120));
       }
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: 'instant' });
     });
   }
   await page.evaluate(async () => {
