@@ -55,7 +55,7 @@ export function ShopByColor({ options }: { options: ShopByColorResult[] }) {
         href={'/shop?color=' + encodeURIComponent(active.color.slug)}>
         مشاهده همه محصولات این رنگ <ArrowLeft size={18} aria-hidden="true" />
       </Link>
-      <p>عکس‌ها نمونه‌اند و الزاماً رنگ انتخاب‌شده لباس را نشان نمی‌دهند.</p>
+      <p>عکس‌ها نمایشی‌اند؛ اگر تصویر هماهنگ با رنگ موجود نباشد، نمونه‌رنگ نمایش داده می‌شود.</p>
     </div>
   </section>;
 }

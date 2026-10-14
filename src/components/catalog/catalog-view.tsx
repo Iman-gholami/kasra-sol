@@ -4,6 +4,7 @@ import { CatalogFilters } from '@/components/catalog/catalog-filters';
 import { ProductGrid } from '@/components/products/product-grid';
 import { categories } from '@/data/products';
 import { formatNumber } from '@/lib/format';
+import { getShopByColorResults, toColorProductCard } from '@/lib/shop-by-color';
 import type { CatalogFilters as Filters, Product } from '@/types/store';
 
 type Props = {
@@ -14,11 +15,8 @@ type Props = {
   data: { items: Product[]; total: number; page: number; pages: number };
   fixedCategory?: boolean;
 };
-const colorLabels: Record<string,string> = {
-  cream:'کرم', black:'مشکی', rose:'رز خاکی', sage:'سبز سدری', blue:'آبی دودی', white:'سفید'
-};
-
 export function CatalogView({ title, intro, action, filters, data, fixedCategory }: Props) {
+  const colorOptions = getShopByColorResults().map(result => result.color);
   const makeUrl = (overrides: Record<string,string|null>) => {
     const params = new URLSearchParams();
     if (filters.category && !fixedCategory) params.set('category', filters.category);
@@ -40,7 +38,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   if (filters.category && !fixedCategory)
     chips.push({key:'category',label:categories.find(c=>c.slug===filters.category)?.title || ''});
   if (filters.size) chips.push({key:'size',label:'سایز '+filters.size});
-  if (filters.color) chips.push({key:'color',label:colorLabels[filters.color] || filters.color});
+  if (filters.color) chips.push({key:'color',label:colorOptions.find(option => option.slug === filters.color)?.name || filters.color});
   if (filters.min !== undefined) chips.push({key:'min',label:'از '+formatNumber(filters.min)+' تومان'});
   if (filters.max !== undefined) chips.push({key:'max',label:'تا '+formatNumber(filters.max)+' تومان'});
   if (filters.inStock) chips.push({key:'stock',label:'فقط موجودها'});
@@ -65,7 +63,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
       <p className="catalog-count">{formatNumber(data.total)} محصول نمایشی</p>
     </div>
     <div className="catalog-body">
-      <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
+      <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total} colorOptions={colorOptions}/>
       <section className="catalog-results" aria-label="نتایج محصولات">
         <nav className="catalog-category-nav" aria-label="دسته‌بندی‌های محصولات">
           <Link href={allHref}
@@ -98,7 +96,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
             {chip.label}<X size={13} aria-hidden="true"/></Link>)}
           <Link className="clear-filter-link" href={clearHref}>پاک کردن فیلترها</Link>
         </div>}
-        {data.items.length ? <ProductGrid products={data.items}/> :
+        {data.items.length ? <ProductGrid products={filters.color ? data.items.map(product => toColorProductCard(product, filters.color!)) : data.items}/> :
           <div className="empty-state"><h2>محصولی با این انتخاب‌ها پیدا نشد</h2>
             <p>می‌تونی یکی از فیلترها رو برداری، یا جستجوی تازه‌ای انجام بدی.</p>
             <div className="discovery-empty-actions">

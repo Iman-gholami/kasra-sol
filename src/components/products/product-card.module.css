@@ -1,0 +1,58 @@
+.colorPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: linear-gradient(155deg, #f8f5f0, #eae3db);
+  color: #5e564e;
+  text-align: center;
+  padding: 18px;
+}
+.largeSwatch {
+  width: clamp(68px, 35%, 122px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(52, 44, 38, .17);
+  border-radius: 50%;
+  box-shadow: 0 13px 35px rgba(40, 31, 22, .11), inset 0 0 0 4px rgba(255, 255, 255, .21);
+}
+.placeholderText {font-size: .78rem; line-height: 1.8; max-width: 150px;}
+.previewBadge {
+  position: absolute;
+  bottom: 12px;
+  inset-inline-start: 12px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100% - 24px);
+  min-height: 31px;
+  padding: 5px 9px;
+  background: rgba(250, 248, 245, .96);
+  color: #423a35;
+  font-size: .72rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+.badgeSwatch {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  border: 1px solid rgba(35,29,26,.23);
+  border-radius: 50%;
+}
+.unavailable {
+  margin-inline-start: 8px;
+  color: #854c45;
+  font-size: .73rem;
+  font-weight: 700;
+}
+@media (max-width: 600px) {
+  .colorPlaceholder {gap: 12px; padding: 12px;}
+  .largeSwatch {width: 60px;}
+  .placeholderText {font-size: .68rem;}
+  .previewBadge {bottom: 7px; inset-inline-start: 7px; min-height: 26px; padding: 4px 7px; font-size: .68rem;}
+  .badgeSwatch {width: 12px; height: 12px; flex-basis: 12px;}
+}

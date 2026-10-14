@@ -14,7 +14,7 @@ test('shop by color position, dataset colors, default cream and four preview pro
   await expect(section.locator('.product-card')).toHaveCount(4);
   await expect(section.locator('.price-line strong').first()).toContainText('تومان');
   await expect(section.getByRole('link',{name:/مشاهده همه محصولات این رنگ/})).toHaveAttribute('href','/shop?color=cream');
-  await expect(section.getByText('عکس‌ها نمونه‌اند',{exact:false})).toBeVisible();
+  await expect(section.getByText('عکس‌ها نمایشی‌اند',{exact:false})).toBeVisible();
 });
 
 test('selecting a color updates cards, preserves wishlist and links to filtered catalog',async ({page})=>{
@@ -42,6 +42,7 @@ test('selecting a color updates cards, preserves wishlist and links to filtered 
 });
 
 test('every preview is contained in its server filtered catalog, multi-colored items match actual variants',async ({page})=>{
+  test.setTimeout(90000);
   const colors:[string,string][]=[
     ['cream','کرم'],['white','سفید'],['black','مشکی'],
     ['rose','رز خاکی'],['blue','آبی دودی'],['sage','سبز سدری']
@@ -55,7 +56,12 @@ test('every preview is contained in its server filtered catalog, multi-colored i
     await expect(section.getByRole('link',{name:/مشاهده همه محصولات این رنگ/}))
       .toHaveAttribute('href','/shop?color='+id);
     await page.goto('/shop?color='+id);
-    const catalog=await page.locator('.product-info h3').allTextContents();
+    const catalog:string[]=[];
+    for(let pageNumber=1;pageNumber<=5;pageNumber++){
+      await page.goto('/shop?color='+id+'&page='+pageNumber);
+      catalog.push(...await page.locator('.product-info h3').allTextContents());
+      if(!(await page.getByRole('link',{name:'صفحه بعد'}).count()))break;
+    }
     names.forEach(name=>expect(catalog).toContain(name));
   }
   for(const color of ['cream','rose','blue']){
@@ -88,5 +94,33 @@ test('shop by color avoids horizontal overflow in six responsive widths',async (
     expect(d.doc).toBeLessThanOrEqual(width+1);
     expect(d.columns).toBe(width<=820?2:4);
     if(width<=430)expect(d.scroll).toBeGreaterThan(d.client);
+  }
+});
+
+test('selected-color photography is never reused for a different family',async ({page})=>{
+  await page.goto('/');
+  const section=page.getByRole('region',{name:'خرید بر اساس رنگ'});
+  for(const [name,filename] of [
+    ['کرم','shomiz-cream.avif'],['مشکی','manto-black.avif'],
+    ['رز خاکی','shomiz-rose.avif'],['سبز سدری','manto-sage.avif'],
+    ['آبی دودی','tshirt-blue.avif'],['سفید','tshirt-white.avif']
+  ]){
+    await section.getByRole('button',{name:'نمایش محصولات رنگ '+name}).click();
+    const cards=section.locator('.product-card');
+    await expect(cards).toHaveCount(4);
+    await expect(cards.locator('img')).toHaveCount(4);
+    for(const image of await cards.locator('img').all()){
+      await expect(image).toHaveAttribute('src',new RegExp(filename.replace('.', '\\.')+'(?:&|$)'));
+      await expect(image).toHaveAttribute('alt',new RegExp('رنگ '+name));
+    }
+  }
+  await page.goto('/shop?color=cream');
+  for(const card of await page.locator('.product-card').all()){
+    const image=card.locator('img');
+    if(await image.count()){
+      await expect(image).toHaveAttribute('src',/shomiz-cream\.avif/);
+    }else{
+      await expect(card.getByRole('img',{name:/تصویر اختصاصی این رنگ موجود نیست/})).toBeVisible();
+    }
   }
 });
