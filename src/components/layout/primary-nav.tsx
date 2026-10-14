@@ -49,6 +49,9 @@ export function PrimaryNav() {
     return () => { document.removeEventListener('keydown', onDocumentKey); document.removeEventListener('pointerdown', onPointer); };
   }, [open]);
 
+  // Closing must also cancel a pending hover-intent timer, or a click inside the panel reopens it.
+  function close() { window.clearTimeout(timer.current); setOpen(false); }
+
   function schedule(next: boolean) {
     if (!finePointer.current) return;
     window.clearTimeout(timer.current);
@@ -95,7 +98,7 @@ export function PrimaryNav() {
               <p className="nav-panel-title">کالکشن‌ها</p>
               <ul>
                 {categories.map(category => <li key={category.slug}>
-                  <Link href={'/category/' + category.slug} className="nav-panel-card" onClick={() => setOpen(false)}>
+                  <Link href={'/category/' + category.slug} className="nav-panel-card" onClick={close}>
                     <span className="nav-panel-photo"><Image src={categoryPhotos[category.slug]} alt="" fill sizes="96px"/></span>
                     <span><strong>{category.title}</strong><small>{category.description}</small></span>
                   </Link>
@@ -106,7 +109,7 @@ export function PrimaryNav() {
               <p className="nav-panel-title">خرید بر اساس رنگ</p>
               <ul>
                 {palette.map(color => <li key={color.id}>
-                  <Link href={'/shop?color=' + color.id} onClick={() => setOpen(false)}>
+                  <Link href={'/shop?color=' + color.id} onClick={close}>
                     <span className="swatch-dot" style={{ backgroundColor: color.hex }} aria-hidden="true"/>{color.name}
                   </Link>
                 </li>)}
@@ -115,12 +118,12 @@ export function PrimaryNav() {
             <div className="nav-panel-links">
               <p className="nav-panel-title">میان‌بُرها</p>
               <ul>
-                <li><Link href="/shop?sort=newest" onClick={() => setOpen(false)}>تازه‌ترین‌ها</Link></li>
-                <li><Link href="/shop?sale=1" onClick={() => setOpen(false)}>تخفیف‌دارها</Link></li>
-                <li><Link href="/shop?stock=1" onClick={() => setOpen(false)}>فقط موجودها</Link></li>
-                <li><Link href="/size-guide" onClick={() => setOpen(false)}>راهنمای سایز</Link></li>
+                <li><Link href="/shop?sort=newest" onClick={close}>تازه‌ترین‌ها</Link></li>
+                <li><Link href="/shop?sale=1" onClick={close}>تخفیف‌دارها</Link></li>
+                <li><Link href="/shop?stock=1" onClick={close}>فقط موجودها</Link></li>
+                <li><Link href="/size-guide" onClick={close}>راهنمای سایز</Link></li>
               </ul>
-              <Link href="/shop" className="text-link" onClick={() => setOpen(false)}>دیدن همه محصولات <ArrowLeft size={16} aria-hidden="true"/></Link>
+              <Link href="/shop" className="text-link" onClick={close}>دیدن همه محصولات <ArrowLeft size={16} aria-hidden="true"/></Link>
             </div>
           </div>}
         </div>

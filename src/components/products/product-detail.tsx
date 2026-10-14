@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Info } from 'lucide-react';
-import { categories } from '@/data/facets';
 import { ProductGallery } from '@/components/products/product-gallery';
 import { PurchasePanel } from '@/components/products/purchase-panel';
 import { Price } from '@/components/products/price';
@@ -11,11 +10,9 @@ import type { Product } from '@/types/store';
  * Desktop: gallery + details on one side, a sticky buy column on the other. Phone: one column. */
 export function ProductDetail({ product }: { product: Product }) {
   const discount = discountPercent(product.price, product.compareAt);
-  const category = categories.find(item => item.slug === product.category);
   return <div className="detail-layout pdp">
     <ProductGallery images={product.images} name={product.name}/>
     <div className="pdp-buy detail-copy">
-      <p className="pdp-category"><Link href={'/category/' + product.category}>{category?.title}</Link></p>
       <h1>{product.name}</h1>
       <div className="detail-price">
         <Price price={product.price} compareAt={product.compareAt} size="lg"/>
@@ -40,7 +37,7 @@ export function ProductDetail({ product }: { product: Product }) {
         <summary>ارسال و بازگشت</summary>
         <div className="accordion-body">
           <p>شرایط قطعی ارسال و بازگشت هنوز تعیین نشده‌اند و در این نسخه هزینه یا زمان تحویلی وعده داده نمی‌شود.</p>
-          <Link className="link-inline" href="/shipping-and-returns">توضیحات نمونه ارسال و بازگشت</Link>
+          <Link className="text-link" href="/shipping-and-returns">توضیحات نمونه ارسال و بازگشت</Link>
         </div>
       </details>
       <p className="notice demo-inline-note"><Info size={18} aria-hidden="true"/>

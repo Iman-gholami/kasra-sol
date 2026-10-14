@@ -25,6 +25,7 @@ export function PurchasePanel({ product }: { product: Product }) {
   const [guideOpen, setGuideOpen] = useState(false);
   const guideMounted = useMountedOnce(guideOpen);
   const buyButton = useRef<HTMLButtonElement>(null);
+  const stickyBar = useRef<HTMLDivElement>(null);
   const colorOptions = useRef<HTMLDivElement>(null);
   const sizeOptions = useRef<HTMLDivElement>(null);
 
@@ -32,6 +33,18 @@ export function PurchasePanel({ product }: { product: Product }) {
   const variant = getVariant(product, colorId, size);
   const isFavorite = hydrated && wishlist.includes(product.id);
   const ready = Boolean(colorId && size && variant?.stock && variant.stock >= quantity);
+
+  // Reserve exactly the bar's height (it grows by one line while confirming an add) so it never covers content.
+  useEffect(() => {
+    const bar = stickyBar.current;
+    if (!bar || typeof ResizeObserver === 'undefined') return;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() => {
+      if (bar.offsetHeight) root.style.setProperty('--pdp-bar-h', bar.offsetHeight + 'px');
+    });
+    observer.observe(bar);
+    return () => { observer.disconnect(); root.style.removeProperty('--pdp-bar-h'); };
+  }, []);
 
   useEffect(() => {
     const button = buyButton.current;
@@ -155,7 +168,7 @@ export function PurchasePanel({ product }: { product: Product }) {
       </div>
     </Sheet>}
 
-    <div className={'pdp-sticky-bar' + (stickyVisible ? ' is-visible' : '')} aria-hidden={!stickyVisible} inert={!stickyVisible}>
+    <div ref={stickyBar} className={'pdp-sticky-bar' + (stickyVisible ? ' is-visible' : '')} aria-hidden={!stickyVisible} inert={!stickyVisible}>
       {notice && !notice.error && <div className="pdp-sticky-confirm" role="status">
         <Check size={16} aria-hidden="true"/><span>به سبد خرید اضافه شد</span><Link href="/cart">مشاهده سبد خرید</Link>
       </div>}
