@@ -142,7 +142,62 @@ New test files:
 
 ## 6. Results
 
-RESULTS_PLACEHOLDER
+### Checks
+
+| Check | Baseline (`5d92682`) | V9 |
+| --- | --- | --- |
+| `npm run lint` · `typecheck` · `build` | pass | pass |
+| Playwright (Chromium 141, 3 workers) | 37 / 39 (two timing failures, audit §0) | **63 / 63** |
+| axe-core, serious and critical (17 routes plus overlays, 1440 and 390) | 61 serious `color-contrast` nodes, plus moderate `region` and `heading-order` | **0 violations of any impact** |
+| Horizontal overflow at the 8 widths × 22 states | none | none |
+| Targets < 44 px on phones (non-inline) | 448–469 per width | 0 (asserted at 360, 390 and 412) |
+| Text < 12 px | 142–284 instances | 0, except the aria-hidden "BOUTIQUE" logotype line |
+| Client JS (all chunks, raw) | 673,827 B | 708,901 B (+5 %) |
+| CSS (raw / gzip) | 77,350 B / 16,605 B | 102,483 B / 18,392 B (+1.8 KB gzip) |
+
+### Lighthouse 12.8.2, before and after
+
+Both builds were measured back to back on the same machine with the same protocol: simulated
+throttling, mobile = Moto G Power at 4× CPU on slow 4G, desktop = `--preset=desktop`, a fresh
+profile with an empty cart. Medians of 3 runs for home, shop and product, 1 run elsewhere. The last
+few desktop V9 runs overlapped a short Playwright run on the same CPU.
+
+| Route (runs) | Mobile Perf | Mobile LCP | Mobile CLS | Mobile TBT | Desktop Perf | Desktop LCP · CLS | A11y mobile/desktop | BP | SEO |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` (3) | 95 → **97** | 3.01 s → 2.56 s | 0 → 0 | 44 → 53 ms | 100 → **100** | 0.59 s · 0 → 0.63 s · 0 | 96/96 → **100/100** | 100 → 100 | 66 → 66 |
+| `/shop` (3) | 96 → **92** | 2.71 s → 3.31 s | 0 → 0 | 53 → 55 ms | 100 → **100** | 0.61 s · 0 → 0.63 s · 0 | 94/94 → **100/100** | 100 → 100 | 66 → 63 |
+| `/product/shomiz-01` (3) | 97 → **97** | 2.56 s → 2.56 s | 0 → 0 | 55 → 54 ms | 100 → **100** | 0.61 s · 0 → 0.63 s · 0 | 96/96 → **100/100** | 100 → 100 | 66 → 66 |
+| `/search?q=شومیز` (1) | 95 → **92** | 2.93 s → 3.24 s | 0 → 0 | 90 → 78 ms | 100 → **100** | 0.73 s · 0 → 0.61 s · 0 | 94/94 → **100/100** | 100 → 100 | 66 → 63 |
+| `/cart` (empty) (1) | 87 → **94** | 3.01 s → 3.01 s | 0.157 → 0 | 127 → 89 ms | 86 → **100** | 0.65 s · 0.279 → 0.66 s · 0 | 95/95 → **100/100** | 100 → 100 | 63 → 63 |
+| `/checkout` (empty cart) (1) | 88 → **94** | 2.86 s → 3.01 s | 0.157 → 0 | 143 → 112 ms | 86 → **100** | 0.69 s · 0.279 → 0.69 s · 0 | 95/95 → **100/100** | 100 → 100 | 63 → 63 |
+| `/faq` (1) | 96 → **98** | 2.71 s → 2.33 s | 0 → 0 | 108 → 61 ms | 100 → **100** | 0.57 s · 0 → 0.57 s · 0 | 93/93 → **100/100** | 100 → 100 | 63 → 63 |
+
+Reading the table:
+
+- **Targets met:**
+  - Accessibility is 100 on every route at both form factors.
+  - Best Practices is 100.
+  - Desktop Performance is 100 everywhere, including cart and checkout (86 before).
+  - CLS is 0 everywhere, against 0.157 mobile and 0.279 desktop on cart and checkout.
+  - Mobile Performance is 92–98, at or above the ≥ 90 target.
+  - TBT is ≤ 112 ms; it is the lab proxy for INP, which navigation runs cannot measure.
+- **Mobile LCP ≤ 2.5 s is not met on any route except `/faq`.** It wasn't met in the baseline
+  either.
+  - `/product` is level at 2.56 s; `/` and `/faq` improved in this run.
+  - `/shop` (+0.6 s), `/search` (+0.3 s) and `/checkout` (+0.15 s) regressed.
+  - Breaking down the mobile `/shop` LCP shows the image is no longer the bottleneck. Its load delay
+    dropped from 1.5–2.4 s to 0–0.3 s (fetch priority, no lazy loading on the first row). The
+    remaining time is render delay, which lantern attributes to hydration script that ran before
+    the observed paint.
+  - V9's catalog hydrates the desktop sidebar form even on phones, where it is hidden. A bigger
+    hydration cost is the price of instant filters, and §8 has the next step.
+  - Run-to-run variance is large on this machine. Baseline `/` was 2.34–3.09 s across sessions,
+    and baseline `/shop` 2.56–3.08 s within one session.
+- **SEO 63–66** comes only from the intentional `noindex`.
+  - `/shop` and `/search` read 63 rather than 66 for one reason. V9's card images are decorative
+    (`alt=""`, because the title link right below names the product), so Lighthouse marks
+    `image-alt` "not applicable". The `noindex` failure then weighs more in what remains.
+  - No SEO audit other than `is-crawlable` fails.
 
 ## 7. Manual checks
 
@@ -172,7 +227,18 @@ Done by hand in Chromium, in addition to the automated tests:
   - Forward CTAs use ←.
   - The accordion chevron flips in RTL.
 
-LANDSCAPE_PLACEHOLDER
+- **Landscape phone (844×390, touch).** Home, shop, product, cart, checkout and FAQ have no
+  horizontal overflow.
+  - At this width the tablet/desktop layout applies: header links, two-column PDP, sidebar
+    summary, no bottom nav.
+  - The only fixed layer is the 69 px sticky header, 18 % of the height.
+- **Reflow at 320 px** (WCAG 1.4.10, the 400 % zoom equivalent): no horizontal overflow on the same
+  routes.
+  - Fixed layers take 9–26 % of the height. The highest, 26 % on `/shop`, is the bottom nav plus the
+    floating "فیلترها" pill.
+  - The pill floats over card content while you scroll, which is normal for a floating button.
+    Focused elements still scroll clear of the bottom nav.
+- **200 % zoom of a 1280 px window** (640 px): no overflow, header only, sheet filters.
 
 Not done: real phones and tablets, screen readers, Safari/Firefox, Windows High Contrast on a real
 system, and slow real networks. See §8.
