@@ -111,7 +111,10 @@ test('desktop filters apply instantly, Back undoes a filter and clear-all resets
 
 test('catalog grid is four balanced columns at 1440 and three at 1280', async ({ page }) => {
   await page.goto('/shop');
-  const columns = () => page.locator('.catalog-results .product-grid').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+  // The streamed document briefly holds the loading skeleton's grid too; measure the grid of real cards.
+  await expect(page.locator('.catalog-results .product-card').first()).toBeVisible();
+  const grid = page.locator('.catalog-results .product-grid').filter({ has: page.locator('.product-card') });
+  const columns = () => grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
   await expect.poll(columns).toBe(4);
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect.poll(columns).toBe(3);
