@@ -36,8 +36,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    // The font variable lives on <html> so :root tokens (--font-sans) can resolve it.
-    <html lang="fa" dir="rtl" className={estedad.variable}>
+    // The font variable lives on <html> so :root tokens (--font-sans) can resolve it. The data attribute
+    // lets Next.js switch off CSS smooth scrolling during route changes (new pages start at the top and
+    // Back restores the exact position instead of animating).
+    <html lang="fa" dir="rtl" className={estedad.variable} data-scroll-behavior="smooth">
       <body>
         <ShopProvider>
           <ToastProvider>
