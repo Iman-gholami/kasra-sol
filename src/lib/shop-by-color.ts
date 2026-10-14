@@ -17,23 +17,35 @@ export type ShopByColorResult = {
   products: ProductCardData[];
 };
 
-/** Explicit grouping: a shade can opt into a broader family via ProductColor.familyId.
- * No inference from images or color names. The existing six palette IDs are their own families.
- */
+/** Group shades explicitly using catalog metadata; never infer color from pixels. */
 export function colorFamilyId(color: ProductColor): string {
   return color.familyId ?? color.id;
 }
 
-/** Use actual variants, never a product's category or photographic hue. */
-export function variantMatchesColorFamily(product: Product, variantColorId: string, family: string): boolean {
-  return product.colors.some(color => color.id === variantColorId && colorFamilyId(color) === family);
+/** Return only shades that actually have product variants, including sold-out variants. */
+export function matchingColorShades(product: Product, family: string): ProductColor[] {
+  const variantColorIds = new Set(product.variants.map(variant => variant.colorId));
+  return product.colors.filter(color =>
+    colorFamilyId(color) === family && variantColorIds.has(color.id));
 }
 
 export function hasColorFamily(product: Product, family: string): boolean {
-  return product.variants.some(variant => variantMatchesColorFamily(product, variant.colorId, family));
+  return matchingColorShades(product, family).length > 0;
 }
 
-function previewProduct(product: Product): ProductCardData {
+/** A lightweight card payload with the selected family's correct shade preview.
+ * If the mock data lacks a photo of that shade, leave image undefined instead of
+ * showing misleading photography belonging to another color.
+ */
+export function toColorProductCard(product: Product, family: string): ProductCardData {
+  const shades = matchingColorShades(product, family);
+  const hasStock = (id: string) =>
+    product.variants.some(variant => variant.colorId === id && variant.stock > 0);
+  const photoShade = shades.find(color =>
+    hasStock(color.id) && product.colorPreviewImages?.[color.id]) ??
+    shades.find(color => product.colorPreviewImages?.[color.id]);
+  const shade = photoShade ?? shades[0];
+  const familyStyle = palette.find(color => color.id === family);
   return {
     id: product.id,
     slug: product.slug,
@@ -41,32 +53,40 @@ function previewProduct(product: Product): ProductCardData {
     category: product.category,
     price: product.price,
     compareAt: product.compareAt,
-    // ProductCard needs just the hero thumbnail; no full gallery, size or stock tables in client payload.
     images: product.images.slice(0, 1),
-    colors: product.colors
+    colors: product.colors,
+    colorPreview: shade ? {
+      slug: family,
+      name: familyStyle?.name ?? shade.name,
+      hex: familyStyle?.hex ?? shade.hex,
+      image: photoShade ? product.colorPreviewImages?.[photoShade.id] : undefined,
+      inStock: shades.some(color => hasStock(color.id))
+    } : undefined
   };
 }
 
-/** Server-only mock catalog adapter. Returns at most four small product summaries per color.
- * Replace this one function with a batched backend facet+preview query later.
+/** Server-side mock adapter: bounded card summaries, never an entire catalog on the client.
+ * Later replace the in-memory scan with a faceted query and per-family LIMIT 4.
  */
 export function getShopByColorResults(): ShopByColorResult[] {
   const encountered = new Map<string, { color: ColorFamily; products: Product[] }>();
-  const configuredOrder = new Map(palette.map((c, index) => [c.id, index]));
+  const configuredOrder = new Map(palette.map((color, index) => [color.id, index]));
 
   for (const product of products) {
-    const families = new Set<string>();
-    for (const color of product.colors) {
-      const slug = colorFamilyId(color);
-      if (families.has(slug) || !hasColorFamily(product, slug)) continue;
-      families.add(slug);
+    const presentVariantIds = new Set(product.variants.map(variant => variant.colorId));
+    const seen = new Set<string>();
+    for (const shade of product.colors) {
+      if (!presentVariantIds.has(shade.id)) continue;
+      const slug = colorFamilyId(shade);
+      if (seen.has(slug)) continue;
+      seen.add(slug);
       if (!encountered.has(slug)) {
-        const familyStyle = palette.find(c => c.id === slug);
+        const style = palette.find(color => color.id === slug);
         encountered.set(slug, {
           color: {
             slug,
-            name: familyStyle?.name ?? color.name,
-            hex: familyStyle?.hex ?? color.hex,
+            name: style?.name ?? shade.name,
+            hex: style?.hex ?? shade.hex,
             order: configuredOrder.get(slug) ?? palette.length + encountered.size
           },
           products: []
@@ -76,13 +96,20 @@ export function getShopByColorResults(): ShopByColorResult[] {
     }
   }
 
-  return [...encountered.values()].map(({color, products: matches}) => ({
-    color,
-    count: matches.length,
-    products: matches
-      .sort((a,b) => Number(b.featured) - Number(a.featured) ||
-        b.createdAt.localeCompare(a.createdAt))
-      .slice(0, COLOR_PREVIEW_LIMIT)
-      .map(previewProduct)
-  })).sort((a,b) => a.color.order - b.color.order);
+  return [...encountered.values()].map(({ color, products: matches }) => {
+    const candidates = matches.map(product => ({
+      product,
+      card: toColorProductCard(product, color.slug)
+    }));
+    candidates.sort((a, b) =>
+      Number(Boolean(b.card.colorPreview?.image)) - Number(Boolean(a.card.colorPreview?.image)) ||
+      Number(Boolean(b.card.colorPreview?.inStock)) - Number(Boolean(a.card.colorPreview?.inStock)) ||
+      Number(b.product.featured) - Number(a.product.featured) ||
+      b.product.createdAt.localeCompare(a.product.createdAt));
+    return {
+      color,
+      count: matches.length,
+      products: candidates.slice(0, COLOR_PREVIEW_LIMIT).map(candidate => candidate.card)
+    };
+  }).sort((a, b) => a.color.order - b.color.order);
 }
