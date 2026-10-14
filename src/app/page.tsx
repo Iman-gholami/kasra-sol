@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowUpLeft, ArrowUpRight, MoveLeft } from 'lucide-react';
 import { categories, products } from '@/data/products';
 import { ProductGrid } from '@/components/products/product-grid';
+import { ShopByColor } from '@/components/home/shop-by-color';
+import { getShopByColorResults } from '@/lib/shop-by-color';
 
 const categoryPhotos = [
   '/images/lookbook/shomiz-rose.avif',
@@ -13,6 +15,7 @@ const categoryPhotos = [
 export default function HomePage() {
   const arrivals = [...products].sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0,4);
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
+  const colors = getShopByColorResults();
 
   return <>
     <section className="hero container wide-editorial" aria-labelledby="hero-title">
@@ -46,6 +49,8 @@ export default function HomePage() {
       </div>
       <p className="demo-photo-note">تصاویر این نسخه با هوش مصنوعی ساخته شده‌اند و برای نمایش حال‌وهوای فروشگاه هستند.</p>
     </section>
+
+    <ShopByColor options={colors}/>
 
     <section className="container section-block" aria-labelledby="arrivals-title">
       <div className="section-heading"><div><p className="section-kicker">انتخاب تازه</p><h2 id="arrivals-title">تازه رسیده‌ها</h2></div>

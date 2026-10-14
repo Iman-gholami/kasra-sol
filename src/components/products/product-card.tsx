@@ -7,7 +7,10 @@ import { useShop } from '@/components/shop-provider';
 import { discountPercent, formatPercent, toman } from '@/lib/format';
 import type { Product } from '@/types/store';
 
-export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
+export type ProductCardData = Pick<Product,
+  'id' | 'slug' | 'name' | 'category' | 'price' | 'compareAt' | 'images' | 'colors'>;
+
+export function ProductCard({ product, priority = false }: { product: ProductCardData; priority?: boolean }) {
   const { wishlist, toggleWishlist, hydrated } = useShop();
   const liked = hydrated && wishlist.includes(product.id);
   const discount = discountPercent(product.price, product.compareAt);

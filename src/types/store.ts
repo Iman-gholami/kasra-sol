@@ -1,6 +1,6 @@
 export type CategorySlug = 'shomiz' | 'manto' | 'tshirt';
 
-export type ProductColor = { id: string; name: string; hex: string };
+export type ProductColor = { id: string; name: string; hex: string; familyId?: string };
 export type ProductVariant = { colorId: string; size: string; stock: number };
 
 export type Product = {
