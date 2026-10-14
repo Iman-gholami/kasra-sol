@@ -1,10 +1,13 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 // V9 phone paths with touch emulation (390×844 unless a test says otherwise).
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
 const seed = (page: Page, cart: object[] = [], wishlist: string[] = []) =>
   page.addInitScript(([c, w]) => localStorage.setItem('kasra-demo-v1', JSON.stringify({ cart: c, wishlist: w })), [cart, wishlist] as const);
+
+/** Overlays scale or slide in; measure their geometry only once the enter transition has finished. */
+const settled = (overlay: Locator) => overlay.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
 
 async function touchDrag(page: Page, x: number, y: number, dx: number, dy: number) {
   const cdp = await page.context().newCDPSession(page);
@@ -34,6 +37,7 @@ test('bottom navigation on browsing pages only, never covering content, with Per
   await nav.getByRole('button', { name: 'جستجو' }).click();
   const search = page.getByRole('dialog', { name: 'جستجو در محصولات کسری' });
   await expect(search.getByRole('combobox')).toBeFocused();
+  await settled(search);
   const box = (await search.boundingBox())!;
   expect(box.width).toBeGreaterThanOrEqual(388);
   await page.keyboard.press('Escape');

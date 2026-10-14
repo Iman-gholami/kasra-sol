@@ -1,7 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 
 // V9 desktop critical paths at 1440×900 (and 1280×720 where the fold matters).
 test.use({ viewport: { width: 1440, height: 900 } });
+
+/** Overlays scale or slide in; measure their geometry only once the enter transition has finished. */
+const settled = (overlay: Locator) => overlay.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
 
 test('skip link is the first stop and moves focus to the main content', async ({ page }) => {
   await page.goto('/');
@@ -45,12 +48,17 @@ test('shop disclosure panel works with keyboard and hover, and marks the current
 
 test('search: "/" shortcut, arrow-key suggestions with aria-activedescendant, Escape and recent searches', async ({ page }) => {
   await page.goto('/');
-  await page.keyboard.press('/');
   const dialog = page.getByRole('dialog', { name: 'جستجو در محصولات کسری' });
-  await expect(dialog).toBeVisible();
+  // The document-level shortcut listener attaches on hydration (keys are not replayed like clicks),
+  // so retry the key until the client is interactive — pressing only while the overlay is closed.
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await page.keyboard.press('/');
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass();
   const input = dialog.getByRole('combobox', { name: 'عبارت جستجو' });
   await expect(input).toBeFocused();
   // Anchored under the header rather than floating mid-page.
+  await settled(dialog);
   const header = (await page.locator('.site-header').boundingBox())!;
   const panel = (await dialog.boundingBox())!;
   expect(panel.y).toBeGreaterThanOrEqual(header.y + header.height);
