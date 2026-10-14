@@ -89,6 +89,12 @@ export function SearchExperience({ inputRef, onClose, active }: { inputRef: RefO
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    // Combobox convention: the first Escape clears the query (and its suggestions), the next one closes.
+    if (event.key === 'Escape' && query) {
+      event.preventDefault();
+      change('');
+      return;
+    }
     if (!entries.length) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault(); setActiveIndex(index => (index + 1) % entries.length);
