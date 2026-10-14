@@ -1,7 +1,7 @@
 /* Primitives: buttons, links, chips, fields, sheets/dialogs, toast, skeleton, stepper, accordion, notices. */
 
-:root { --inline-sign: 1; }           /* inline-start is the physical right edge in RTL */
-[dir="ltr"] { --inline-sign: -1; }
+:root { --inline-sign: 1; --inline-end-angle: 270deg; }  /* inline-start is the physical right edge in RTL; gradients toward inline-end */
+[dir="ltr"] { --inline-sign: -1; --inline-end-angle: 90deg; }
 
 /* ---------- Buttons ----------
    primary (.btn-primary, legacy alias .btn-dark) · secondary (.btn-secondary, alias .btn-outline/.btn-line)

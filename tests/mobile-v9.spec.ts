@@ -188,7 +188,7 @@ for (const width of [360, 390, 412]) {
   test(`touch targets ≥ 44px, text ≥ 12px and no overflow at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await seed(page, [{ productId: 'shomiz-01', colorId: 'cream', size: 'M', quantity: 1 }], ['manto-03']);
-    for (const route of ['/', '/shop', '/product/shomiz-01', '/cart', '/checkout', '/wishlist', '/faq', '/size-guide']) {
+    for (const route of ['/', '/shop', '/shop?category=manto&color=black&sort=newest', '/product/shomiz-01', '/cart', '/checkout', '/wishlist', '/faq', '/size-guide']) {
       await page.goto(route);
       await expect(page.locator('main')).toBeVisible();
       const report = await page.evaluate(() => {

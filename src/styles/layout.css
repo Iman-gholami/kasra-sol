@@ -105,7 +105,7 @@
 .breadcrumbs ol { display: flex; flex-wrap: wrap; align-items: center; margin: 0; padding: 0; list-style: none; color: var(--color-text-subtle); font-size: var(--text-xs); }
 .breadcrumbs li { display: inline-flex; align-items: center; }
 .breadcrumbs li + li::before { content: "/" / ""; margin-inline: var(--space-2); color: var(--color-border-strong); }
-.breadcrumbs a { display: inline-flex; align-items: center; min-block-size: 32px; color: var(--color-text-muted); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; }
+.breadcrumbs a { display: inline-flex; align-items: center; justify-content: center; min-block-size: 32px; min-inline-size: 24px; color: var(--color-text-muted); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; }
 .breadcrumbs a:hover { color: var(--color-text); text-decoration-color: currentColor; }
 .breadcrumbs [aria-current="page"] { color: var(--color-text); max-inline-size: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

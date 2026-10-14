@@ -128,7 +128,7 @@
   .shop-color-scroll {
     margin-inline: calc(var(--gutter) * -1); inline-size: calc(100% + 2 * var(--gutter)); max-inline-size: none; padding-inline: var(--gutter);
     scroll-padding-inline: var(--gutter);
-    mask-image: linear-gradient(to left, transparent 0, #000 var(--gutter), #000 calc(100% - 36px), transparent 100%);
+    mask-image: linear-gradient(var(--inline-end-angle), transparent 0, #000 var(--gutter), #000 calc(100% - 36px), transparent 100%);
   }
   .shop-color-choices { justify-content: flex-start; min-inline-size: 0; }
   .shop-color-choice { min-inline-size: 84px; min-block-size: 46px; padding-inline: 12px 14px; }

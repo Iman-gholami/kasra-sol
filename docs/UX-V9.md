@@ -150,7 +150,8 @@ New test files:
 | Playwright (Chromium 141, 3 workers) | 37 / 39 (two timing failures, audit §0) | **63 / 63** |
 | axe-core, serious and critical (17 routes plus overlays, 1440 and 390) | 61 serious `color-contrast` nodes, plus moderate `region` and `heading-order` | **0 violations of any impact** |
 | Horizontal overflow at the 8 widths × 22 states | none | none |
-| Targets < 44 px on phones (non-inline) | 448–469 per width | 0 (asserted at 360, 390 and 412) |
+| Targets < 44 px on phones (non-inline) | 448–469 per width | 0 on all 22 states. `mobile-v9.spec.ts` asserts this at 360, 390 and 412, filtered catalog included |
+| Desktop targets < 24 px (WCAG 2.5.8, non-inline) | breadcrumbs, footer, summary rows | 0 |
 | Text < 12 px | 142–284 instances | 0, except the aria-hidden "BOUTIQUE" logotype line |
 | Client JS (all chunks, raw) | 673,827 B | 708,901 B (+5 %) |
 | CSS (raw / gzip) | 77,350 B / 16,605 B | 102,483 B / 18,392 B (+1.8 KB gzip) |
@@ -199,6 +200,25 @@ Reading the table:
     `image-alt` "not applicable". The `noindex` failure then weighs more in what remains.
   - No SEO audit other than `is-crawlable` fails.
 
+## 6a. Before and after
+
+First-viewport renders (Chromium, device scale 1, cart pre-filled for cart and checkout) of home,
+shop, product, cart and checkout. In each pair, "قبل" (before) is on the right and "بعد · V9"
+(after) on the left, in RTL reading order.
+
+| Width | Sheet |
+| --- | --- |
+| 360 px | [compare-360.jpg](ux-v9/compare-360.jpg) |
+| 390 px | [compare-390.jpg](ux-v9/compare-390.jpg) |
+| 768 px | [compare-768.jpg](ux-v9/compare-768.jpg) |
+| 1024 px | [compare-1024.jpg](ux-v9/compare-1024.jpg) |
+| 1440 px | [compare-1440.jpg](ux-v9/compare-1440.jpg) |
+| 1920 px | [compare-1920.jpg](ux-v9/compare-1920.jpg) |
+
+Full-page captures for all 8 widths and 22 route states, overlay states and the DOM probe are
+regenerated with `BASE_URL=… OUT_DIR=… node scripts/capture-ux.cjs all`. They are not committed
+because of their size.
+
 ## 7. Manual checks
 
 Done by hand in Chromium, in addition to the automated tests:
@@ -220,8 +240,11 @@ Done by hand in Chromium, in addition to the automated tests:
   - Latin size codes (S/M/L), phone and postal fields, the wordmark and user-typed queries are
     isolated runs (`dir="ltr"` or `dir="auto"`).
   - Accessible names were checked for stray spaces around isolated runs.
-- **Physical-direction audit** of the CSS: no `left`/`right` remains. The single LTR exception is the
-  wordmark's letter-spacing balance, written as `padding-inline-start` inside its `dir="ltr"` box.
+- **Physical-direction audit** of the CSS: no `left`/`right` remains.
+  - The LTR wordmark's letter-spacing balance is written as `padding-inline-start` inside its
+    `dir="ltr"` box.
+  - The edge fades on scrollable chip rows use a direction-aware `--inline-end-angle`: 270deg in
+    RTL, 90deg in LTR.
 - **Directional icons:**
   - Previous points right and next points left: pagination, gallery, zoom.
   - Forward CTAs use ←.
