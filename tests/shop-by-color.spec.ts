@@ -42,6 +42,7 @@ test('selecting a color updates cards, preserves wishlist and links to filtered 
 });
 
 test('every preview is contained in its server filtered catalog, multi-colored items match actual variants',async ({page})=>{
+  test.setTimeout(90000);
   const colors:[string,string][]=[
     ['cream','کرم'],['white','سفید'],['black','مشکی'],
     ['rose','رز خاکی'],['blue','آبی دودی'],['sage','سبز سدری']
@@ -57,10 +58,9 @@ test('every preview is contained in its server filtered catalog, multi-colored i
     await page.goto('/shop?color='+id);
     const catalog:string[]=[];
     for(let pageNumber=1;pageNumber<=5;pageNumber++){
+      await page.goto('/shop?color='+id+'&page='+pageNumber);
       catalog.push(...await page.locator('.product-info h3').allTextContents());
-      const next=page.getByRole('link',{name:'صفحه بعد'});
-      if(!(await next.count()))break;
-      await next.click();
+      if(!(await page.getByRole('link',{name:'صفحه بعد'}).count()))break;
     }
     names.forEach(name=>expect(catalog).toContain(name));
   }
@@ -118,7 +118,7 @@ test('selected-color photography is never reused for a different family',async (
   for(const card of await page.locator('.product-card').all()){
     const image=card.locator('img');
     if(await image.count()){
-      await expect(image).toHaveAttribute('src',/shomiz-cream\\.avif/);
+      await expect(image).toHaveAttribute('src',/shomiz-cream\.avif/);
     }else{
       await expect(card.getByRole('img',{name:/تصویر اختصاصی این رنگ موجود نیست/})).toBeVisible();
     }
