@@ -3,14 +3,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import { ArrowDownWideNarrow, SlidersHorizontal, X } from 'lucide-react';
-import { categories, palette, standardSizes } from '@/data/facets';
+import { categories, standardSizes } from '@/data/facets';
+import type { ColorFamily } from '@/lib/shop-by-color';
 import { toLatinDigits } from '@/lib/format';
 import type { CatalogFilters } from '@/types/store';
 
-type Props = { filters: CatalogFilters; action: string; fixedCategory?: boolean; count: number };
+type Props = { filters: CatalogFilters; action: string; fixedCategory?: boolean; count: number; colorOptions: ColorFamily[] };
 
 
-export function CatalogFilters({ filters, action, fixedCategory, count }: Props) {
+export function CatalogFilters({ filters, action, fixedCategory, count, colorOptions }: Props) {
   const activeCount = Number(Boolean(filters.category && !fixedCategory)) + Number(Boolean(filters.size)) +
     Number(Boolean(filters.color)) + Number(filters.min !== undefined) +
     Number(filters.max !== undefined) + Number(Boolean(filters.inStock)) + Number(Boolean(filters.discounted));
@@ -143,8 +144,8 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
               <input type="radio" name="color" value="" defaultChecked={!filters.color}/>
               <span className="filter-color-dot filter-color-any" aria-hidden="true">×</span><span>همه</span>
             </label>
-            {palette.map(color => <label key={color.id} className="filter-color-choice">
-              <input type="radio" name="color" value={color.id} defaultChecked={filters.color===color.id}/>
+            {colorOptions.map(color => <label key={color.slug} className="filter-color-choice">
+              <input type="radio" name="color" value={color.slug} defaultChecked={filters.color===color.slug}/>
               <span className="filter-color-dot" style={{backgroundColor:color.hex}} aria-hidden="true"/>
               <span>{color.name}</span>
             </label>)}
