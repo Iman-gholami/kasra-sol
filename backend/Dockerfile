@@ -16,4 +16,4 @@ COPY --from=build --chown=api:nodejs /app/backend/dist ./dist
 COPY --from=build --chown=api:nodejs /app/backend/sql ./sql
 USER api
 EXPOSE 4000
-CMD ["sh", "-c", "node dist/migrate.js && if [ \"$SEED_DEMO_DATA\" = 'true' ]; then node dist/seed.js; fi && node dist/index.js"]
+CMD ["sh", "-c", "node dist/db/migrate.js && if [ \"$SEED_DEMO_DATA\" = 'true' ]; then node dist/db/seed.js; fi && node dist/index.js"]
