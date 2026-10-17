@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Permission } from './permissions';
+import { pool } from '../db/connection';
+import { recordAudit } from './audit';
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const PATH = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(png|jpg|webp)$/;
@@ -39,7 +41,8 @@ export async function mediaRoutes(app: FastifyInstance, check:
     await mkdir(directory(), { recursive: true });
     const fd = await open(join(directory(), filename), 'wx', 0o600);
     try { await fd.writeFile(body); } finally { await fd.close(); }
-    await app.log.info({ actor: actor.id, filename }, 'Product image uploaded');
+    app.log.info({ actor: actor.id, filename }, 'Product image uploaded');
+    await recordAudit(pool, actor.id, 'media.uploaded', filename, { bytes: body.length, type: extension });
     return reply.code(201).header('Cache-Control', 'no-store')
       .send({ url: '/api/media/' + filename });
   });
