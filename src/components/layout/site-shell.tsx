@@ -10,5 +10,5 @@ const PURCHASE_FLOW = /^\/(cart|checkout)\/?$/;
  * pathname, so the chrome never swaps after hydration. */
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  return <div className="site-shell" data-flow={PURCHASE_FLOW.test(pathname) ? 'checkout' : undefined}>{children}</div>;
+  return <div className="site-shell" data-flow={PURCHASE_FLOW.test(pathname) ? 'checkout' : undefined} data-admin={pathname.startsWith('/admin') ? 'true' : undefined}>{children}</div>;
 }
