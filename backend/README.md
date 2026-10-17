@@ -79,7 +79,7 @@ npm run typecheck
 npm test
 npm run build
 # with PostgreSQL migrated and the API running (TRUST_PROXY=true):
-DATABASE_URL=... node --test tests/integration/*.mjs
+DATABASE_URL=... node --test --test-concurrency=1 tests/integration/*.mjs
 ```
 
 

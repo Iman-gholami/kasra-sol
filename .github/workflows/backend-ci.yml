@@ -61,7 +61,7 @@ jobs:
           done
           node tests/smoke.mjs
           node tests/admin-smoke.mjs
-          node --test tests/integration/*.mjs
+          node --test --test-concurrency=1 tests/integration/*.mjs
       - name: API log on failure
         if: failure()
         run: tail -n 200 /tmp/kasra-backend.log

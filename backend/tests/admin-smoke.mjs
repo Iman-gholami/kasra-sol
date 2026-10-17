@@ -88,7 +88,7 @@ try {
   const newLogin = await call('/v1/admin/auth/login', 'POST', { username: 'staff_ci', password: staffPassword });
   assert.equal(newLogin.status, 200);
   assert.equal((await call('/v1/admin/reports/overview', 'GET', undefined, newLogin.data.token)).status, 403);
-  const currentPrice = (await call('/v1/admin/products', 'GET', undefined, owner)).data.items
+  const currentPrice = (await call('/v1/admin/products?q=manto-01', 'GET', undefined, owner)).data.items
     .find(item => item.id === 'manto-01').price;
   const priceChange = await call('/v1/admin/products/manto-01/price', 'PATCH', { price: currentPrice + 1 }, newLogin.data.token);
   assert.equal(priceChange.status, 200);
