@@ -48,8 +48,9 @@ async function cached<T>(key: string, loader: () => Promise<T>): Promise<T> {
 
 app.setErrorHandler((error, _req, reply) => {
   if (error instanceof DomainError) return reply.code(error.status).send({ error: 'business_rule', message: error.message });
-  if ('statusCode' in error && typeof error.statusCode === 'number' && error.statusCode < 500)
-    return reply.code(error.statusCode).send({ error: 'bad_request', message: error.message });
+  const known = error as { statusCode?: number; message?: string };
+  if (typeof known.statusCode === 'number' && known.statusCode >= 400 && known.statusCode < 500)
+    return reply.code(known.statusCode).send({ error: 'bad_request', message: known.message ?? 'Bad request' });
   app.log.error(error);
   return reply.code(500).send({ error: 'internal_server_error' });
 });

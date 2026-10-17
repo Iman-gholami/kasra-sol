@@ -13,7 +13,7 @@ export function calculate(lines: PriceLine[], shipping: Shipping, payment: Payme
   if (!Number.isSafeInteger(subtotal) || subtotal < 0) throw new DomainError(422, 'مبلغ نامعتبر است.');
   const normalized = code.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
     .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-    .replace(/\\s+/g, '').toUpperCase();
+    .replace(/\s+/g, '').toUpperCase();
   let discount = 0;
   if (normalized === 'KASRA10') discount = Math.min(Math.round(subtotal * .1), 300_000);
   else if (normalized === 'WELCOME') {
