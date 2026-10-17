@@ -16,7 +16,7 @@ export function ProductDetail({ product }: { product: Product }) {
       <h1>{product.name}</h1>
       <div className="detail-price">
         <Price price={product.price} compareAt={product.compareAt} size="lg"/>
-        {discount > 0 && <span className="sale-badge">{formatPercent(discount)} تخفیف نمایشی</span>}
+        {discount > 0 && <span className="sale-badge">{formatPercent(discount)} تخفیف</span>}
       </div>
       <PurchasePanel product={product}/>
     </div>
@@ -40,8 +40,8 @@ export function ProductDetail({ product }: { product: Product }) {
           <Link className="text-link" href="/shipping-and-returns">توضیحات نمونه ارسال و بازگشت</Link>
         </div>
       </details>
-      <p className="notice demo-inline-note"><Info size={18} aria-hidden="true"/>
-        <span>عکس‌های مدل با هوش مصنوعی ساخته شده‌اند و ممکن است با رنگ و جزئیات این کالا یکسان نباشند؛ قیمت‌ها هم نمایشی‌اند.</span></p>
+      {process.env.NEXT_PUBLIC_BACKEND_ENABLED !== 'true' && <p className="notice demo-inline-note"><Info size={18} aria-hidden="true"/>
+        <span>عکس‌های مدل با هوش مصنوعی ساخته شده‌اند و ممکن است با رنگ و جزئیات این کالا یکسان نباشند؛ قیمت‌ها هم نمایشی‌اند.</span></p>}
     </div>
   </div>;
 }
