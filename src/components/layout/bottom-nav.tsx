@@ -45,8 +45,9 @@ export function BottomNav() {
         <li><Link href="/wishlist" aria-current={current(pathname === '/wishlist')}>
           <span className="bottom-nav-icon"><Heart size={22} aria-hidden="true"/>
             {hydrated && wishlist.length > 0 && <span className="count" aria-hidden="true">{formatNumber(wishlist.length)}</span>}</span>
-          <span>علاقه‌مندی‌ها{hydrated && wishlist.length > 0 &&
-            <span className="sr-only">، {formatNumber(wishlist.length)} مورد</span>}</span></Link></li>
+          <span aria-hidden="true">علاقه‌مندی‌ها</span>
+          <span className="sr-only">علاقه‌مندی‌ها{hydrated && wishlist.length > 0
+            ? '، ' + formatNumber(wishlist.length) + ' مورد' : ''}</span></Link></li>
         <li><Link href="/cart" aria-label={'سبد خرید' + (hydrated && cartCount ? '، ' + formatNumber(cartCount) + ' کالا' : '')}>
           <span className="bottom-nav-icon"><ShoppingBag size={22} aria-hidden="true"/>
             {hydrated && cartCount > 0 && <span className="count" aria-hidden="true">{formatNumber(cartCount)}</span>}</span>
