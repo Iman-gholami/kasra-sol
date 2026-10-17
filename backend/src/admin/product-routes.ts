@@ -23,7 +23,7 @@ async function audit(client: { query: (text: string, values: unknown[]) => Promi
 async function writeVariants(client: { query: (text: string, values?: unknown[]) => Promise<unknown> },
                              id: string, rows: ProductInput['variants']) {
   // Variant rows are locked before modifications to coordinate with concurrent COD orders.
-  await client.query('SELECT id FROM product_variants WHERE product_id=$1 ORDER BY id FOR UPDATE', [id]);
+  await client.query('SELECT id FROM product_variants WHERE product_id=$1 ORDER BY product_id,color_id,size FOR UPDATE', [id]);
   // Existing SKU identity is preserved when possible; removed SKUs disappear only in this transaction.
   // This keeps order_items historical snapshots intact (they do not FK to variant IDs).
   for (const row of rows) await client.query(

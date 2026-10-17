@@ -3,9 +3,10 @@ export const dynamic = 'force-dynamic';
 
 type Ctx = { params: Promise<{ path: string[] }> };
 function allowed(path: string, method: string) {
-  if (method === 'GET') return /^(auth\/me|products|products\/[a-zA-Z0-9_.-]{1,80}\/variants|orders|staff|audit)$/.test(path);
-  if (method === 'POST') return /^(auth\/logout|staff)$/.test(path);
-  if (method === 'PATCH') return /^(staff\/[a-f0-9-]{36}|products\/[a-zA-Z0-9_.-]{1,80}\/price|variants\/[a-f0-9-]{36}\/stock|orders\/[a-f0-9-]{36}\/status)$/.test(path);
+  if (method === 'GET') return /^(auth\/me|products|products\/[a-zA-Z0-9_.-]{1,80}|products\/[a-zA-Z0-9_.-]{1,80}\/variants|orders|staff|audit)$/.test(path);
+  if (method === 'POST') return /^(auth\/logout|staff|products)$/.test(path);
+  if (method === 'PATCH') return /^(staff\/[a-f0-9-]{36}|products\/[a-zA-Z0-9_.-]{1,80}\/price|variants\/[a-f0-9-]{36}\/stock|orders\/[a-f0-9-]{36}\/status|products\/[a-zA-Z0-9_.-]{1,80}\/visibility)$/.test(path);
+  if (method === 'PUT') return /^products\/[a-zA-Z0-9_.-]{1,80}$/.test(path);
   return false;
 }
 async function handle(request: NextRequest, context: Ctx) {
@@ -25,7 +26,7 @@ async function handle(request: NextRequest, context: Ctx) {
   if (!internal) return NextResponse.json({ error: 'backend_not_configured' }, { status: 503 });
   try {
     const body = request.method === 'GET' ? undefined : await request.text();
-    if (body && body.length > 8192) return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
+    if (body && body.length > 65536) return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
     const url = internal + '/v1/admin/' + path + (path === 'orders' ? request.nextUrl.search : '');
     const backend = await fetch(url, {
       method: request.method, body, headers: {
@@ -47,3 +48,4 @@ async function handle(request: NextRequest, context: Ctx) {
 export const GET = handle;
 export const POST = handle;
 export const PATCH = handle;
+export const PUT = handle;

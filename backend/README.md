@@ -96,3 +96,28 @@ Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`,
 `/staff`, `/staff/:id`, `/audit`.
 Online orders stay unpaid pending PSP verification. Full product CRUD, image uploads, fulfillment
 transitions, 2FA, reports and payment reconciliation are later work before commercial launch.
+
+## Product catalog editing and media (PR #7)
+
+New permissions: full create/edit requires all of `products:write`, `products:price` and
+`inventory:write`; archiving/publishing requires `products:write`.
+Staff without pricing access cannot bypass that restriction using full-product editing.
+
+Endpoints: `POST /v1/admin/products` (creates an **unpublished draft**);
+`GET /v1/admin/products/:id`, `PUT /v1/admin/products/:id`,
+`PATCH /v1/admin/products/:id/visibility` (`active:boolean`),
+and `POST /v1/admin/media` (authenticated raw JPEG/PNG/WebP, 2 MiB per file).
+The public `GET /v1/media/:file` is served through Next.js `/api/media/:file`.
+The first image is the product's display image; products with no images cannot be published.
+There is **no hard delete**. Archived products disappear from catalog and cannot be
+purchased, but order snapshots and database records remain intact.
+Color/size/stock editing is atomic; product writes invalidate the public Redis cache.
+
+Uploaded images are stored in `media_data`, an independent **persistent Compose volume**
+mounted at `/app/backend/uploads` with `MEDIA_DIR` set accordingly.
+**Back up this volume alongside PostgreSQL**, and test restore.
+Uploads never permit SVG, remote URLs, or arbitrary filenames. Files removed from a
+product's gallery are unlinked from that product but retained on disk; add a safe
+unreferenced-file cleanup process after retention policies have been determined.
+This first implementation does not include image resizing, malware scanning, quotas
+by total tenant storage, or CDN offloading. Limit use to staging until audited.
