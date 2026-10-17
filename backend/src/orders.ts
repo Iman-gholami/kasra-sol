@@ -74,7 +74,7 @@ export async function createOrder(data: Checkout, key: string) {
   });
 }
 
-export async function orderRoutes(app: FastifyInstance) {
+export async function orderRoutes(app: FastifyInstance, opts: { invalidateCatalog?: () => Promise<void> }) {
   app.post('/v1/checkout/quote', async (req, reply) => {
     const parsed = checkout.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_payload', details: parsed.error.flatten() });
@@ -92,6 +92,7 @@ export async function orderRoutes(app: FastifyInstance) {
     if (typeof key !== 'string' || !/^[a-zA-Z0-9_-]{16,100}$/.test(key))
       return reply.code(400).send({ error: 'idempotency_key_required' });
     const order = await createOrder(parsed.data, key);
+    if (parsed.data.payment === 'cod') await opts.invalidateCatalog?.();
     return reply.code(201).header('Cache-Control','no-store').send(order);
   });
   app.get('/v1/orders/:id', async (req, reply) => {

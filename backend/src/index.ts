@@ -112,7 +112,11 @@ app.put('/v1/admin/stock', { config: { rateLimit: { max: 30, timeWindow: '1 minu
   if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
   return { ok: true, stock: updated[0].stock };
 });
-await app.register(orderRoutes);
+await app.register(orderRoutes, {
+  invalidateCatalog: async () => {
+    if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
+  }
+});
 const shutdown = async () => {
   await app.close();
   if (redis) redis.disconnect();
