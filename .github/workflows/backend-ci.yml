@@ -57,3 +57,4 @@ jobs:
             sleep 1
           done
           node tests/smoke.mjs
+          node tests/admin-smoke.mjs
