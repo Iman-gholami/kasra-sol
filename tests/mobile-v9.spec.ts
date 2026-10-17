@@ -131,6 +131,9 @@ test('product: purchase bar summarizes the variant, size guide is a bottom sheet
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await expect(bar).toHaveClass(/is-visible/);
   await bar.getByRole('button', { name: 'افزودن به سبد خرید از نوار پایین' }).click();
+  const added = page.getByRole('dialog', { name: 'به سبد خرید اضافه شد' });
+  await expect.poll(async () => Math.round(((await added.boundingBox())!).y + ((await added.boundingBox())!).height)).toBe(844);
+  await added.getByRole('button', { name: 'ادامه خرید' }).click();
   await expect(bar.getByRole('status')).toContainText('به سبد خرید اضافه شد');
   // The bar never hides page content: the page reserves its height at the end.
   await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
@@ -144,7 +147,7 @@ test('cart: large steppers, remove with undo, total and checkout CTA always in t
   await page.goto('/cart');
   const taskBar = page.locator('.cart-task-bar');
   await expect(taskBar).toBeVisible();
-  await expect(taskBar.getByRole('link', { name: /ادامه تا تسویه‌حساب/ })).toBeInViewport();
+  await expect(taskBar.getByRole('link', { name: 'ثبت سفارش' })).toBeInViewport();
   const plus = page.getByRole('button', { name: 'افزایش تعداد شومیز لینن آوید' });
   const size = (await plus.boundingBox())!;
   expect(size.width).toBeGreaterThanOrEqual(44);
@@ -160,7 +163,7 @@ test('cart: large steppers, remove with undo, total and checkout CTA always in t
   await expect(page.locator('.summary-cta')).toBeHidden();
 });
 
-test('checkout on a phone: collapsible summary, 16px fields with mobile keyboards, inline errors, demo success', async ({ page }) => {
+test('checkout on a phone: collapsible summary, 16px fields with mobile keyboards, inline errors, two steps to demo success', async ({ page }) => {
   await seed(page, [{ productId: 'shomiz-01', colorId: 'cream', size: 'M', quantity: 1 }]);
   await page.goto('/checkout');
   const summary = page.locator('.checkout-summary-mobile');
@@ -174,13 +177,18 @@ test('checkout on a phone: collapsible summary, 16px fields with mobile keyboard
   for (const field of await page.locator('.control').all()) {
     expect(parseFloat(await field.evaluate(el => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
   }
-  const submit = page.getByRole('button', { name: 'تأیید نمایشی سفارش' });
-  await expect(submit).toBeInViewport();
-  await page.getByRole('checkbox').check();
-  await submit.click();
-  await expect(page.getByLabel('نام و نام خانوادگی')).toBeFocused();
+  const next = page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' });
+  await expect(next).toBeInViewport();
+  await next.click();
+  await expect(page.getByLabel('نام و نام خانوادگی تحویل‌گیرنده')).toBeFocused();
   await page.getByRole('button', { name: 'پر کردن با اطلاعات نمونه' }).click();
-  await submit.click();
+  await next.click();
+  await expect(page).toHaveURL(/step=payment/);
+  await expect(page.getByRole('heading', { name: 'بازبینی و پرداخت' })).toBeFocused();
+  const pay = page.getByRole('button', { name: /^پرداخت/ });
+  await expect(pay).toBeInViewport();
+  await pay.click();
+  await page.getByRole('button', { name: 'شبیه‌سازی پرداخت موفق' }).click();
   await expect(page).toHaveURL(/order-confirmation/);
 });
 

@@ -82,16 +82,18 @@ function toggleWishlist(id: string) {
   notify({ ...current, wishlist });
 }
 
-type CartUI = { isCartOpen: boolean; openCart: () => void; closeCart: () => void };
+export type AddedItem = CartItem & { path: string };
+type CartUI = { added: AddedItem | null; showAdded: (item: CartItem) => void; dismissAdded: () => void };
 const CartUIContext = createContext<CartUI | null>(null);
 
-/** Holds the browser-only store and the quick-cart open state. The quick cart itself
- * (`components/cart/mini-cart.tsx`) is rendered by the root layout; focus return is handled by its dialog. */
+/** Holds the browser-only store and the "added to cart" confirmation state. The confirmation sheet
+ * (`components/cart/added-to-cart.tsx`) is rendered by the root layout so any add-to-cart surface can use it;
+ * it remembers the page it was opened on and stays closed after navigating away. */
 export function ShopProvider({ children }: { children: React.ReactNode }) {
-  const [isCartOpen, setCartOpen] = useState(false);
-  const openCart = useCallback(() => setCartOpen(true), []);
-  const closeCart = useCallback(() => setCartOpen(false), []);
-  const ui = useMemo(() => ({ isCartOpen, openCart, closeCart }), [isCartOpen, openCart, closeCart]);
+  const [added, setAdded] = useState<AddedItem | null>(null);
+  const showAdded = useCallback((item: CartItem) => setAdded({ ...item, path: window.location.pathname }), []);
+  const dismissAdded = useCallback(() => setAdded(null), []);
+  const ui = useMemo(() => ({ added, showAdded, dismissAdded }), [added, showAdded, dismissAdded]);
   return <CartUIContext.Provider value={ui}>{children}</CartUIContext.Provider>;
 }
 

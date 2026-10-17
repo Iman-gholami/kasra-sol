@@ -27,31 +27,33 @@ test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'سایز S ناموجود' })).toBeDisabled();
   await page.getByRole('button', { name: 'سایز M' }).click();
   await page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
-  await expect(page.locator('.purchase-feedback')).toContainText('به سبد نمایشی اضافه شد');
-  await page.getByRole('button', { name: 'سبد سریع' }).click();
-  const quickCart = page.getByRole('dialog', { name: 'سبد خرید سریع' });
-  await expect(quickCart).toBeVisible();
-  await expect(quickCart).toContainText('شومیز لینن آوید');
-  await quickCart.getByRole('button', { name: 'بستن سبد خرید' }).click();
+  await expect(page.locator('.purchase-feedback')).toContainText('به سبد خرید اضافه شد');
+  const added = page.getByRole('dialog', { name: 'به سبد خرید اضافه شد' });
+  await expect(added).toBeVisible();
+  await expect(added).toContainText('شومیز لینن آوید');
+  await added.getByRole('button', { name: 'ادامه خرید' }).click();
+  await expect(added).toBeHidden();
   await page.goto('/cart');
   await expect(page.locator('.cart-item').getByText('شومیز لینن آوید')).toBeVisible();
   await page.reload();
   await expect(page.locator('.cart-item').getByText('شومیز لینن آوید')).toBeVisible();
   await page.getByRole('button', { name: 'افزایش تعداد شومیز لینن آوید' }).click();
   await expect(page.locator('.qty-stepper span').first()).toContainText('۲');
-  await page.getByRole('link', { name: /ادامه تا تسویه/ }).click();
-  await page.getByRole('button', { name: 'تأیید نمایشی سفارش' }).click();
-  await expect(page.locator('.status-message.error')).toContainText('تأیید');
-  await page.getByLabel('نام و نام خانوادگی').fill('نام نمایشی کاربر');
+  await page.getByRole('link', { name: 'ثبت سفارش' }).click();
+  await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
+  await expect(page.locator('.status-message.error')).toContainText('۶ مورد');
+  await page.getByLabel('نام و نام خانوادگی تحویل‌گیرنده').fill('نام نمایشی کاربر');
   await page.getByLabel('شماره موبایل').fill('09123456789');
   await page.getByLabel('استان').selectOption('تهران');
-  await page.getByLabel('شهر').fill('تهران');
+  await page.getByLabel('شهر', { exact: true }).fill('تهران');
   await page.getByLabel('نشانی دقیق').fill('خیابان نمونه، کوچه آزمایشی، پلاک ده');
   await page.getByLabel('کد پستی').fill('1234567890');
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: 'تأیید نمایشی سفارش' }).click();
+  await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
+  await expect(page).toHaveURL(/step=payment/);
+  await page.getByRole('button', { name: /^پرداخت/ }).click();
+  await page.getByRole('dialog', { name: 'پرداخت سفارش کسری بوتیک' }).getByRole('button', { name: 'شبیه‌سازی پرداخت موفق' }).click();
   await expect(page).toHaveURL(/order-confirmation/);
-  await expect(page.getByText('هیچ سفارشی ثبت نشده', { exact: false })).toBeVisible();
+  await expect(page.getByText('هیچ سفارش واقعی ثبت نشده', { exact: false })).toBeVisible();
 });
 
 test('wishlist persists after refresh', async ({ page }) => {
@@ -156,19 +158,25 @@ test('mobile color swatches persist in shareable filtered URL', async ({ page })
   await expect(page.getByRole('link', { name: 'مشکی', exact: true })).toBeVisible();
 });
 
-test('mini-cart returns focus and keeps cart totals and demo status clear', async ({ page }) => {
+test('added-to-cart confirmation focuses the safe choice, returns focus and links to the cart', async ({ page }) => {
   await page.goto('/product/shomiz-01');
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await page.getByRole('button', { name: 'سایز M' }).click();
-  await page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
-  await page.getByRole('button', { name: 'سبد سریع' }).click();
-  const drawer = page.getByRole('dialog', { name: 'سبد خرید سریع' });
-  await expect(drawer).toBeVisible();
-  await expect(drawer).toContainText('جمع اقلام، بدون ارسال');
-  await expect(drawer).toContainText('نمایشی');
-  await drawer.getByRole('link', { name: 'بررسی سبد خرید' }).click();
+  const add = page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true });
+  await add.click();
+  const sheet = page.getByRole('dialog', { name: 'به سبد خرید اضافه شد' });
+  await expect(sheet).toContainText('سبد خرید تو: ۱ کالا');
+  await expect(sheet).toContainText('ارسال با پست پیشتاز رایگان می‌شود');
+  await expect(sheet.getByRole('button', { name: 'ادامه خرید' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  await expect(add).toBeFocused();
+  await add.click();
+  await expect(sheet).toContainText('سبد خرید تو: ۲ کالا');
+  await sheet.getByRole('link', { name: 'مشاهده و ویرایش سبد خرید' }).click();
   await expect(page).toHaveURL(/\/cart/);
-  await expect(page.getByText('خلاصه سفارش نمایشی')).toBeVisible();
+  await expect(sheet).toBeHidden();
+  await expect(page.getByRole('complementary', { name: 'خلاصه سفارش' })).toBeVisible();
 });
 
 test('desktop 1800 layout uses space and catalog sort preserves selected filters', async ({page}) => {
@@ -243,7 +251,7 @@ test('official locally hosted Estedad variable font is applied throughout Persia
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await page.getByRole('button', { name: 'سایز M' }).click();
   await page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
-  await expect(page.locator('.purchase-feedback')).toContainText('به سبد نمایشی اضافه شد');
+  await expect(page.locator('.purchase-feedback')).toContainText('به سبد خرید اضافه شد');
   await page.goto('/checkout');
   await expect(page.locator('input').first()).toBeVisible();
   await page.evaluate(async () => { await document.fonts.ready; });

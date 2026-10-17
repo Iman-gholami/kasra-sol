@@ -63,11 +63,9 @@ test('PDP selection responds to unavailable size after a color change',async ({p
   await expect(page.getByText('سایز قبلی برای این رنگ ناموجود است')).toHaveCount(0);
   await page.getByRole('button',{name:'افزودن به سبد خرید',exact:true}).click();
   await expect(page.locator('.purchase-feedback')).toContainText('اضافه شد');
-  await expect(page.getByRole('dialog',{name:'سبد خرید سریع'})).toHaveCount(0);
-  await page.getByRole('button',{name:'سبد سریع'}).click();
-  const cart=page.getByRole('dialog',{name:'سبد خرید سریع'});
-  await expect(cart).toContainText('کرم');
-  await expect(cart).toContainText('M');
+  const added=page.getByRole('dialog',{name:'به سبد خرید اضافه شد'});
+  await expect(added).toContainText('کرم');
+  await expect(added).toContainText('M');
 });
 
 test('PDP sticky mobile action prompts and focuses missing selection, then hides near main CTA', async ({page})=>{
@@ -95,6 +93,11 @@ test('PDP sticky mobile action prompts and focuses missing selection, then hides
   expect(rect.top).toBeGreaterThan(680);
   expect(rect.bottom).toBeLessThanOrEqual(845);
   await sticky.getByRole('button',{name:'افزودن به سبد خرید از نوار پایین'}).click();
+  // The confirmation sheet covers the bar while open; after it closes the bar keeps a link to the cart.
+  const added=page.getByRole('dialog',{name:'به سبد خرید اضافه شد'});
+  await expect(added).toBeVisible();
+  await expect(sticky).toBeHidden();
+  await added.getByRole('button',{name:'ادامه خرید'}).click();
   await expect(sticky.getByRole('link',{name:'مشاهده سبد'})).toBeVisible();
 });
 
