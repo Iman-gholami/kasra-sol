@@ -16,9 +16,9 @@ export function Header() {
       <div className="container header-inner">
         <div className="header-start">
           <MobileMenu />
-          <Link href="/" className="brand" aria-label="K KASRA BOUTIQUE، کسری بوتیک، صفحه اصلی">
-            <span className="brand-monogram" aria-hidden="true">K</span>
-            <span className="brand-type" aria-hidden="true"><strong dir="ltr">KASRA</strong><small dir="ltr">BOUTIQUE</small></span>
+          <Link href="/" className="brand">
+            <span className="brand-monogram">K</span>
+            <span className="brand-type"><strong dir="ltr">KASRA</strong><small dir="ltr">BOUTIQUE</small></span>
           </Link>
         </div>
         <PrimaryNav />
