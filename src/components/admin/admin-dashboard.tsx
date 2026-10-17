@@ -2,12 +2,13 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { ProductEditor } from '@/components/admin/product-editor';
 
 export type AdminUser = {
   id: string; username: string; displayName: string; role: 'owner' | 'manager' | 'staff';
   active: boolean; grants: string[]; revokes: string[]; permissions: string[];
 };
-type Product = { id: string; slug: string; name: string; category: string; price: number; stock: number };
+type Product = { id: string; slug: string; name: string; category: string; price: number; stock: number; active: boolean };
 type Variant = { id: string; product_id: string; color_id: string; size: string; stock: number };
 type Order = {
   id: string; status: string; payment: string; shipping: string;
@@ -37,12 +38,21 @@ async function api<T>(path: string, method = 'GET', payload?: unknown): Promise<
   }
   return response.json() as Promise<T>;
 }
-function ProductItem({ item, permissions, refreshed }: { item: Product; permissions: string[]; refreshed: () => void }) {
+function ProductItem({ item, permissions, refreshed, editProduct }: { item: Product; permissions: string[]; refreshed: () => void; editProduct: (id: string) => void }) {
   const [price, setPrice] = useState(item.price);
   const [variants, setVariants] = useState<Variant[] | null>(null);
   const [stocks, setStocks] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  async function changeVisibility() {
+    if (!confirm(item.active ? 'این محصول از فروشگاه پنهان شود؟' : 'این محصول منتشر شود؟')) return;
+    setBusy(true); setMessage('');
+    try {
+      await api('products/' + item.id + '/visibility', 'PATCH', { active: !item.active });
+      refreshed();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'خطا در تغییر وضعیت'); }
+    finally { setBusy(false); }
+  }
   async function changePrice(event: FormEvent) {
     event.preventDefault(); setBusy(true); setMessage('');
     try {
@@ -72,7 +82,7 @@ function ProductItem({ item, permissions, refreshed }: { item: Product; permissi
   return <article className="rounded-xl border border-neutral-200 bg-white p-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h3 className="font-semibold">{item.name}</h3>
-        <p className="text-xs text-neutral-600">{item.id} · {item.category} · موجودی کل: {item.stock}</p></div>
+        <p className="text-xs text-neutral-600">{item.id} · {item.category} · موجودی کل: {item.stock} · {item.active ? 'منتشرشده' : 'آرشیوشده'}</p></div>
       {permissions.includes('products:price') ?
         <form onSubmit={changePrice} className="flex flex-wrap items-center gap-2">
           <label className="text-sm">قیمت (تومان)
@@ -82,6 +92,14 @@ function ProductItem({ item, permissions, refreshed }: { item: Product; permissi
           </label>
           <button disabled={busy} className="rounded bg-neutral-900 px-3 py-2 text-white disabled:opacity-50">ذخیره قیمت</button>
         </form> : <p>{formatPrice(item.price)}</p>}
+    </div>
+    <div className="mt-3 flex flex-wrap gap-2">
+      {['products:write', 'products:price', 'inventory:write'].every(p => permissions.includes(p)) &&
+        <button type="button" className="rounded border px-3 py-2 text-sm" onClick={() => editProduct(item.id)}>ویرایش کامل و تصاویر</button>}
+      {permissions.includes('products:write') && <button type="button" disabled={busy}
+        className="rounded border px-3 py-2 text-sm" onClick={() => void changeVisibility()}>
+        {item.active ? 'آرشیو محصول' : 'انتشار محصول'}
+      </button>}
     </div>
     {permissions.includes('inventory:read') &&
       <button className="mt-3 rounded border px-3 py-2 text-sm" onClick={expand}
@@ -156,6 +174,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
   const router = useRouter();
   const [section, setSection] = useState<Section>('products');
   const [products, setProducts] = useState<Product[]>([]);
+  const [productEditor, setProductEditor] = useState<string | 'new' | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [staff, setStaff] = useState<AdminUser[]>([]);
   const [audit, setAudit] = useState<Audit[]>([]);
@@ -232,9 +251,18 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
     </nav>
     {error && <p role="alert" className="mb-4 rounded border border-red-300 p-3 text-red-700">{error}</p>}
     {loading && <p role="status">در حال دریافت اطلاعات…</p>}
-    {!loading && section === 'products' && <div className="grid gap-3">
-      <h2 className="text-xl font-semibold">محصولات ({products.length})</h2>
-      {products.map(item => <ProductItem key={item.id} item={item} permissions={user.permissions} refreshed={refresh}/>)}
+    {section === 'products' && productEditor !== null &&
+      <ProductEditor productId={productEditor === 'new' ? undefined : productEditor}
+        done={() => { setProductEditor(null); refresh(); }}/>}
+    {!loading && section === 'products' && productEditor === null && <div className="grid gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-semibold">محصولات ({products.length})</h2>
+        {['products:write', 'products:price', 'inventory:write'].every(p => can(p)) &&
+          <button type="button" className="rounded bg-neutral-900 px-4 py-2 text-white"
+            onClick={() => setProductEditor('new')}>افزودن محصول جدید</button>}
+      </div>
+      {products.map(item => <ProductItem key={item.id} item={item} permissions={user.permissions}
+        editProduct={setProductEditor} refreshed={refresh}/>)}
     </div>}
     {!loading && section === 'orders' && <div className="grid gap-3">
       <h2 className="text-xl font-semibold">آخرین سفارش‌ها</h2>
