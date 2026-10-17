@@ -3,6 +3,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { pool } from '../db/connection';
 import { hashPassword, verifyPassword, dummyPasswordHash } from './password';
+import { productAdminRoutes } from './product-routes';
+import { mediaRoutes } from './media';
 import { PERMISSIONS, assignable, effectivePermissions, may, type Role, type Permission } from './permissions';
 
 type AdminRow = {
@@ -34,7 +36,7 @@ async function currentUser(req: FastifyRequest): Promise<Identity | null> {
     [sha256(token)]);
   return (found.rows[0] as Identity | undefined) ?? null;
 }
-async function requirePermission(req: FastifyRequest, reply: FastifyReply, needed: Permission): Promise<Identity | null> {
+export async function requirePermission(req: FastifyRequest, reply: FastifyReply, needed: Permission): Promise<Identity | null> {
   const user = await currentUser(req);
   if (!user) { await reply.code(401).send({ error: 'unauthorized' }); return null; }
   if (!may(user.role, user.grants, user.revokes, needed)) {
@@ -255,6 +257,9 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
     return reply.header('Cache-Control', 'no-store').send({ user: publicUser(user!) });
   });
+
+  await productAdminRoutes(app, requirePermission, opts);
+  await mediaRoutes(app, requirePermission);
 
   app.get('/v1/admin/audit', async (req, reply) => {
     if (!await requirePermission(req, reply, 'staff:manage')) return;
