@@ -189,11 +189,11 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
   const [savingStaff, setSavingStaff] = useState(false);
   const can = (permission: string) => user.permissions.includes(permission);
   useEffect(() => {
-    if (section === 'overview') { setLoading(false); return; }
-    if (section === 'staff' && !can('staff:manage')) return;
-    if (section === 'audit' && !can('staff:manage')) return;
-    if (section === 'orders' && !can('orders:read')) return;
-    if (section === 'products' && !can('products:read')) return;
+    if (section === 'overview') return;
+    if (section === 'staff' && !user.permissions.includes('staff:manage')) return;
+    if (section === 'audit' && !user.permissions.includes('staff:manage')) return;
+    if (section === 'orders' && !user.permissions.includes('orders:read')) return;
+    if (section === 'products' && !user.permissions.includes('products:read')) return;
     const controller = new AbortController();
     async function load() {
       try {
@@ -253,7 +253,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
         onClick={() => { setLoading(true); setSection(id); }}>{label}</button>)}
     </nav>
     {error && <p role="alert" className="mb-4 rounded border border-red-300 p-3 text-red-700">{error}</p>}
-    {loading && <p role="status">در حال دریافت اطلاعات…</p>}
+    {loading && section !== 'overview' && <p role="status">در حال دریافت اطلاعات…</p>}
     {section === 'overview' && can('reports:read') && <SalesOverview/>}
     {section === 'products' && productEditor !== null &&
       <ProductEditor productId={productEditor === 'new' ? undefined : productEditor}

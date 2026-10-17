@@ -159,7 +159,7 @@ export function SalesOverview() {
           {report.lowStock.length === 0
             ? <p className="py-8 text-sm text-neutral-500">هیچ تنوع فعالی با موجودی ۳ یا کمتر وجود ندارد.</p>
             : <ul className="mt-4 grid gap-3">
-              {report.lowStock.map((item, index) => <li key={item.id + ':' + item.colorId + ':' + item.size}
+              {report.lowStock.map(item => <li key={item.id + ':' + item.colorId + ':' + item.size}
                 className="flex items-center justify-between gap-2 rounded-lg bg-neutral-50 p-3">
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{item.name}</p>
