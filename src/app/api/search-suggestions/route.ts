@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { products, categories } from '@/data/products';
 import { rankProduct } from '@/lib/search';
 import { normalizePersian } from '@/lib/format';
+import { forwardedFor } from '@/lib/backend-proxy';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const q = (request.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 100);
     try {
       const response = await fetch(process.env.BACKEND_INTERNAL_URL + '/v1/search/suggestions?q=' + encodeURIComponent(q),
-        { cache: 'no-store' });
+        { cache: 'no-store', headers: forwardedFor(request.headers), signal: AbortSignal.timeout(8000) });
       if (!response.ok) return NextResponse.json({ error: 'Search unavailable' }, { status: 502 });
       return NextResponse.json(await response.json(), { headers: { 'Cache-Control': 'no-store' } });
     } catch {

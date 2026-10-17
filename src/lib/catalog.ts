@@ -4,6 +4,7 @@ import { rankProduct } from '@/lib/search';
 import { categories } from '@/data/products';
 import { variantMatchesColorFamily } from '@/lib/shop-by-color';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
+import { visitorHeaders } from '@/lib/backend-products';
 
 export const PAGE_SIZE = 12;
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -47,7 +48,8 @@ export async function queryProducts(filters: CatalogFilters): Promise<{ items: P
     if (filters.discounted) params.set('sale', '1');
     if (filters.sort) params.set('sort', filters.sort);
     params.set('page', String(filters.page ?? 1));
-    const response = await fetch(process.env.BACKEND_INTERNAL_URL + '/v1/products?' + params, { cache: 'no-store' });
+    const response = await fetch(process.env.BACKEND_INTERNAL_URL + '/v1/products?' + params,
+      { cache: 'no-store', headers: await visitorHeaders() });
     if (!response.ok) throw new Error('Catalog API unavailable: ' + response.status);
     return response.json() as Promise<{ items: Product[]; total: number; page: number; pages: number }>;
   }
