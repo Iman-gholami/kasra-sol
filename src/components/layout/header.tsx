@@ -8,7 +8,9 @@ export function Header() {
   return <>
     <a className="skip-link" href="#main-content">رفتن به محتوای اصلی</a>
     <aside className="announcement" aria-label="وضعیت نسخه نمایشی">
-      <p>نسخه نمایشی کسری بوتیک · پرداخت و ثبت سفارش واقعی فعال نیست</p>
+      <p>{process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true'
+        ? 'نسخه آزمایشی کسری بوتیک · سفارش در سرور ثبت می‌شود، پرداخت اینترنتی هنوز فعال نیست'
+        : 'نسخه نمایشی کسری بوتیک · پرداخت و ثبت سفارش واقعی فعال نیست'}</p>
     </aside>
     <header className="site-header">
       <div className="container header-inner">
