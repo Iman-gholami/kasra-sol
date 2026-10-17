@@ -151,7 +151,7 @@ PRها: [#6 `feat/fastify-postgres-backend`](https://github.com/Iman-gholami/kas
 - فرانت‌اند: `src/lib/backend-proxy.ts` (جدید)، `src/app/api/orders/route.ts`، `src/app/api/search-suggestions/route.ts`، `src/lib/backend-products.ts`، `src/lib/catalog.ts`
 - پیکربندی: `compose.yaml`، `.env.example`، `.gitignore`، `package.json` و `README.md`
 
-**شاخه اصلاح PR #7** (`claude/practical-pasteur-a7s581`؛ شامل ادغام شاخه بالا؛ نسبت به PR #7 در مجموع ۶۶ فایل، 3686+ و 1201−):
+**شاخه اصلاح PR #7** (`claude/practical-pasteur-a7s581`؛ شامل ادغام شاخه بالا؛ نسبت به PR #7 در مجموع ۷۷ فایل، 3937+ و 1202−، شامل این گزارش و ۱۰ اسکرین‌شات):
 - بک‌اند: `backend/sql/005_admin_operations.sql` و ماژول‌های جدید `backend/src/admin/{audit,identity,order-routes,calendar,image-type}.ts`؛ بازنویسی `routes.ts`، `product-routes.ts`، `reports.ts` و `media.ts`
 - تست: `backend/tests/integration/admin.integration.mjs`، `backend/tests/calendar.test.ts`، `tests-admin/*`، `playwright.admin.config.ts` و `.github/workflows/admin-e2e.yml`
 - پنل: `src/components/admin/*` (کامپوننت‌های جدید: `admin-api`، `labels`، `ui`، `order-manager`، `staff-manager`، `account-settings`، `audit-log` و `login-form`)، `src/styles/admin.css`، `src/app/admin/*` و `src/app/api/admin/*`
