@@ -64,3 +64,35 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+
+## Multi-user admin (development branch)
+
+The RBAC backend implements individual staff accounts with roles `owner`, `manager`, and `staff`.
+Only the owner may create, disable, or change staff access. Manager and staff permission overrides
+are explicit; `staff:manage` and `payments:configure` cannot be delegated. Default staff **cannot change prices**.
+All privileged mutations of price, stock, and staff roles have audit records; role edits revoke all affected sessions.
+
+Run additive migration `002_admin`; it does not erase existing products or orders.
+Create the first owner with a password saved in a PRIVATE file outside the repository:
+
+```sh
+cd backend
+npm run db:migrate
+npm run admin:create-owner -- owner_login /secure/path/admin-password.txt
+```
+
+The file must contain a unique 12-256-character password. CLI refuses to create a second owner.
+Inside the production image the entry point is `node dist/admin/bootstrap.js owner_login /secure/path/admin-password.txt`.
+A password file must be explicitly and securely available within that container.
+
+Admin API uses 8-hour random bearer sessions; SHA-256 token hashes alone are persisted in PostgreSQL.
+Use HTTPS and an HttpOnly SameSite cookie in a server-side proxy, never browser-local storage.
+The legacy global stock API key endpoint is disabled by default; `LEGACY_STOCK_API_ENABLED=true`
+restores it only for short migrations (without per-user attribution).
+
+Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`, `/products`,
+`/products/:id/price`, `/products/:id/variants`, `/variants/:id/stock`, `/orders`,
+`/staff`, `/staff/:id`, `/audit`.
+Online orders stay unpaid pending PSP verification. Full product CRUD, image uploads, fulfillment
+transitions, 2FA, reports and payment reconciliation are later work before commercial launch.

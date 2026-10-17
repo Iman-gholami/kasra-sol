@@ -101,6 +101,7 @@ function isAdmin(value: string | undefined) {
   return timingSafeEqual(a,b);
 }
 app.put('/v1/admin/stock', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
+  if (process.env.LEGACY_STOCK_API_ENABLED !== 'true') return reply.code(404).send({ error: 'not_found' });
   if (!isAdmin(req.headers.authorization?.replace(/^Bearer /i,''))) return reply.code(401).send({ error: 'unauthorized' });
   const input = z.object({ productId: z.string().min(1).max(80), colorId: z.string().min(1).max(80),
     size: z.string().min(1).max(20), stock: z.number().int().min(0).max(1_000_000) }).safeParse(req.body);
