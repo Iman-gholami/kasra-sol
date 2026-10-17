@@ -25,6 +25,8 @@ jobs:
       DATABASE_URL: postgres://kasra:ci_test_password@localhost:5432/kasra
       ORDER_TOKEN_SECRET: ci_test_only_secret_that_is_long_enough_to_verify
       ADMIN_API_KEY: ci_test_only_admin_key_that_is_long_enough_to_verify
+      # The integration tests impersonate distinct visitors through X-Forwarded-For, as the Next.js proxy does.
+      TRUST_PROXY: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,6 +48,7 @@ jobs:
         working-directory: backend
         run: |
           npm run db:migrate
+          npm run db:migrate
           npm run db:seed
           npm run db:seed
       - name: Real PostgreSQL API smoke test
@@ -57,3 +60,7 @@ jobs:
             sleep 1
           done
           node tests/smoke.mjs
+          node --test tests/integration/*.mjs
+      - name: API log on failure
+        if: failure()
+        run: tail -n 200 /tmp/kasra-backend.log
