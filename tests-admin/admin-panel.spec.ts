@@ -91,6 +91,8 @@ test('owner creates a draft with photos, publishes it, and it reaches the storef
   await storefront.goto('/product/' + PRODUCT);
   await expect(storefront.getByRole('heading', { level: 1, name: PRODUCT_NAME })).toBeVisible();
   await expect(storefront.locator('.detail-price')).toContainText('۱٬۲۵۰٬۰۰۰');
+  await storefront.goto('/');
+  await expect(storefront.locator('.shop-color-result-summary')).toContainText(/محصول در کاتالوگ$/);
   await storefront.close();
   expect(problems).toEqual([]);
 });

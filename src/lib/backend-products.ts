@@ -24,3 +24,18 @@ export const getHomeProducts = cache(async (): Promise<Product[]> => {
   const result = await response.json() as { items: Product[] };
   return result.items;
 });
+/** Every published product (newest first), for sections that summarise the whole catalog such as Shop by Color.
+ * Capped at 10 API pages (480 products); the API serves these lists from its short Redis cache. */
+export const getCatalogProducts = cache(async (): Promise<Product[]> => {
+  if (!base) return demoProducts;
+  const items: Product[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const response = await fetch(base + '/v1/products?limit=48&sort=newest&page=' + page,
+      { cache: 'no-store', headers: await visitorHeaders() });
+    if (!response.ok) throw new Error('Catalog API unavailable: ' + response.status);
+    const result = await response.json() as { items: Product[]; pages: number };
+    items.push(...result.items);
+    if (page >= result.pages) break;
+  }
+  return items;
+});
