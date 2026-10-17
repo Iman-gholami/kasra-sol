@@ -32,7 +32,7 @@ export function isSameOrigin(request: Request): boolean {
 
 /** Reads at most `limit` bytes of the body; returns null as soon as the stream exceeds it, so an oversized
  * or endless chunked upload is never buffered in memory. */
-export async function readBodyLimited(request: Request, limit: number): Promise<Uint8Array | null> {
+export async function readBodyLimited(request: Request, limit: number): Promise<Uint8Array<ArrayBuffer> | null> {
   const declared = Number(request.headers.get('content-length') ?? 0);
   if (declared > limit) return null;
   if (!request.body) return new Uint8Array();
