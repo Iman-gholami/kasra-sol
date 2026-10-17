@@ -5,6 +5,7 @@ import { pool } from '../db/connection';
 import { hashPassword, verifyPassword, dummyPasswordHash } from './password';
 import { productAdminRoutes } from './product-routes';
 import { mediaRoutes } from './media';
+import { reportRoutes } from './reports';
 import { PERMISSIONS, assignable, effectivePermissions, may, type Role, type Permission } from './permissions';
 
 type AdminRow = {
@@ -260,6 +261,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
 
   await productAdminRoutes(app, requirePermission, opts);
   await mediaRoutes(app, requirePermission);
+  await reportRoutes(app, requirePermission);
 
   app.get('/v1/admin/audit', async (req, reply) => {
     if (!await requirePermission(req, reply, 'staff:manage')) return;

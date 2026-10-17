@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 type Ctx = { params: Promise<{ path: string[] }> };
 function allowed(path: string, method: string) {
-  if (method === 'GET') return /^(auth\/me|products|products\/[a-zA-Z0-9_.-]{1,80}|products\/[a-zA-Z0-9_.-]{1,80}\/variants|orders|staff|audit)$/.test(path);
+  if (method === 'GET') return /^(auth\/me|reports\/overview|products|products\/[a-zA-Z0-9_.-]{1,80}|products\/[a-zA-Z0-9_.-]{1,80}\/variants|orders|staff|audit)$/.test(path);
   if (method === 'POST') return /^(auth\/logout|staff|products)$/.test(path);
   if (method === 'PATCH') return /^(staff\/[a-f0-9-]{36}|products\/[a-zA-Z0-9_.-]{1,80}\/price|variants\/[a-f0-9-]{36}\/stock|orders\/[a-f0-9-]{36}\/status|products\/[a-zA-Z0-9_.-]{1,80}\/visibility)$/.test(path);
   if (method === 'PUT') return /^products\/[a-zA-Z0-9_.-]{1,80}$/.test(path);
