@@ -11,7 +11,9 @@ export function calculate(lines: PriceLine[], shipping: Shipping, payment: Payme
     throw new DomainError(422, 'پرداخت در محل فقط برای پیک تهران مجاز است.');
   const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
   if (!Number.isSafeInteger(subtotal) || subtotal < 0) throw new DomainError(422, 'مبلغ نامعتبر است.');
-  const normalized = code.replace(/\s+/g, '').toUpperCase();
+  const normalized = code.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/\\s+/g, '').toUpperCase();
   let discount = 0;
   if (normalized === 'KASRA10') discount = Math.min(Math.round(subtotal * .1), 300_000);
   else if (normalized === 'WELCOME') {
