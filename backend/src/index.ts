@@ -6,7 +6,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { pool, db } from './db/connection';
 import { products, variants } from './db/schema';
-import { filters, getProduct, listProducts } from './catalog';
+import { filters, getProduct, getProductsByIds, listProducts } from './catalog';
 import { orderRoutes } from './orders';
 import { adminRoutes } from './admin/routes';
 import { DomainError } from './pricing';
@@ -69,6 +69,14 @@ app.get('/v1/products', async (req, reply) => {
   const parsed = filters.safeParse(req.query);
   if (!parsed.success) return reply.code(400).send({ error: 'invalid_query', details: parsed.error.flatten() });
   return cached('products:' + JSON.stringify(parsed.data), () => listProducts(parsed.data));
+});
+app.get('/v1/products/lookup', async (req, reply) => {
+  const parsed = z.object({ ids: z.string().min(1).max(6000) }).safeParse(req.query);
+  if (!parsed.success) return reply.code(400).send({ error: 'invalid_query' });
+  const ids = [...new Set(parsed.data.ids.split(','))];
+  if (ids.length > 80 || ids.some(id => !/^[a-z0-9][a-z0-9-]{1,78}$/.test(id)))
+    return reply.code(400).send({ error: 'invalid_product_ids' });
+  return reply.header('Cache-Control', 'no-store').send({ items: await getProductsByIds(ids) });
 });
 app.get('/v1/products/:slug', async (req, reply) => {
   const slug = (req.params as { slug: string }).slug;

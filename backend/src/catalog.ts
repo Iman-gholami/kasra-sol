@@ -51,6 +51,14 @@ export async function listProducts(query: z.infer<typeof filters>) {
     .limit(query.limit).offset((page-1)*query.limit);
   return { items: await hydrate(rows), total, page, pages };
 }
+export async function getProductsByIds(ids: string[]) {
+  if (!ids.length) return [];
+  const rows = await db.select().from(products).where(and(
+    inArray(products.id, ids), eq(products.active, true)));
+  const hydrated = await hydrate(rows);
+  return ids.flatMap(id => hydrated.filter(product => product.id === id));
+}
+
 export async function getProduct(slug: string) {
   const found = await db.select().from(products).where(and(eq(products.slug, slug), eq(products.active, true))).limit(1);
   return (await hydrate(found))[0] ?? null;
