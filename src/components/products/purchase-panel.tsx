@@ -11,12 +11,12 @@ import { useBottomBar } from '@/components/ui/document-flags';
 import { formatNumber, toman } from '@/lib/format';
 import type { Product } from '@/types/store';
 
-type Notice = { text: string; error: boolean };
+type Notice = { text: string; error: boolean; cartLink?: boolean };
 
 /** Buy box: color → size → quantity → add. On phones a compact bar keeps the action in the thumb
  * zone whenever the main button is off-screen; it never covers content (the page reserves its height). */
 export function PurchasePanel({ product }: { product: Product }) {
-  const { addToCart, openCart, wishlist, toggleWishlist, hydrated } = useShop();
+  const { cart, addToCart, showAdded, wishlist, toggleWishlist, hydrated } = useShop();
   const [colorId, setColorId] = useState('');
   const [size, setSize] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -33,7 +33,11 @@ export function PurchasePanel({ product }: { product: Product }) {
   const color = product.colors.find(entry => entry.id === colorId);
   const variant = getVariant(product, colorId, size);
   const isFavorite = hydrated && wishlist.includes(product.id);
-  const ready = Boolean(colorId && size && variant?.stock && variant.stock >= quantity);
+  // What can still be added: stock minus what this variant already has in the cart.
+  const inCart = cart.find(item => item.productId === product.id && item.colorId === colorId && item.size === size)?.quantity ?? 0;
+  const room = variant ? variant.stock - inCart : 0;
+  const ready = Boolean(colorId && size && room >= 1);
+  const allInCart = Boolean(colorId && size && variant?.stock && room < 1);
 
   useBottomBar('pdp');
 
@@ -80,17 +84,28 @@ export function PurchasePanel({ product }: { product: Product }) {
       focusOption(missing);
       return;
     }
-    if (!variant?.stock || quantity > variant.stock) {
-      setNotice({ text: 'این ترکیب ناموجود است یا تعداد انتخاب‌شده بیشتر از موجودی نمونه است.', error: true });
+    if (!variant?.stock) {
+      setNotice({ text: 'این ترکیب ناموجود است؛ رنگ یا سایز دیگری انتخاب کن.', error: true });
       focusOption('size');
       return;
     }
-    const success = addToCart({ productId: product.id, colorId, size, quantity });
-    setNotice({ text: success ? 'انتخابت به سبد نمایشی اضافه شد.' : 'افزودن به سبد خرید ممکن نیست.', error: !success });
+    if (room < 1) {
+      setNotice({ text: 'همه موجودی این رنگ و سایز (' + formatNumber(variant.stock) + ' عدد) در سبد خریدت است.', error: true, cartLink: true });
+      return;
+    }
+    const item = { productId: product.id, colorId, size, quantity: Math.min(quantity, room) };
+    if (!addToCart(item)) {
+      setNotice({ text: 'افزودن به سبد خرید ممکن نیست.', error: true });
+      return;
+    }
+    setNotice({ text: 'به سبد خرید اضافه شد.', error: false, cartLink: true });
+    setQuantity(1);
+    showAdded(item);
   }
 
   const summary = color ? color.name + (size ? '، سایز ' + size : '') : 'رنگ و سایز انتخاب نشده';
-  const stickyLabel = ready ? 'افزودن به سبد خرید از نوار پایین' : !colorId ? 'انتخاب رنگ و سایز از نوار پایین' : 'انتخاب سایز از نوار پایین';
+  const stickyLabel = ready ? 'افزودن به سبد خرید از نوار پایین' : allInCart ? 'همه موجودی در سبد خریدت از نوار پایین'
+    : !colorId ? 'انتخاب رنگ و سایز از نوار پایین' : 'انتخاب سایز از نوار پایین';
 
   return <>
     <section className="buy-panel" aria-label="انتخاب مشخصات و خرید">
@@ -131,20 +146,21 @@ export function PurchasePanel({ product }: { product: Product }) {
       </div>
       <div className="quantity-row">
         <span className="variant-label">تعداد</span>
-        <QuantityStepper value={quantity} max={variant?.stock ?? 1} onChange={value => setQuantity(Math.max(1, value))}/>
-        {variant?.stock ? <span className="stock-note">موجودی نمونه: {formatNumber(variant.stock)}</span> : null}
+        <QuantityStepper value={quantity} max={Math.max(1, room)} onChange={value => setQuantity(Math.max(1, value))}/>
+        {/* A word always separates the two numbers so they cannot read as one ("۳، ۱" → "۱،۳"). */}
+        {variant?.stock ? <span className="stock-note">موجودی نمونه: {formatNumber(variant.stock)} عدد
+          {inCart > 0 && '، ' + formatNumber(inCart) + ' عدد در سبد خریدت'}</span> : null}
       </div>
       {notice && <div role={notice.error ? 'alert' : 'status'} className={'status-message purchase-feedback' + (notice.error ? ' error' : '')}>
         {!notice.error && <Check size={18} aria-hidden="true"/>}
         <span>{notice.text}</span>
-        {!notice.error && <span className="purchase-feedback-actions">
+        {notice.cartLink && <span className="purchase-feedback-actions">
           <Link className="link-button" href="/cart">مشاهده سبد خرید</Link>
-          <button type="button" className="link-button pdp-quick-cart-link" onClick={openCart}>سبد سریع</button>
         </span>}
       </div>}
       <div className="purchase-row">
         <button ref={buyButton} type="button" className="btn btn-primary btn-dark btn-lg" onClick={add}>
-          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : 'رنگ و سایز رو انتخاب کن'}
+          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : allInCart ? 'همه موجودی در سبد خریدت' : 'رنگ و سایز رو انتخاب کن'}
         </button>
         <button type="button" className={'btn btn-secondary btn-lg pdp-wishlist' + (isFavorite ? ' is-liked' : '')}
           aria-label={isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'} aria-pressed={isFavorite}
@@ -181,7 +197,7 @@ export function PurchasePanel({ product }: { product: Product }) {
           <span className={color ? undefined : 'is-empty'}>{summary}</span>
         </div>
         <button type="button" className="btn btn-primary" onClick={add} aria-label={stickyLabel}>
-          <ShoppingBag size={18} aria-hidden="true"/>{ready ? 'افزودن به سبد' : (!colorId ? 'انتخاب رنگ و سایز' : 'انتخاب سایز')}
+          <ShoppingBag size={18} aria-hidden="true"/>{ready ? 'افزودن به سبد' : allInCart ? 'در سبد خریدت' : (!colorId ? 'انتخاب رنگ و سایز' : 'انتخاب سایز')}
         </button>
       </div>
     </div>

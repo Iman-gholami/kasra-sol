@@ -37,8 +37,8 @@ test('capture shopping states on mobile', async ({ page }) => {
   await page.getByRole('button', {name:'رنگ کرم'}).click();
   await page.getByRole('button', {name:'سایز M'}).click();
   await page.getByRole('button', {name:'افزودن به سبد خرید',exact:true}).click();
-  await page.getByRole('button', {name:'سبد سریع'}).click();
-  await page.screenshot({path:folder+'/mini-cart-390.png',fullPage:false,animations:'disabled'});
+  await expect(page.getByRole('dialog', {name:'به سبد خرید اضافه شد'})).toBeVisible();
+  await page.screenshot({path:folder+'/added-to-cart-390.png',fullPage:false,animations:'disabled'});
   await page.goto('/product/shomiz-01');
   await page.evaluate(() => window.scrollTo(0,0));
   await expect(page.locator('.pdp-sticky-bar')).toHaveClass(/is-visible/);
@@ -50,6 +50,10 @@ test('capture shopping states on mobile', async ({ page }) => {
   await page.screenshot({path:folder+'/cart-390.png',fullPage:true,animations:'disabled'});
   await page.goto('/checkout');
   await page.screenshot({path:folder+'/checkout-390.png',fullPage:true,animations:'disabled'});
+  await page.getByRole('button', {name:'پر کردن با اطلاعات نمونه'}).click();
+  await page.getByRole('button', {name:'ادامه و انتخاب روش پرداخت'}).click();
+  await expect(page.getByRole('heading', {name:'بازبینی و پرداخت'})).toBeVisible();
+  await page.screenshot({path:folder+'/checkout-payment-390.png',fullPage:true,animations:'disabled'});
 });
 
 test('capture discovery overlays at 390px and 1440px',async ({page})=>{

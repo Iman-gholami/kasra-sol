@@ -75,9 +75,8 @@ for (const [name, use] of [
       await page.getByRole('button', { name: 'رنگ کرم' }).click();
       await page.getByRole('button', { name: 'سایز M' }).click();
       await page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
-      await page.getByRole('button', { name: 'سبد سریع' }).click();
-      await expect(page.getByRole('dialog', { name: 'سبد خرید سریع' })).toBeVisible();
-      await audit(page, name + ' quick cart');
+      await expect(page.getByRole('dialog', { name: 'به سبد خرید اضافه شد' })).toBeVisible();
+      await audit(page, name + ' added to cart');
     });
   });
 }

@@ -236,13 +236,12 @@ async function captureStates(browser) {
       await page.getByRole('button', { name: 'رنگ کرم' }).first().click();
       await page.getByRole('button', { name: 'سایز M' }).first().click();
       await page.getByRole('button', { name: /افزودن به سبد/ }).first().click();
+      await page.getByRole('dialog', { name: 'به سبد خرید اضافه شد' }).waitFor();
       await shot(page, dir, 'pdp-added-' + width);
-      const quick = page.getByRole('button', { name: /سبد سریع|مشاهده سبد سریع/ }).first();
-      if (await quick.count()) { await quick.click(); await shot(page, dir, 'mini-cart-' + width); }
     });
     await run('checkout-errors', filled, async page => {
       await page.goto(baseURL + '/checkout', { waitUntil: 'load' }); await quiet(page);
-      await page.getByRole('button', { name: /تأیید نمایشی سفارش|ثبت نمایشی/ }).first().click();
+      await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).first().click();
       await page.waitForTimeout(300);
       await shot(page, dir, 'checkout-errors-' + width);
     });

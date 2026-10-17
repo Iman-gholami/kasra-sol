@@ -34,7 +34,7 @@ Run Playwright against a built app. Do not use the development server for perfor
 - Persian-friendly search normalization (Arabic/Persian ک/ی forms and numerals)
 - Product gallery, zoom, available color/size variants, quantity and size guide
 - Local browser wishlist/cart, with variant-specific lines and totals
-- Iranian checkout form validation and **no** payment, storage of addresses, or real order placement
+- Two-step Iranian checkout with validation, sample shipping/payment/discount rules and a simulated gateway; **no** real payment, server-side storage of addresses, or real order placement (the draft stays in the tab's sessionStorage)
 - Provisional FAQ, contact, about, shipping, size guide, 404, health check
 - Mobile responsive layouts, semantic labels, keyboard-friendly interactions, reduced-motion CSS
 - Docker standalone runtime, Compose, Nginx sample, GitHub Actions and Playwright cases
@@ -91,6 +91,10 @@ curl -f http://127.0.0.1:3000/api/health
 Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx and HTTPS first. See [ParsPack Ubuntu deployment steps](docs/DEPLOYMENT.md).
 
 Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
+
+## Cart & Checkout 10.0
+
+The purchase flow now behaves like a real store while staying simulated: an add-to-cart confirmation sheet (bottom sheet on phones, panel under the cart icon on desktop), stock-aware adding, a free-shipping meter and "save for later" in the cart, a two-step checkout (address + shipping method → review, payment method, discount code) addressed by `?step=payment` so Back works, a simulated gateway with success, failure and cancel paths (no card data is ever asked for), and a confirmation page with the order summary. Sample rules live in `src/lib/checkout.ts`; the draft and the demo order are kept only in the tab's `sessionStorage`. See [Cart & Checkout 10.0](docs/CHECKOUT-V10.md).
 
 ## UX Overhaul 9.0
 

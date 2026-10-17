@@ -3,7 +3,7 @@ import localFont from 'next/font/local';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { ShopProvider } from '@/components/shop-provider';
-import { MiniCart } from '@/components/cart/mini-cart';
+import { AddedToCart } from '@/components/cart/added-to-cart';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { ToastProvider } from '@/components/ui/toast';
 import './globals.css';
@@ -50,7 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Footer />
             </div>
             <BottomNav />
-            <MiniCart />
+            <AddedToCart />
           </ToastProvider>
         </ShopProvider>
       </body>
