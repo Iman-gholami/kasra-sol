@@ -9,3 +9,4 @@ test-results
 .DS_Store
 artifacts
 backend/dist
+backend/uploads

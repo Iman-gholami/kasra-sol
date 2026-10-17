@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, integer, boolean, timestamp, jsonb, uuid, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, integer, boolean, timestamp, jsonb, uuid, uniqueIndex, index, bigserial } from 'drizzle-orm/pg-core';
 
 export type Color = { id: string; name: string; hex: string; familyId?: string };
 export type Address = { name: string; mobile: string; province: string; city: string; address: string; postal: string; notes: string };
@@ -19,6 +19,7 @@ export const products = pgTable('products', {
   care: text('care').notNull(),
   featured: boolean('featured').notNull().default(false),
   active: boolean('active').notNull().default(true),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
   searchText: text('search_text').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 }, t => [index('products_category_created_idx').on(t.category, t.createdAt), index('products_price_idx').on(t.price)]);
@@ -56,5 +57,16 @@ export const orderItems = pgTable('order_items', {
   colorId: varchar('color_id', { length: 80 }).notNull(),
   size: varchar('size', { length: 20 }).notNull(),
   quantity: integer('quantity').notNull(),
-  unitPrice: integer('unit_price').notNull()
+  unitPrice: integer('unit_price').notNull(),
+  colorName: text('color_name')
 }, t => [index('order_items_order_idx').on(t.orderId)]);
+
+export const orderStatusHistory = pgTable('order_status_history', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  fromStatus: varchar('from_status', { length: 30 }),
+  toStatus: varchar('to_status', { length: 30 }).notNull(),
+  actorId: uuid('actor_id'),
+  note: varchar('note', { length: 300 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+});
