@@ -6,7 +6,12 @@ import { accounts, overflowing, PNG, SCREENSHOTS, signIn, visitorAddress, watchC
 // Real back office: Fastify + PostgreSQL behind the Next.js proxy. Tests run in order and share records.
 const PRODUCT = 'e2e-linen-manto';
 const PRODUCT_NAME = 'مانتو کتان آزمایشی';
-const shot = (page: Page, name: string) => page.screenshot({ path: join(SCREENSHOTS, 'admin-' + name + '.png'), fullPage: true });
+// Scrolled to the top first (instantly: the site uses smooth scrolling), or full-page captures draw
+// sticky and fixed parts in the middle of the page.
+async function shot(page: Page, name: string) {
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await page.screenshot({ path: join(SCREENSHOTS, 'admin-' + name + '.png'), fullPage: true });
+}
 
 async function openTab(page: Page, label: string) {
   await page.getByRole('navigation', { name: 'بخش‌های مدیریت' }).getByRole('button', { name: label }).click();

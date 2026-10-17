@@ -101,7 +101,8 @@ npm run admin:create-owner -- owner_login /secure/path/admin-password.txt
 
 The file must contain a unique 12-256-character password. CLI refuses to create a second owner.
 Inside the production image the entry point is `node dist/admin/bootstrap.js owner_login /secure/path/admin-password.txt`.
-A password file must be explicitly and securely available within that container.
+A password file must be explicitly and securely available within that container, or pipe it through stdin so
+no copy stays in the container: `docker compose exec -T backend node dist/admin/bootstrap.js owner_login /dev/stdin < owner-pass`.
 
 Admin API uses 8-hour random bearer sessions; SHA-256 token hashes alone are persisted in PostgreSQL.
 Use HTTPS and an HttpOnly SameSite cookie in a server-side proxy, never browser-local storage.
