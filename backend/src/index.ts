@@ -8,6 +8,7 @@ import { pool, db } from './db/connection';
 import { products, variants } from './db/schema';
 import { filters, getProduct, listProducts } from './catalog';
 import { orderRoutes } from './orders';
+import { adminRoutes } from './admin/routes';
 import { DomainError } from './pricing';
 import { normalizeSearch } from './search';
 import { categories } from '../../src/data/facets';
@@ -113,6 +114,11 @@ app.put('/v1/admin/stock', { config: { rateLimit: { max: 30, timeWindow: '1 minu
   return { ok: true, stock: updated[0].stock };
 });
 await app.register(orderRoutes, {
+  invalidateCatalog: async () => {
+    if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
+  }
+});
+await app.register(adminRoutes, {
   invalidateCatalog: async () => {
     if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
   }
