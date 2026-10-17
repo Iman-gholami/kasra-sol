@@ -203,10 +203,10 @@ PRها: [#6 `feat/fastify-postgres-backend`](https://github.com/Iman-gholami/kas
 |---|---|---|
 | `feat/fastify-postgres-backend` (PR #6) | `main` | **بدون تغییر** (`21ce968`) |
 | `feat/admin-rbac-foundation` (PR #7) | PR #6 | **بدون تغییر** (`308b5f6`) |
-| `claude/practical-pasteur-a7s581-pr6-backend` | PR #6 | ۸ Commit اصلاح PR #6 |
-| `claude/practical-pasteur-a7s581` | PR #7 | ادغام (merge، نه rebase) شاخه بالا و Commitهای اصلاح PR #7 |
+| `claude/practical-pasteur-a7s581-pr6-backend` | PR #6 | ۸ Commit اصلاح PR #6 (Draft PR #8) |
+| `claude/practical-pasteur-a7s581` | PR #7 | ادغام (merge، نه rebase) شاخه بالا و Commitهای اصلاح PR #7 (Draft PR #9) |
 
-- Draft PRهای اصلاحی: یکی به مقصد شاخه PR #6 و یکی به مقصد شاخه PR #7 (لینک‌ها در پیام نهایی). PR دوم شامل ادغام شاخه اصلاح PR #6 است؛ پیشنهاد می‌شود اول PR اصلاحی #6 بررسی شود.
+- Draft PRهای اصلاحی: [#8](https://github.com/Iman-gholami/kasra-sol/pull/8) به مقصد شاخه PR #6 و [#9](https://github.com/Iman-gholami/kasra-sol/pull/9) به مقصد شاخه PR #7. PR #9 شامل ادغام شاخه #8 است؛ پیشنهاد می‌شود اول #8 بررسی شود.
 - ترتیب پیشنهادی ادغام پس از تأیید شما: Draft اصلاحی #6 ← PR #6 ← Draft اصلاحی #7 ← PR #7 ← `main`.
 - شماره‌گذاری Migrationها یک ترتیب سراسری دارد: `001` و `004` در PR #6؛ `002`، `003` و `005` در PR #7. نام فایل‌های اعمال‌شده تغییر نکرده است.
 
