@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProductEditor } from '@/components/admin/product-editor';
+import { SalesOverview } from '@/components/admin/sales-overview';
 
 export type AdminUser = {
   id: string; username: string; displayName: string; role: 'owner' | 'manager' | 'staff';
@@ -15,7 +16,7 @@ type Order = {
   total: number; created_at: string;
   address: { name?: string; province?: string; city?: string };
 };
-type Section = 'products' | 'orders' | 'staff' | 'audit';
+type Section = 'overview' | 'products' | 'orders' | 'staff' | 'audit';
 type Audit = { id: number; action: string; actor?: string; target: string; created_at: string };
 const formatPrice = (price: number) => new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
 const dateTime = (date: string) => new Date(date).toLocaleString('fa-IR');
@@ -172,14 +173,14 @@ function StaffItem({ member, refresh }: { member: AdminUser; refresh: () => void
 }
 export function AdminDashboard({ user }: { user: AdminUser }) {
   const router = useRouter();
-  const [section, setSection] = useState<Section>('products');
+  const [section, setSection] = useState<Section>(user.permissions.includes('reports:read') ? 'overview' : 'products');
   const [products, setProducts] = useState<Product[]>([]);
   const [productEditor, setProductEditor] = useState<string | 'new' | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [staff, setStaff] = useState<AdminUser[]>([]);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!user.permissions.includes('reports:read'));
   const [revision, setRevision] = useState(0);
   const [newUsername, setNewUsername] = useState('');
   const [newName, setNewName] = useState('');
@@ -188,6 +189,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
   const [savingStaff, setSavingStaff] = useState(false);
   const can = (permission: string) => user.permissions.includes(permission);
   useEffect(() => {
+    if (section === 'overview') { setLoading(false); return; }
     if (section === 'staff' && !can('staff:manage')) return;
     if (section === 'audit' && !can('staff:manage')) return;
     if (section === 'orders' && !can('orders:read')) return;
@@ -230,6 +232,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
     finally { setSavingStaff(false); }
   }
   const tabs = ([
+    ['overview', 'داشبورد فروشگاه', 'reports:read'],
     ['products', 'محصولات و موجودی', 'products:read'],
     ['orders', 'سفارش‌ها', 'orders:read'],
     ['staff', 'کارکنان و مجوزها', 'staff:manage'],
@@ -251,6 +254,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
     </nav>
     {error && <p role="alert" className="mb-4 rounded border border-red-300 p-3 text-red-700">{error}</p>}
     {loading && <p role="status">در حال دریافت اطلاعات…</p>}
+    {section === 'overview' && can('reports:read') && <SalesOverview/>}
     {section === 'products' && productEditor !== null &&
       <ProductEditor productId={productEditor === 'new' ? undefined : productEditor}
         done={() => { setProductEditor(null); refresh(); }}/>}
