@@ -80,7 +80,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
   app.get('/v1/admin/products', async (req, reply) => {
     if (!await requirePermission(req, reply, 'products:read')) return;
     const found = await pool.query(
-      'SELECT p.id,p.slug,p.name,p.price,p.compare_at,p.category,' +
+      'SELECT p.id,p.slug,p.name,p.price,p.compare_at,p.category,p.images,' +
       'p.active,COALESCE(SUM(v.stock),0)::integer AS stock ' +
       'FROM products p LEFT JOIN product_variants v ON v.product_id=p.id ' +
       'GROUP BY p.id ORDER BY p.created_at DESC,p.id LIMIT 100');

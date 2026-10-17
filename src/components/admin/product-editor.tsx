@@ -105,10 +105,10 @@ export function ProductEditor({ productId, done }: Props) {
     finally { setBusy(false); }
   }
   if (loading) return <p role="status">در حال دریافت محصول…</p>;
-  return <section className="rounded-xl border border-neutral-300 bg-white p-4 sm:p-6">
+  return <section className="admin-form-card grid gap-3">
     <div className="mb-4 flex flex-wrap justify-between gap-3">
       <h2 className="text-xl font-semibold">{productId ? 'ویرایش کامل محصول' : 'افزودن محصول جدید'}</h2>
-      <button type="button" className="rounded border px-4 py-2" onClick={done}>بازگشت به فهرست</button>
+      <button type="button" className="admin-btn admin-btn-outline" onClick={done}>بازگشت به فهرست</button>
     </div>
     <p className="mb-4 text-sm text-neutral-600">محصول جدید ابتدا به‌صورت پیش‌نویس ایجاد می‌شود. بعد از ثبت عکس و موجودی آن را منتشر کنید. مبلغ‌ها تومان هستند.</p>
     <form onSubmit={submit} className="grid gap-5">
@@ -168,7 +168,7 @@ export function ProductEditor({ productId, done }: Props) {
           {item.images.map((src, idx) => <div key={src + idx} className="relative rounded border p-2">
             <Image src={src} width={108} height={128} unoptimized alt={'تصویر ' + (idx + 1) + ' محصول'}
               className="h-32 w-28 object-cover"/>
-            <button type="button" className="mt-2 block w-full rounded border px-2 py-1 text-sm"
+            <button type="button" className="admin-btn admin-btn-outline admin-btn-small mt-2 w-full"
               onClick={() => edit('images', item.images.filter((_, i) => i !== idx))}>حذف از محصول</button>
             {idx > 0 && <button type="button" className="mt-1 block w-full text-sm underline" onClick={() => {
               const images = [...item.images]; [images[0], images[idx]] = [images[idx], images[0]];
@@ -194,10 +194,10 @@ export function ProductEditor({ productId, done }: Props) {
             <input className={inputClass} type="color" value={color.hex}
               onChange={event => edit('colors', item.colors.map((c, j) => j === idx ? { ...c, hex: event.target.value } : c))}/>
           </Field>
-          <button type="button" className="self-end rounded border p-2" disabled={item.colors.length === 1}
+          <button type="button" className="admin-btn admin-btn-danger self-end" disabled={item.colors.length === 1}
             onClick={() => edit('colors', item.colors.filter((_, j) => j !== idx))}>حذف رنگ</button>
         </div>)}
-        <button className="w-fit rounded border px-4 py-2" type="button"
+        <button className="admin-btn admin-btn-outline" type="button"
           onClick={() => edit('colors', [...item.colors, { id: 'new-color-' + (item.colors.length + 1), name: 'رنگ جدید', hex: '#777777' }])}>
           افزودن رنگ
         </button>
@@ -227,10 +227,10 @@ export function ProductEditor({ productId, done }: Props) {
       {error && <p role="alert" className="rounded border border-red-300 p-3 text-red-800">{error}</p>}
       {message && <p role="status" className="text-sm text-neutral-700">{message}</p>}
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={busy || uploading} className="rounded bg-neutral-900 px-6 py-3 text-white disabled:opacity-50">
+        <button type="submit" disabled={busy || uploading} className="admin-btn admin-btn-primary">
           {busy ? 'در حال ذخیره…' : productId ? 'ذخیره تمام تغییرات محصول' : 'ایجاد محصول به‌صورت پیش‌نویس'}
         </button>
-        <button type="button" onClick={done} className="rounded border px-4 py-3">انصراف</button>
+        <button type="button" onClick={done} className="admin-btn admin-btn-outline">انصراف</button>
       </div>
     </form>
   </section>;
