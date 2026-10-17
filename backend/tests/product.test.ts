@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { productInput } from '../src/admin/product-schema';
-import { detectImage } from '../src/admin/media';
+import { detectImage } from '../src/admin/image-type';
 
 const sample = {
   id: 'test-01', slug: 'test-01', name: 'محصول تستی',

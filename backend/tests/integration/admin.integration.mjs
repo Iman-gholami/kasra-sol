@@ -67,6 +67,8 @@ async function revision(token = owner.token) {
   assert.equal(found.status, 200);
   return { etag: '"' + found.data.revision + '"', item: found.data.item };
 }
+/** The PUT body: everything the editor sends, without read-only state. */
+const editable = item => { const body = { ...item }; delete body.status; delete body.active; return body; };
 const put = (token, body, etag) => api('/v1/admin/products/' + PRODUCT, { method: 'PUT', token, body, headers: { 'If-Match': etag } });
 
 before(async () => {
@@ -182,7 +184,7 @@ describe('role-based access and escalation attempts', () => {
   it('lets a content editor edit descriptions but not prices or stock through the full editor', async () => {
     const editor = await account('staff', { grants: ['products:write'] });
     const { etag, item } = await revision(editor.token);
-    const { status: _s, active: _a, ...current } = item;
+    const current = editable(item);
     assert.equal((await put(editor.token, { ...current, price: 1 }, etag)).data.permission, 'products:price');
     const stockEdit = await put(editor.token, { ...current, variants: current.variants.map(v => ({ ...v, stock: 999 })) }, etag);
     assert.equal(stockEdit.status, 403);
@@ -214,7 +216,7 @@ describe('inventory and pricing integrity', () => {
 
   it('rejects stale full-product edits and sale prices above the original price', async () => {
     const { etag, item } = await revision();
-    const { status: _s, active: _a, ...current } = item;
+    const current = editable(item);
     await placeOrder(PRODUCT);
     assert.equal((await put(owner.token, { ...current, name: 'نام قدیمی' }, etag)).status, 412);
     assert.equal((await api('/v1/admin/products/' + PRODUCT + '/price', { method: 'PATCH', token: manager.token,
@@ -293,7 +295,7 @@ describe('order lifecycle', () => {
   it('keeps what was ordered after the product is renamed, recoloured and archived', async () => {
     const order = await placeOrder(PRODUCT);
     const { etag, item } = await revision();
-    const { status: _s, active: _a, ...current } = item;
+    const current = editable(item);
     assert.equal((await put(owner.token, { ...current, name: 'نام تازه', colors: [{ ...current.colors[0], name: 'زغالی' }] }, etag)).status, 200);
     assert.equal((await api('/v1/admin/products/' + PRODUCT + '/visibility', { method: 'PATCH', token: owner.token,
       body: { active: false } })).data.status, 'archived');
