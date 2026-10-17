@@ -27,6 +27,7 @@ export function OrderConfirmation() {
   </div>;
 
   const { fields, totals } = order;
+  const realOrder = Boolean(order.status);
   const shipping = shippingById(order.shipping);
   const payment = paymentById(order.payment);
   const lines = resolveLines(order.items);
@@ -36,11 +37,14 @@ export function OrderConfirmation() {
   return <div className="order-done">
     <header className="order-done-head">
       <CheckCircle2 size={48} strokeWidth={1.3} aria-hidden="true"/>
-      <p className="section-kicker">سفارش آزمایشی</p>
-      <h1>{order.payment === 'online' ? 'پرداخت آزمایشی موفق بود' : 'سفارش آزمایشی ثبت شد'}</h1>
-      <p className="order-done-code">کد پیگیری آزمایشی: <strong><bdi dir="ltr">{toPersianDigits(order.id)}</bdi></strong></p>
-      <p>در فروشگاه واقعی، پیامک تأیید و پیگیری به <bdi dir="ltr">{mobile}</bdi> فرستاده می‌شد.
-        این نسخه نمایشی است: هیچ سفارش واقعی ثبت نشده و هیچ پرداختی انجام نشده است.</p>
+      <p className="section-kicker">{realOrder ? 'سفارش ثبت‌شده' : 'سفارش آزمایشی'}</p>
+      <h1>{order.status === 'pending_payment' ? 'سفارش در انتظار پرداخت ثبت شد' : order.status === 'confirmed_cod' ? 'سفارش با پرداخت در محل ثبت شد' : order.payment === 'online' ? 'پرداخت آزمایشی موفق بود' : 'سفارش آزمایشی ثبت شد'}</h1>
+      <p className="order-done-code">{realOrder ? 'شناسه سفارش:' : 'کد پیگیری آزمایشی:'} <strong><bdi dir="ltr">{toPersianDigits(order.id)}</bdi></strong></p>
+      <p>{realOrder ? (order.status === 'pending_payment'
+        ? 'سفارش در پایگاه داده ثبت شده اما هنوز پرداخت نشده است. تا فعال‌شدن درگاه، پرداخت آنلاین و رزرو موجودی انجام نمی‌شود.'
+        : 'سفارش در پایگاه داده ثبت شده و مبلغ هنگام تحویل دریافت می‌شود. پیامک و ارسال واقعی هنوز راه‌اندازی نشده‌اند.')
+        : <>در فروشگاه واقعی، پیامک تأیید و پیگیری به <bdi dir="ltr">{mobile}</bdi> فرستاده می‌شد.
+          این نسخه نمایشی است: هیچ سفارش واقعی ثبت نشده و هیچ پرداختی انجام نشده است.</>}</p>
     </header>
 
     <ol className="order-timeline" aria-label="مراحل سفارش">
@@ -60,7 +64,7 @@ export function OrderConfirmation() {
         <h2 id="order-payment-title">پرداخت</h2>
         <p>{payment.title}{order.payment === 'cod' && '، ' + toman(totals.total) + ' هنگام تحویل'}</p>
         <Breakdown totals={totals} code={order.code} total={totals.total}
-          totalLabel={order.payment === 'online' ? 'مبلغ پرداخت‌شده (آزمایشی)' : 'قابل پرداخت هنگام تحویل'}
+          totalLabel={order.status === 'pending_payment' ? 'مبلغ در انتظار پرداخت' : order.status === 'confirmed_cod' ? 'قابل پرداخت هنگام تحویل' : order.payment === 'online' ? 'مبلغ پرداخت‌شده (آزمایشی)' : 'قابل پرداخت هنگام تحویل'}
           shipping={{ label: shipping.title, value: totals.shipping ? <span className="price">{toman(totals.shipping)}</span> : 'رایگان' }}/>
       </section>
       <section className="order-card order-card-wide" aria-labelledby="order-items-title">

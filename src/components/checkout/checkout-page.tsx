@@ -44,7 +44,7 @@ export function CheckoutPage() {
   </div>;
 
   return <CheckoutFlow lines={lines} onPlaced={order => {
-    // No customer information leaves the browser: the demo order is kept only in this tab's sessionStorage.
+    // The receipt is cached in this tab for display; database-backed orders are already stored by the API.
     completeOrder(order);
     setPlaced(true);
     clearCart();

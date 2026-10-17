@@ -8,15 +8,17 @@ export function Header() {
   return <>
     <a className="skip-link" href="#main-content">رفتن به محتوای اصلی</a>
     <aside className="announcement" aria-label="وضعیت نسخه نمایشی">
-      <p>نسخه نمایشی کسری بوتیک · پرداخت و ثبت سفارش واقعی فعال نیست</p>
+      <p>{process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true'
+        ? 'نسخه آزمایشی کسری بوتیک · سفارش در سرور ثبت می‌شود، پرداخت اینترنتی هنوز فعال نیست'
+        : 'نسخه نمایشی کسری بوتیک · پرداخت و ثبت سفارش واقعی فعال نیست'}</p>
     </aside>
     <header className="site-header">
       <div className="container header-inner">
         <div className="header-start">
           <MobileMenu />
-          <Link href="/" className="brand" aria-label="کسری بوتیک، صفحه اصلی">
-            <span className="brand-monogram" aria-hidden="true">K</span>
-            <span className="brand-type" aria-hidden="true"><strong dir="ltr">KASRA</strong><small dir="ltr">BOUTIQUE</small></span>
+          <Link href="/" className="brand">
+            <span className="brand-monogram">K</span>
+            <span className="brand-type"><strong dir="ltr">KASRA</strong><small dir="ltr">BOUTIQUE</small></span>
           </Link>
         </div>
         <PrimaryNav />

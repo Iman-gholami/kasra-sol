@@ -77,7 +77,9 @@ export function ShippingStep({ draft, update, subtotal, headingRef, onContinue }
         update({ fields: sampleFields }); setErrors({}); setFormError(''); setMethodNotice('');
       }}><Sparkles size={16} aria-hidden="true"/> پر کردن با اطلاعات نمونه</button>
     </div>
-    <p className="checkout-card-intro">اطلاعاتت فقط در همین تب مرورگر نگه داشته می‌شود و به هیچ سروری ارسال نمی‌شود.</p>
+    <p className="checkout-card-intro">{process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true'
+      ? 'اطلاعات ارسال هنگام ثبت نهایی سفارش به سرور فرستاده و همراه سفارش ذخیره می‌شود.'
+      : 'اطلاعاتت فقط در همین تب مرورگر نگه داشته می‌شود و به هیچ سروری ارسال نمی‌شود.'}</p>
 
     <h3 className="checkout-section-title">نشانی تحویل</h3>
     <div className="form-grid">

@@ -3,17 +3,20 @@ import { notFound } from 'next/navigation';
 import { ProductDetail } from '@/components/products/product-detail';
 import { ProductGrid } from '@/components/products/product-grid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
-import { bySlug, categories, products } from '@/data/products';
+import { categories, products as demoProducts } from '@/data/products';
+import { getHomeProducts, getProductBySlug } from '@/lib/backend-products';
 
 type Props = { params: Promise<{ slug: string }> };
-export function generateStaticParams() { return products.map(({ slug }) => ({ slug })); }
+export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return demoProducts.map(({ slug }) => ({ slug })); }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const product = bySlug((await params).slug);
+  const product = await getProductBySlug((await params).slug);
   return { title: product?.name ?? 'محصول ناموجود', description: product?.description,
     openGraph: product ? { images: [product.images[0]] } : undefined };
 }
 export default async function ProductPage({ params }: Props) {
-  const product = bySlug((await params).slug);
+  const product = await getProductBySlug((await params).slug);
+  const products = await getHomeProducts();
   if (!product) notFound();
   // Keep suggestions useful across outfits instead of repeating four almost identical demo portraits.
   // Prefer two neighboring styles from this category and one complementary style from each other category.

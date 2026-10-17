@@ -8,3 +8,5 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const data = await queryProducts(filters);
   return <CatalogView title="همه محصولات" intro="انتخاب‌هایی برای هر روز، با حال‌وهوای خودت." action="/shop" filters={filters} data={data} />;
 }
+
+export const dynamic = 'force-dynamic';

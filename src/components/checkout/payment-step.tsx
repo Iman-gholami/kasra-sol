@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type RefObject } from 'react';
+import { useRef, useState, type FormEvent, type RefObject } from 'react';
 import Link from 'next/link';
 import { AlertCircle, Banknote, CreditCard, Info, MapPin, Tag, Truck, X } from 'lucide-react';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
@@ -22,11 +22,45 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
   const [gatewayOpen, setGatewayOpen] = useState(false);
   const gatewayMounted = useMountedOnce(gatewayOpen);
   const [outcome, setOutcome] = useState<Outcome>(null);
+  const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const idempotency = useRef({ fingerprint: '', key: '' });
+  const backendEnabled = process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true';
   const { fields } = draft;
   const shipping = shippingById(draft.shipping);
   const payment: PaymentMethodId = paymentRestriction(paymentById(draft.payment), draft.shipping) ? DEFAULT_PAYMENT : draft.payment;
 
-  function place(method: PaymentMethodId) {
+  async function place(method: PaymentMethodId) {
+    if (backendEnabled) {
+      const payload = {
+        items: lines.map(line => line.item),
+        fields: { ...fields, mobile: normalizeMobile(fields.mobile), postal: normalizePostal(fields.postal) },
+        shipping: draft.shipping, payment: method, code: totals.discount ? draft.code : ''
+      };
+      const fingerprint = JSON.stringify(payload);
+      if (idempotency.current.fingerprint !== fingerprint)
+        idempotency.current = { fingerprint, key: crypto.randomUUID() };
+      setSaving(true);
+      setApiError('');
+      try {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotency.current.key },
+          body: fingerprint
+        });
+        const order = await response.json();
+        if (!response.ok) throw new Error(order.message || 'ثبت سفارش ناموفق بود. موجودی یا اطلاعات را دوباره بررسی کن.');
+        onPlaced({
+          id: order.id, items: lines.map(line => line.item), fields: payload.fields,
+          shipping: draft.shipping, payment: method, code: payload.code,
+          totals: { ...totals, ...order.totals }, status: order.status
+        });
+      } catch (error) {
+        setApiError(error instanceof Error ? error.message : 'ارتباط با سرور برقرار نشد.');
+        setSaving(false);
+      }
+      return;
+    }
     onPlaced({
       id: 'KS-' + String(Math.floor(100000 + Math.random() * 900000)),
       items: lines.map(line => line.item), fields, shipping: draft.shipping, payment: method,
@@ -40,7 +74,7 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setOutcome(null);
-    if (payment === 'cod') place('cod');
+    if (backendEnabled || payment === 'cod') void place(payment);
     else setGatewayOpen(true);
   }
 
@@ -86,10 +120,11 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
     <p className="checkout-submit-note">
       <Info size={15} aria-hidden="true"/>
       {payment === 'online'
-        ? 'به درگاه پرداخت آزمایشی می‌روی؛ در هیچ مرحله‌ای اطلاعات کارت بانکی پرسیده نمی‌شود.'
+        ? (backendEnabled ? 'سفارش در سرور ثبت می‌شود، اما پرداخت اینترنتی تا اتصال درگاه واقعی انجام نخواهد شد.' : 'به درگاه پرداخت آزمایشی می‌روی؛ در هیچ مرحله‌ای اطلاعات کارت بانکی پرسیده نمی‌شود.')
         : 'مبلغ ' + toman(totals.total) + ' را هنگام تحویل با کارت‌خوان پرداخت می‌کنی.'}
     </p>
     <div className="checkout-submit-bar">
+      {apiError && <p className="status-message checkout-outcome error" role="alert"><AlertCircle size={18} aria-hidden="true"/>{apiError}</p>}
       {outcome && <p className={'status-message checkout-outcome' + (outcome === 'failed' ? ' error' : ' is-neutral')}
         role={outcome === 'failed' ? 'alert' : 'status'}>
         <AlertCircle size={18} aria-hidden="true"/>
@@ -97,12 +132,13 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
           ? 'پرداخت انجام نشد. سبد خریدت محفوظ است؛ دوباره تلاش کن یا روش پرداخت دیگری انتخاب کن.'
           : 'پرداخت را لغو کردی. سبد خریدت محفوظ است و هر وقت آماده بودی می‌توانی دوباره پرداخت کنی.'}</span>
       </p>}
-      <button className="btn btn-primary btn-lg btn-block form-submit" type="submit">
-        {payment === 'online' ? <>پرداخت <span className="price">{toman(totals.total)}</span></> : 'ثبت نهایی سفارش'}
+      <button className="btn btn-primary btn-lg btn-block form-submit" type="submit" disabled={saving}>
+        {saving ? 'در حال ثبت سفارش...' : backendEnabled && payment === 'online' ? 'ثبت سفارش در انتظار پرداخت' :
+          payment === 'online' ? <>پرداخت <span className="price">{toman(totals.total)}</span></> : 'ثبت نهایی سفارش'}
       </button>
     </div>
 
-    {gatewayMounted && <Sheet open={gatewayOpen} onClose={() => closeGateway('cancelled')} labelledBy="gateway-title"
+    {!backendEnabled && gatewayMounted && <Sheet open={gatewayOpen} onClose={() => closeGateway('cancelled')} labelledBy="gateway-title"
       className="sheet-center gateway-dialog">
       <div className="sheet-inner">
         <div className="sheet-header">
