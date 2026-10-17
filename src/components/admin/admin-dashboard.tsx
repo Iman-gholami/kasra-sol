@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
+import { ClipboardList, ExternalLink, LayoutDashboard, LogOut, Package, ScrollText, UsersRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProductEditor } from '@/components/admin/product-editor';
 import { SalesOverview } from '@/components/admin/sales-overview';
+import { ProductList, type ProductRow } from '@/components/admin/product-list';
 
 export type AdminUser = {
   id: string; username: string; displayName: string; role: 'owner' | 'manager' | 'staff';
   active: boolean; grants: string[]; revokes: string[]; permissions: string[];
 };
-type Product = { id: string; slug: string; name: string; category: string; price: number; stock: number; active: boolean };
 type Variant = { id: string; product_id: string; color_id: string; size: string; stock: number };
 type Order = {
   id: string; status: string; payment: string; shipping: string;
@@ -38,87 +40,6 @@ async function api<T>(path: string, method = 'GET', payload?: unknown): Promise<
     throw new Error('عملیات ناموفق بود (کد ' + response.status + ').');
   }
   return response.json() as Promise<T>;
-}
-function ProductItem({ item, permissions, refreshed, editProduct }: { item: Product; permissions: string[]; refreshed: () => void; editProduct: (id: string) => void }) {
-  const [price, setPrice] = useState(item.price);
-  const [variants, setVariants] = useState<Variant[] | null>(null);
-  const [stocks, setStocks] = useState<Record<string, number>>({});
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  async function changeVisibility() {
-    if (!confirm(item.active ? 'این محصول از فروشگاه پنهان شود؟' : 'این محصول منتشر شود؟')) return;
-    setBusy(true); setMessage('');
-    try {
-      await api('products/' + item.id + '/visibility', 'PATCH', { active: !item.active });
-      refreshed();
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'خطا در تغییر وضعیت'); }
-    finally { setBusy(false); }
-  }
-  async function changePrice(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setMessage('');
-    try {
-      await api('products/' + item.id + '/price', 'PATCH', { price });
-      setMessage('قیمت ذخیره شد.'); refreshed();
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'خطا'); }
-    finally { setBusy(false); }
-  }
-  async function expand() {
-    if (variants) { setVariants(null); return; }
-    try {
-      const result = await api<{ items: Variant[] }>('products/' + item.id + '/variants');
-      setVariants(result.items);
-      setStocks(Object.fromEntries(result.items.map(v => [v.id, v.stock])));
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'خطا'); }
-  }
-  async function updateStock(id: string) {
-    setBusy(true); setMessage('');
-    try {
-      const stock = stocks[id];
-      await api('variants/' + id + '/stock', 'PATCH', { stock });
-      setVariants(rows => rows?.map(v => v.id === id ? { ...v, stock } : v) ?? null);
-      setMessage('موجودی ذخیره شد.'); refreshed();
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'خطا'); }
-    finally { setBusy(false); }
-  }
-  return <article className="rounded-xl border border-neutral-200 bg-white p-4">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h3 className="font-semibold">{item.name}</h3>
-        <p className="text-xs text-neutral-600">{item.id} · {item.category} · موجودی کل: {item.stock} · {item.active ? 'منتشرشده' : 'آرشیوشده'}</p></div>
-      {permissions.includes('products:price') ?
-        <form onSubmit={changePrice} className="flex flex-wrap items-center gap-2">
-          <label className="text-sm">قیمت (تومان)
-            <input aria-label={'قیمت ' + item.name} type="number" min="0" max="1000000000" required
-              value={price} onChange={event => setPrice(Number(event.target.value))}
-              className="ms-2 w-36 rounded-md border p-2" dir="ltr"/>
-          </label>
-          <button disabled={busy} className="rounded bg-neutral-900 px-3 py-2 text-white disabled:opacity-50">ذخیره قیمت</button>
-        </form> : <p>{formatPrice(item.price)}</p>}
-    </div>
-    <div className="mt-3 flex flex-wrap gap-2">
-      {['products:write', 'products:price', 'inventory:write'].every(p => permissions.includes(p)) &&
-        <button type="button" className="rounded border px-3 py-2 text-sm" onClick={() => editProduct(item.id)}>ویرایش کامل و تصاویر</button>}
-      {permissions.includes('products:write') && <button type="button" disabled={busy}
-        className="rounded border px-3 py-2 text-sm" onClick={() => void changeVisibility()}>
-        {item.active ? 'آرشیو محصول' : 'انتشار محصول'}
-      </button>}
-    </div>
-    {permissions.includes('inventory:read') &&
-      <button className="mt-3 rounded border px-3 py-2 text-sm" onClick={expand}
-        aria-expanded={variants !== null}>{variants ? 'بستن رنگ‌ها و سایزها' : 'مشاهده موجودی رنگ و سایز'}</button>}
-    {variants && <div className="mt-3 grid gap-2">
-      {variants.map(v => <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-neutral-50 p-2">
-        <span>{v.color_id} / {v.size} (فعلی: {v.stock})</span>
-        {permissions.includes('inventory:write') && <div className="flex gap-2">
-          <input type="number" min="0" max="1000000" aria-label={'موجودی ' + v.color_id + ' ' + v.size}
-            className="w-24 rounded border p-2" dir="ltr" value={stocks[v.id] ?? v.stock}
-            onChange={event => setStocks(prev => ({ ...prev, [v.id]: Number(event.target.value) }))}/>
-          <button type="button" onClick={() => updateStock(v.id)} disabled={busy}
-            className="rounded border border-neutral-600 px-3 py-1 disabled:opacity-50">ثبت</button>
-        </div>}
-      </div>)}
-    </div>}
-    {message && <p role="status" className="mt-2 text-sm">{message}</p>}
-  </article>;
 }
 const STAFF_TOGGLES = [
   ['products:price', 'تغییر قیمت'], ['products:write', 'ویرایش محصول'],
@@ -155,7 +76,7 @@ function StaffItem({ member, refresh }: { member: AdminUser; refresh: () => void
             <option value="manager">مدیر فروشگاه</option><option value="staff">کارمند</option>
           </select>
         </label>
-        <button className="rounded border px-2" disabled={busy}
+        <button className="admin-btn admin-btn-outline admin-btn-small" disabled={busy}
           onClick={() => void update({ active: !member.active })}>
           {member.active ? 'غیرفعال‌کردن حساب' : 'فعال‌کردن حساب'}
         </button>
@@ -174,7 +95,7 @@ function StaffItem({ member, refresh }: { member: AdminUser; refresh: () => void
 export function AdminDashboard({ user }: { user: AdminUser }) {
   const router = useRouter();
   const [section, setSection] = useState<Section>(user.permissions.includes('reports:read') ? 'overview' : 'products');
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [productEditor, setProductEditor] = useState<string | 'new' | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [staff, setStaff] = useState<AdminUser[]>([]);
@@ -239,39 +160,67 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
     ['audit', 'تاریخچه تغییرات', 'staff:manage']
   ] as const).filter(([, , permission]) => can(permission));
 
-  return <section className="mx-auto max-w-6xl px-4 py-8">
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <div><h1 className="text-2xl font-bold">مدیریت کسری بوتیک</h1>
-        <p className="text-sm text-neutral-600">{user.displayName} · {user.username} · {user.role}</p>
+  const navIcons = {
+    overview: LayoutDashboard, products: Package, orders: ClipboardList, staff: UsersRound, audit: ScrollText
+  };
+  const titleMap: Record<Section, string> = {
+    overview: 'داشبورد فروشگاه', products: 'محصولات و موجودی',
+    orders: 'مدیریت سفارش‌ها', staff: 'کارکنان و مجوزها', audit: 'تاریخچه فعالیت‌ها'
+  };
+  return <section className="admin-app" data-testid="admin-app">
+    <aside className="admin-sidebar">
+      <div className="admin-brand">
+        <span className="admin-brand-mark" aria-hidden="true">K</span>
+        <div><p className="admin-brand-title">کسری بوتیک</p><p className="admin-brand-subtitle">پنل مدیریت فروشگاه</p></div>
       </div>
-      <button onClick={() => void signOut()} className="rounded border px-4 py-2">خروج از حساب</button>
-    </header>
-    <nav aria-label="بخش‌های مدیریت" className="mb-6 flex flex-wrap gap-2">
-      {tabs.map(([id, label]) => <button type="button" key={id}
-        aria-current={section === id ? 'page' : undefined}
-        className={section === id ? 'rounded bg-neutral-900 px-4 py-2 text-white' : 'rounded border px-4 py-2'}
-        onClick={() => { setLoading(true); setSection(id); }}>{label}</button>)}
-    </nav>
+      <p className="admin-nav-head">منوی اصلی</p>
+      <nav className="admin-navigation" aria-label="بخش‌های مدیریت">
+        {tabs.map(([id, label]) => {
+          const Icon = navIcons[id];
+          return <button type="button" key={id} aria-current={section === id ? 'page' : undefined}
+            onClick={() => { setLoading(id !== 'overview'); setSection(id); }}>
+            <Icon size={19} aria-hidden="true"/>{label}
+          </button>;
+        })}
+      </nav>
+      <div className="admin-side-spacer"/>
+      <div className="admin-side-note">
+        <strong>فضای مدیریت اختصاصی</strong>
+        <span>تغییرات این پنل تنها با حساب‌های مجاز ثبت می‌شوند.</span>
+        <Link href="/" target="_blank" rel="noopener noreferrer"><ExternalLink size={13} aria-hidden="true"/> مشاهده فروشگاه</Link>
+      </div>
+      <button type="button" className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm text-emerald-50 hover:bg-white/10"
+        onClick={() => void signOut()}><LogOut size={18} aria-hidden="true"/> خروج از حساب</button>
+    </aside>
+    <div className="admin-workspace">
+      <header className="admin-topbar">
+        <div><h1 className="admin-page-title">{titleMap[section]}</h1>
+          <p className="admin-page-subtitle">کسری بوتیک / پنل مدیریت</p>
+        </div>
+        <div className="admin-account">
+          <div className="text-left">
+            <span className="admin-account-name">{user.displayName}</span>
+            <span className="admin-account-role">{user.role === 'owner' ? 'صاحب فروشگاه' :
+              user.role === 'manager' ? 'مدیر فروشگاه' : 'کارمند فروشگاه'}</span>
+          </div>
+          <div className="admin-avatar" aria-hidden="true">{user.displayName.slice(0, 1)}</div>
+        </div>
+      </header>
+      <main className="admin-main">
     {error && <p role="alert" className="mb-4 rounded border border-red-300 p-3 text-red-700">{error}</p>}
     {loading && section !== 'overview' && <p role="status">در حال دریافت اطلاعات…</p>}
     {section === 'overview' && can('reports:read') && <SalesOverview/>}
     {section === 'products' && productEditor !== null &&
       <ProductEditor productId={productEditor === 'new' ? undefined : productEditor}
         done={() => { setProductEditor(null); refresh(); }}/>}
-    {!loading && section === 'products' && productEditor === null && <div className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-semibold">محصولات ({products.length})</h2>
-        {['products:write', 'products:price', 'inventory:write'].every(p => can(p)) &&
-          <button type="button" className="rounded bg-neutral-900 px-4 py-2 text-white"
-            onClick={() => setProductEditor('new')}>افزودن محصول جدید</button>}
-      </div>
-      {products.map(item => <ProductItem key={item.id} item={item} permissions={user.permissions}
-        editProduct={setProductEditor} refreshed={refresh}/>)}
-    </div>}
+    {!loading && section === 'products' && productEditor === null &&
+      <ProductList products={products} permissions={user.permissions} refreshed={refresh}
+        edit={setProductEditor} create={() => setProductEditor('new')}/>}
+
     {!loading && section === 'orders' && <div className="grid gap-3">
       <h2 className="text-xl font-semibold">آخرین سفارش‌ها</h2>
       <p className="text-sm text-neutral-600">سفارش آنلاین pending_payment پرداخت‌نشده است و تأیید آن فقط پس از اتصال درگاه واقعی مجاز خواهد بود.</p>
-      {orders.map(item => <article key={item.id} className="rounded border bg-white p-4">
+      {orders.map(item => <article key={item.id} className="admin-info-card">
         <div className="flex flex-wrap justify-between gap-2">
           <div><strong dir="ltr">{item.id}</strong><p>{item.address?.name} · {item.address?.province}، {item.address?.city}</p></div>
           <div><p>{item.status} · {item.payment}</p><p>{formatPrice(item.total)}</p></div>
@@ -289,7 +238,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
     </div>}
     {!loading && section === 'staff' && can('staff:manage') && <div className="grid gap-5">
       <h2 className="text-xl font-semibold">کارکنان و دسترسی‌ها</h2>
-      <form onSubmit={createStaff} className="grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2">
+      <form onSubmit={createStaff} className="admin-form-card grid gap-3 sm:grid-cols-2">
         <h3 className="sm:col-span-2 font-semibold">ایجاد حساب کارمند</h3>
         <label className="grid gap-1">نام کاربری (لاتین)
           <input dir="ltr" required minLength={3} pattern="[a-z0-9][a-z0-9_.-]{2,63}"
@@ -309,7 +258,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
             <option value="staff">کارمند</option><option value="manager">مدیر فروشگاه</option>
           </select>
         </label>
-        <button disabled={savingStaff} className="rounded bg-neutral-900 p-2 text-white disabled:opacity-50 sm:col-span-2">
+        <button disabled={savingStaff} className="admin-btn admin-btn-primary sm:col-span-2">
           {savingStaff ? 'در حال ایجاد…' : 'ساخت حساب مستقل'}
         </button>
       </form>
@@ -322,5 +271,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
         <p className="text-sm">{item.target} · {dateTime(item.created_at)}</p>
       </div>)}
     </div>}
+      </main>
+    </div>
   </section>;
 }
