@@ -54,8 +54,12 @@ export async function ensureShopProducts(ids: string[]) {
   const missing = [...new Set(ids)].filter(id => !registry.has(id));
   if (!missing.length) return;
   try {
-    for (const item of await fetchProducts(missing)) registry.set(item.id, item);
-    notify({ ...current, catalogError: false });
+    const received = await fetchProducts(missing);
+    for (const item of received) registry.set(item.id, item);
+    const available = new Set(received.map(item => item.id));
+    // An archived or deleted product should no longer be shown as a perpetual wishlist spinner.
+    notify({ ...current, wishlist: current.wishlist.filter(id => !missing.includes(id) || available.has(id)),
+      catalogError: false });
   } catch {
     notify({ ...current, catalogError: true });
   }

@@ -121,3 +121,11 @@ product's gallery are unlinked from that product but retained on disk; add a saf
 unreferenced-file cleanup process after retention policies have been determined.
 This first implementation does not include image resizing, malware scanning, quotas
 by total tenant storage, or CDN offloading. Limit use to staging until audited.
+
+## Dynamic storefront catalog integration
+
+The browser cart and wishlist resolve product IDs through `GET /api/catalog/lookup?ids=...`
+(Next.js) which forwards to `GET /v1/products/lookup` (Fastify). It returns only active products.
+This allows admin-created products to be added to cart, survive reload, show current variant stock,
+and proceed to checkout; the server always recalculates totals and availability during ordering.
+If live lookup fails, the persisted cart is **not wiped** and checkout shows a retry message.

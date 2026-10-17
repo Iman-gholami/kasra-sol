@@ -134,6 +134,10 @@ try {
     'PATCH', { active: true }, owner)).status, 200);
   const published = await call('/v1/products/ci-dress-01');
   assert.equal(published.status, 200);
+  const liveLookup = await call('/v1/products/lookup?ids=ci-dress-01,manto-01');
+  assert.equal(liveLookup.status, 200);
+  assert.equal(liveLookup.data.items.length, 2);
+  assert.equal(liveLookup.data.items[0].id, 'ci-dress-01');
   assert.equal(published.data.price, 800000);
   assert.equal(published.data.variants.length, 2);
   const orderOptions = {
@@ -151,6 +155,8 @@ try {
   assert.equal((await call('/v1/admin/products/ci-dress-01/visibility',
     'PATCH', { active: false }, owner)).status, 200);
   assert.equal((await call('/v1/products/ci-dress-01')).status, 404);
+  assert.equal((await call('/v1/products/lookup?ids=ci-dress-01')).data.items.length, 0,
+    'An archived product must not appear in a persisted cart lookup');
   const receipt = await call('/v1/orders/' + productOrder.id, 'GET', undefined, productOrder.accessToken);
   assert.equal(receipt.status, 200, 'Archiving does not destroy historical receipts');
   const archiveOrder = await fetch(base + '/v1/orders', {
