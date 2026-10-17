@@ -33,6 +33,7 @@ export async function listProducts(query: z.infer<typeof filters>) {
     query.color ? eq(variants.colorId, query.color) : undefined,
     query.stock === '1' ? gte(variants.stock, 1) : undefined);
   const where = and(
+    eq(products.active, true),
     query.category ? eq(products.category, query.category) : undefined,
     query.q ? ilike(products.searchText, '%' + normalizeSearch(query.q).replace(/[%_\\]/g, '\\$&') + '%') : undefined,
     query.min !== undefined ? gte(products.price, query.min) : undefined,
@@ -51,6 +52,6 @@ export async function listProducts(query: z.infer<typeof filters>) {
   return { items: await hydrate(rows), total, page, pages };
 }
 export async function getProduct(slug: string) {
-  const found = await db.select().from(products).where(eq(products.slug, slug)).limit(1);
+  const found = await db.select().from(products).where(and(eq(products.slug, slug), eq(products.active, true))).limit(1);
   return (await hydrate(found))[0] ?? null;
 }

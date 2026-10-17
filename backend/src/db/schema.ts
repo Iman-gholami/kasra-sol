@@ -18,6 +18,7 @@ export const products = pgTable('products', {
   fit: text('fit').notNull(),
   care: text('care').notNull(),
   featured: boolean('featured').notNull().default(false),
+  active: boolean('active').notNull().default(true),
   searchText: text('search_text').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 }, t => [index('products_category_created_idx').on(t.category, t.createdAt), index('products_price_idx').on(t.price)]);

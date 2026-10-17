@@ -26,7 +26,7 @@ function receipt(order: typeof orders.$inferSelect) {
 }
 async function resolveCart(tx: Tx, items: Checkout['items'], lock: boolean) {
   const ids = [...new Set(items.map(item => item.productId))];
-  const productRows = await tx.select().from(products).where(inArray(products.id, ids));
+  const productRows = await tx.select().from(products).where(and(inArray(products.id, ids), eq(products.active, true)));
   if (productRows.length !== ids.length) throw new DomainError(422, 'یک یا چند کالا یافت نشد.');
   // Lock only the requested SKUs, in stable order, instead of every size/color of each product.
   const requested = items.map(item => and(
