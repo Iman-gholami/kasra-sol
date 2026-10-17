@@ -5,7 +5,7 @@ export function Footer() {
   return <footer className="footer">
     <div className="container footer-grid">
       <div className="footer-intro">
-        <Link className="footer-wordmark" href="/" aria-label="کسری بوتیک، صفحه اصلی">
+        <Link className="footer-wordmark" href="/" aria-label="KASRA BOUTIQUE، کسری بوتیک، صفحه اصلی">
           <span dir="ltr" aria-hidden="true">KASRA</span><small dir="ltr" aria-hidden="true">BOUTIQUE</small>
         </Link>
         <p>انتخاب‌هایی برای استایلِ خودت؛ ساده، راحت و با حال‌وهوای هر روز.</p>

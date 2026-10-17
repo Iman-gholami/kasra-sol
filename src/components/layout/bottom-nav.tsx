@@ -43,7 +43,7 @@ export function BottomNav() {
           onClick={event => window.dispatchEvent(new CustomEvent(OPEN_SEARCH_EVENT, { detail: { opener: event.currentTarget } }))}>
           <Search size={22} aria-hidden="true"/><span>جستجو</span></button></li>
         <li><Link href="/wishlist" aria-current={current(pathname === '/wishlist')}
-          aria-label={'علاقه‌مندی‌ها' + (hydrated && wishlist.length ? '، ' + formatNumber(wishlist.length) + ' مورد' : '')}>
+          aria-label={'علاقه‌مندی' + (hydrated && wishlist.length ? '، ' + formatNumber(wishlist.length) + ' مورد' : '')}>
           <span className="bottom-nav-icon"><Heart size={22} aria-hidden="true"/>
             {hydrated && wishlist.length > 0 && <span className="count" aria-hidden="true">{formatNumber(wishlist.length)}</span>}</span>
           <span aria-hidden="true">علاقه‌مندی</span></Link></li>
