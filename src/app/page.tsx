@@ -1,7 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
-import { categories, products } from '@/data/products';
+import { categories } from '@/data/products';
+import { getHomeProducts } from '@/lib/backend-products';
 import { ProductGrid } from '@/components/products/product-grid';
 import { ShopByColor } from '@/components/home/shop-by-color';
 import { getShopByColorResults } from '@/lib/shop-by-color';
@@ -18,7 +19,9 @@ const categorySizes = [
   '(max-width: 600px) 100vw, (max-width: 1520px) 30vw, 460px'
 ];
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic';
+export default async function HomePage() {
+  const products = await getHomeProducts();
   const arrivals = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
   const colors = getShopByColorResults();

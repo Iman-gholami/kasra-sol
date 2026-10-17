@@ -17,3 +17,5 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const data = await queryProducts(filters);
   return <CatalogView title={category.title} intro={category.description} action={'/category/' + category.slug} fixedCategory filters={filters} data={data} />;
 }
+
+export const dynamic = 'force-dynamic';
