@@ -1,0 +1,25 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { calculate, DomainError } from '../src/pricing';
+
+describe('server-side price rules', () => {
+  it('calculates discounts and shipping from authoritative item prices', () => {
+    const totals = calculate([{ price: 1_000_000, quantity: 2 }], 'post', 'online', 'KASRA10', 'فارس','شیراز');
+    assert.deepEqual(totals, { subtotal: 2_000_000, discount: 200_000, shipping: 85_000, total: 1_885_000 });
+  });
+  it('caps coupons at 300,000 and grants free post shipping', () => {
+    const totals = calculate([{ price: 4_000_000, quantity: 1 }], 'post', 'online', 'KASRA10', 'فارس','شیراز');
+    assert.equal(totals.discount, 300_000);
+    assert.equal(totals.shipping, 0);
+    assert.equal(totals.total, 3_700_000);
+  });
+  it('rejects invalid discounts and forbidden shipping/payment combinations', () => {
+    assert.throws(() => calculate([{ price: 100, quantity: 1 }], 'post','cod','','تهران','تهران'), DomainError);
+    assert.throws(() => calculate([{ price: 100, quantity: 1 }], 'courier','online','','فارس','شیراز'), DomainError);
+    assert.throws(() => calculate([{ price: 100, quantity: 1 }], 'post','online','UNKNOWN','فارس','شیراز'), DomainError);
+  });
+  it('allows courier cash-on-delivery in Tehran only', () => {
+    const totals = calculate([{ price: 500_000, quantity: 2 }], 'courier','cod','','تهران','تهران');
+    assert.equal(totals.total, 1_120_000);
+  });
+});
