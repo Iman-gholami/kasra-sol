@@ -33,6 +33,15 @@ try {
   assert.equal(ownerLogin.status, 200);
   const owner = ownerLogin.data.token;
   assert.match(owner, /^[a-f0-9]{64}$/);
+  assert.equal((await call('/v1/admin/reports/overview')).status, 401, 'Dashboard must require login');
+  const initialReport = await call('/v1/admin/reports/overview', 'GET', undefined, owner);
+  assert.equal(initialReport.status, 200);
+  assert.equal(initialReport.data.trend.length, 7, 'Always show 7 reporting days');
+  assert.ok(initialReport.data.products.active > 0);
+  assert.equal(initialReport.data.currency, 'IRT');
+  assert.equal(initialReport.data.paymentVerificationAvailable, false);
+  assert.equal(initialReport.data.orders.today >= 1, true);
+  assert.equal(typeof initialReport.data.delivered.todayValue, 'string');
   assert.equal(ownerLogin.data.user.role, 'owner');
 
   const existingOrders = (await call('/v1/admin/orders', 'GET', undefined, owner)).data.items;
@@ -44,6 +53,15 @@ try {
     { status: 'preparing' }, owner)).status, 200);
   assert.equal((await call('/v1/admin/orders/' + codOrder.id + '/status', 'PATCH',
     { status: 'delivered' }, owner)).status, 409, 'Cannot skip fulfillment stages');
+  assert.equal((await call('/v1/admin/orders/' + codOrder.id + '/status', 'PATCH',
+    { status: 'shipped' }, owner)).status, 200);
+  assert.equal((await call('/v1/admin/orders/' + codOrder.id + '/status', 'PATCH',
+    { status: 'delivered' }, owner)).status, 200);
+  const afterDelivery = await call('/v1/admin/reports/overview', 'GET', undefined, owner);
+  assert.equal(afterDelivery.status, 200);
+  assert.equal(afterDelivery.data.delivered.todayOrders >= 1, true);
+  assert.equal(BigInt(afterDelivery.data.delivered.todayValue) > 0n, true);
+  assert.equal(afterDelivery.data.trend.at(-1).deliveredOrders >= 1, true);
 
   const created = await call('/v1/admin/staff', 'POST', {
     username: 'staff_ci', displayName: 'کارمند آزمایشی', password: staffPassword, role: 'staff'
@@ -55,6 +73,8 @@ try {
   assert.equal(staffLogin.status, 200);
   const staff = staffLogin.data.token;
   assert.equal((await call('/v1/admin/staff', 'GET', undefined, staff)).status, 403);
+  assert.equal((await call('/v1/admin/reports/overview', 'GET', undefined, staff)).status, 403,
+    'Default staff must not see sales reports');
   assert.equal((await call('/v1/admin/products/manto-01/price', 'PATCH', { price: 1000 }, staff)).status, 403);
   assert.equal((await call('/v1/admin/orders', 'GET', undefined, staff)).status, 200);
 
@@ -67,6 +87,7 @@ try {
 
   const newLogin = await call('/v1/admin/auth/login', 'POST', { username: 'staff_ci', password: staffPassword });
   assert.equal(newLogin.status, 200);
+  assert.equal((await call('/v1/admin/reports/overview', 'GET', undefined, newLogin.data.token)).status, 403);
   const currentPrice = (await call('/v1/admin/products', 'GET', undefined, owner)).data.items
     .find(item => item.id === 'manto-01').price;
   const priceChange = await call('/v1/admin/products/manto-01/price', 'PATCH', { price: currentPrice + 1 }, newLogin.data.token);

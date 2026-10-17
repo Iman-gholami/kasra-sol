@@ -129,3 +129,24 @@ The browser cart and wishlist resolve product IDs through `GET /api/catalog/look
 This allows admin-created products to be added to cart, survive reload, show current variant stock,
 and proceed to checkout; the server always recalculates totals and availability during ordering.
 If live lookup fails, the persisted cart is **not wiped** and checkout shows a retry message.
+
+## Store analytics overview (development branch)
+
+Owners and managers (or staff with an explicit reports:read grant) see a new
+"داشبورد فروشگاه" tab as their admin landing page. It is backed by
+GET /v1/admin/reports/overview, guarded by reports:read and proxied through
+the existing HttpOnly admin session at /api/admin/reports/overview.
+
+The cards display order counts today/this month, active/archived product counts,
+active variants with 1-3 or 0 stock, COD orders in progress, and unpaid online
+orders. The 7-day trend and today/monthly values count the *value of COD orders
+marked delivered* based on server-side audited delivery event timestamps,
+in the Asia/Tehran time zone. This is NOT confirmed revenue because the
+current schema has no verified receipt/cash collection event. The chart and
+values are real SQL aggregates, not demo series, but the local database is
+seeded with demo products. "Top products" ranks quantities in accepted COD
+orders; these are not proof of settled sales.
+
+A future payment integration must add immutable payment settlement/refund events
+before any revenue or profit metric is shown. No customer PII is returned by the
+reporting endpoint. A manual "Refresh" fetches the current database results.

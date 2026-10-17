@@ -19,3 +19,8 @@ test('admin login shows a generic invalid-credential error without leaking passw
   await expect(page.locator('form [role="alert"]')).toContainText('نام کاربری یا رمز عبور درست نیست');
   await expect(page).toHaveURL(/\/admin\/login/);
 });
+
+test('dashboard API does not expose sales figures to visitors', async ({ request }) => {
+  const response = await request.get('/api/admin/reports/overview');
+  expect(response.status()).toBe(401);
+});
