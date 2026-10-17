@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { createHash } from 'node:crypto';
 import { normalizeSearch } from '../search';
 import { pool } from '../db/connection';
 import { productIdentity, productInput, type ProductInput } from './product-schema';
@@ -7,6 +8,10 @@ import { z } from 'zod';
 
 type Actor = { id: string };
 type Require = (req: FastifyRequest, reply: FastifyReply, permission: Permission) => Promise<Actor | null>;
+function snapshotHash(product: Record<string, unknown>, variants: unknown[]): string {
+  // A content-based ETag includes stock, so concurrent order stock changes invalidate stale edits.
+  return createHash('sha256').update(JSON.stringify({ product, variants })).digest('hex');
+}
 
 async function guardWrite(req: FastifyRequest, reply: FastifyReply, check: Require) {
   const actor = await check(req, reply, 'products:write');
@@ -51,6 +56,7 @@ export async function productAdminRoutes(app: FastifyInstance, check: Require,
     const variantRows = await pool.query(
       'SELECT color_id AS "colorId",size,stock FROM product_variants WHERE product_id=$1 ORDER BY color_id,size', [id.data]);
     return reply.header('Cache-Control', 'no-store').send({
+      revision: snapshotHash(product, variantRows.rows),
       item: {
         id: product.id, slug: product.slug, name: product.name, category: product.category,
         description: product.description, price: product.price, compareAt: product.compare_at,
@@ -100,9 +106,19 @@ export async function productAdminRoutes(app: FastifyInstance, check: Require,
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const found = await client.query('SELECT id FROM products WHERE id=$1 FOR UPDATE', [id.data]);
+      const found = await client.query('SELECT * FROM products WHERE id=$1 FOR UPDATE', [id.data]);
       if (!found.rowCount) {
         await client.query('ROLLBACK'); return reply.code(404).send({ error: 'not_found' });
+      }
+      const current = await client.query(
+        'SELECT color_id AS "colorId",size,stock FROM product_variants ' +
+        'WHERE product_id=$1 ORDER BY color_id,size FOR UPDATE', [id.data]);
+      const etag = req.headers['if-match'];
+      if (typeof etag !== 'string' || !/^"[a-f0-9]{64}"$/.test(etag)) {
+        await client.query('ROLLBACK'); return reply.code(428).send({ error: 'precondition_required' });
+      }
+      if (etag !== '"' + snapshotHash(found.rows[0], current.rows) + '"') {
+        await client.query('ROLLBACK'); return reply.code(412).send({ error: 'product_changed_reload_required' });
       }
       await client.query(
         'UPDATE products SET slug=$2,name=$3,category=$4,description=$5,price=$6,compare_at=$7,' +

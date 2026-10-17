@@ -25,6 +25,7 @@ function Field({ title, children }: { title: string; children: React.ReactNode }
 export function ProductEditor({ productId, done }: Props) {
   const [item, setItem] = useState<CatalogProduct>(empty);
   const [sizeText, setSizeText] = useState('M');
+  const [revision, setRevision] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(Boolean(productId));
   const [error, setError] = useState('');
@@ -35,9 +36,9 @@ export function ProductEditor({ productId, done }: Props) {
     let cancelled = false;
     void fetch('/api/admin/products/' + productId, { cache: 'no-store' }).then(async response => {
       if (!response.ok) throw new Error('اطلاعات محصول دریافت نشد.');
-      return response.json() as Promise<{ item: CatalogProduct }>;
+      return response.json() as Promise<{ item: CatalogProduct; revision: string }>;
     }).then(data => {
-      if (!cancelled) { setItem(data.item); setSizeText(data.item.sizes.join(', ')); }
+      if (!cancelled) { setItem(data.item); setSizeText(data.item.sizes.join(', ')); setRevision(data.revision); }
     }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'خطا'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -88,13 +89,16 @@ export function ProductEditor({ productId, done }: Props) {
     setBusy(true);
     try {
       const response = await fetch('/api/admin/products' + (productId ? '/' + productId : ''), {
-        method: productId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
+        method: productId ? 'PUT' : 'POST', headers: {
+          'Content-Type': 'application/json', ...(productId ? { 'If-Match': '"' + revision + '"' } : {})
+        },
         body: JSON.stringify(payload)
       });
       if (!response.ok) {
         const result = await response.json().catch(() => ({})) as { error?: string };
         throw new Error(result.error === 'product_exists'
-          ? 'شناسه یا آدرس محصول تکراری است.' : 'ذخیره محصول ناموفق بود (کد ' + response.status + ').');
+          ? 'شناسه یا آدرس محصول تکراری است.' : result.error === 'product_changed_reload_required'
+            ? 'موجودی یا مشخصات محصول در این فاصله تغییر کرده. فرم را دوباره باز کنید تا اطلاعات جدید جایگزین نشود.' : 'ذخیره محصول ناموفق بود (کد ' + response.status + ').');
       }
       done();
     } catch (err) { setError(err instanceof Error ? err.message : 'خطا در ذخیره محصول'); }

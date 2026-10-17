@@ -121,10 +121,15 @@ try {
   assert.equal(full.data.item.images[0], imageUrl);
   assert.equal(full.data.item.variants.length, 1);
   assert.equal((await call('/v1/admin/products/ci-dress-01', 'PUT', { ...product, price: 800000 })).status, 401);
-  assert.equal((await call('/v1/admin/products/ci-dress-01', 'PUT',
-    { ...product, name: 'لباس نمونه تست ویرایش‌شده', price: 800000,
-      sizes: ['M', 'L'], variants: [...product.variants, {colorId:'black',size:'L',stock:2}] },
-    owner)).status, 200);
+  const changedPayload = { ...product, name: 'لباس نمونه تست ویرایش‌شده', price: 800000,
+    sizes: ['M', 'L'], variants: [...product.variants, {colorId:'black',size:'L',stock:2}] };
+  const doEdit = (etag) => fetch(base + '/v1/admin/products/ci-dress-01', {
+    method: 'PUT', headers: { Authorization: 'Bearer ' + owner, 'Content-Type': 'application/json',
+      'If-Match': '"' + etag + '"' }, body: JSON.stringify(changedPayload)
+  });
+  assert.equal((await doEdit(full.data.revision)).status, 200);
+  assert.equal((await doEdit(full.data.revision)).status, 412,
+    'Stale admin edits must not overwrite the newer product state');
   assert.equal((await call('/v1/admin/products/ci-dress-01/visibility',
     'PATCH', { active: true }, owner)).status, 200);
   const published = await call('/v1/products/ci-dress-01');

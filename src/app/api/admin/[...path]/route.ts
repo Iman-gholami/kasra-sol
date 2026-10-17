@@ -31,6 +31,7 @@ async function handle(request: NextRequest, context: Ctx) {
     const backend = await fetch(url, {
       method: request.method, body, headers: {
         Authorization: 'Bearer ' + token,
+        ...(request.headers.get('if-match') ? { 'If-Match': request.headers.get('if-match')! } : {}),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {})
       },
       cache: 'no-store', signal: AbortSignal.timeout(10000)
