@@ -18,7 +18,8 @@ export function forwardedFor(headers: Headers): Record<string, string> {
 }
 
 /** CSRF guard for state-changing requests: the browser-set Origin must be this site, either the
- * configured public URL or the host the request was addressed to (cross-site pages cannot forge either). */
+ * configured public URL or the Host the request was addressed to (Nginx forwards `Host $host`).
+ * A cross-site page can set neither; X-Forwarded-Host is ignored because clients can send it. */
 export function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
   if (!origin) return false;
@@ -26,7 +27,7 @@ export function isSameOrigin(request: Request): boolean {
   try { parsed = new URL(origin); } catch { return false; }
   const site = process.env.NEXT_PUBLIC_SITE_URL;
   if (site && new URL(site).origin === parsed.origin) return true;
-  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  const host = request.headers.get('host');
   return Boolean(host) && parsed.host === host;
 }
 
