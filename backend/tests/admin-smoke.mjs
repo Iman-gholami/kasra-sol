@@ -35,6 +35,16 @@ try {
   assert.match(owner, /^[a-f0-9]{64}$/);
   assert.equal(ownerLogin.data.user.role, 'owner');
 
+  const existingOrders = (await call('/v1/admin/orders', 'GET', undefined, owner)).data.items;
+  const codOrder = existingOrders.find(item => item.status === 'confirmed_cod');
+  assert.ok(codOrder, 'CI smoke test should have created a COD order');
+  assert.equal((await call('/v1/admin/orders/' + codOrder.id + '/status', 'PATCH',
+    { status: 'preparing' })).status, 401);
+  assert.equal((await call('/v1/admin/orders/' + codOrder.id + '/status', 'PATCH',
+    { status: 'preparing' }, owner)).status, 200);
+  assert.equal((await call('/v1/admin/orders/' + codOrder.id + '/status', 'PATCH',
+    { status: 'delivered' }, owner)).status, 409, 'Cannot skip fulfillment stages');
+
   const created = await call('/v1/admin/staff', 'POST', {
     username: 'staff_ci', displayName: 'کارمند آزمایشی', password: staffPassword, role: 'staff'
   }, owner);

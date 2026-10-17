@@ -5,7 +5,7 @@ type Ctx = { params: Promise<{ path: string[] }> };
 function allowed(path: string, method: string) {
   if (method === 'GET') return /^(auth\/me|products|products\/[a-zA-Z0-9_.-]{1,80}\/variants|orders|staff|audit)$/.test(path);
   if (method === 'POST') return /^(auth\/logout|staff)$/.test(path);
-  if (method === 'PATCH') return /^(staff\/[a-f0-9-]{36}|products\/[a-zA-Z0-9_.-]{1,80}\/price|variants\/[a-f0-9-]{36}\/stock)$/.test(path);
+  if (method === 'PATCH') return /^(staff\/[a-f0-9-]{36}|products\/[a-zA-Z0-9_.-]{1,80}\/price|variants\/[a-f0-9-]{36}\/stock|orders\/[a-f0-9-]{36}\/status)$/.test(path);
   return false;
 }
 async function handle(request: NextRequest, context: Ctx) {

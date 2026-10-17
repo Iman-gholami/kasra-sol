@@ -18,6 +18,11 @@ type Section = 'products' | 'orders' | 'staff' | 'audit';
 type Audit = { id: number; action: string; actor?: string; target: string; created_at: string };
 const formatPrice = (price: number) => new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
 const dateTime = (date: string) => new Date(date).toLocaleString('fa-IR');
+const NEXT_ORDER_STATUS: Record<string, { value: string; label: string }> = {
+  confirmed_cod: { value: 'preparing', label: 'شروع آماده‌سازی' },
+  preparing: { value: 'shipped', label: 'ثبت ارسال سفارش' },
+  shipped: { value: 'delivered', label: 'ثبت تحویل سفارش' }
+};
 
 async function api<T>(path: string, method = 'GET', payload?: unknown): Promise<T> {
   const response = await fetch('/api/admin/' + path, {
@@ -240,6 +245,13 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
           <div><p>{item.status} · {item.payment}</p><p>{formatPrice(item.total)}</p></div>
         </div>
         <p className="text-sm text-neutral-600">{dateTime(item.created_at)}</p>
+        {can('orders:fulfill') && NEXT_ORDER_STATUS[item.status] &&
+          <button type="button" className="mt-2 rounded bg-neutral-900 px-3 py-2 text-white"
+            onClick={() => void api('orders/' + item.id + '/status', 'PATCH', {
+              status: NEXT_ORDER_STATUS[item.status].value
+            }).then(refresh).catch(e => setError(e instanceof Error ? e.message : 'خطا'))}>
+            {NEXT_ORDER_STATUS[item.status].label}
+          </button>}
       </article>)}
       {orders.length === 0 && <p>سفارشی ثبت نشده است.</p>}
     </div>}

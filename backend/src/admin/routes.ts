@@ -150,6 +150,40 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     return reply.header('Cache-Control', 'no-store').send({ items: result.rows });
   });
 
+
+  // Fulfillment only for COD orders. Never make a pending online order look paid.
+  app.patch('/v1/admin/orders/:id/status', async (req, reply) => {
+    const actor = await requirePermission(req, reply, 'orders:fulfill');
+    if (!actor) return;
+    const id = z.string().uuid().safeParse((req.params as { id: string }).id);
+    const input = z.object({ status: z.enum(['preparing', 'shipped', 'delivered']) }).strict().safeParse(req.body);
+    if (!id.success || !input.success) return reply.code(400).send({ error: 'invalid_payload' });
+    const transitions: Record<string, string> = {
+      confirmed_cod: 'preparing', preparing: 'shipped', shipped: 'delivered'
+    };
+    const client = await pool.connect();
+    let status = '';
+    try {
+      await client.query('BEGIN');
+      const found = await client.query('SELECT status FROM orders WHERE id=$1 FOR UPDATE', [id.data]);
+      if (!found.rowCount) {
+        await client.query('ROLLBACK');
+        return reply.code(404).send({ error: 'not_found' });
+      }
+      const previous = found.rows[0].status as string;
+      if (transitions[previous] !== input.data.status) {
+        await client.query('ROLLBACK');
+        return reply.code(409).send({ error: 'invalid_order_transition' });
+      }
+      await client.query('UPDATE orders SET status=$1 WHERE id=$2', [input.data.status, id.data]);
+      await client.query('INSERT INTO admin_audit_log(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
+        [actor.id, 'orders.status', id.data, JSON.stringify({ from: previous, to: input.data.status })]);
+      await client.query('COMMIT');
+      status = input.data.status;
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+    return reply.header('Cache-Control', 'no-store').send({ ok: true, status });
+  });
+
   app.get('/v1/admin/staff', async (req, reply) => {
     if (!await requirePermission(req, reply, 'staff:manage')) return;
     const result = await pool.query(
