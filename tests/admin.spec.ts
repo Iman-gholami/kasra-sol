@@ -16,6 +16,6 @@ test('admin login shows a generic invalid-credential error without leaking passw
   await page.getByLabel('نام کاربری').fill('employee_test');
   await page.getByLabel('رمز عبور').fill('not-the-real-password');
   await page.getByRole('button', {name:'ورود امن'}).click();
-  await expect(page.getByRole('alert')).toContainText('نام کاربری یا رمز عبور درست نیست');
+  await expect(page.locator('form [role="alert"]')).toContainText('نام کاربری یا رمز عبور درست نیست');
   await expect(page).toHaveURL(/\/admin\/login/);
 });
