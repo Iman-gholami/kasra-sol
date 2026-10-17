@@ -48,14 +48,29 @@ Use a colorId belonging to an existing product. Never trust prices, discounts or
 
 **Order semantics:** `confirmed_cod` orders atomically decrement inventory using row locks. `pending_payment` online orders are stored as **unpaid** and **do not reserve or decrement stock**; no payment confirmation can occur before integrating a real PSP and its verified, idempotent callback. No fake successful payment is emitted. Guest receipts require an unpredictable per-order HMAC access token; do not place it in a public URL or logs.
 
+**Database guarantees (`sql/004_order_integrity.sql`):** CHECK constraints restrict payment, shipping and status
+values, require `total = subtotal - discount + shipping_cost`, keep every order's `payment_status` at `unpaid`
+(no verified settlement exists yet), and forbid an online order from leaving `pending_payment` except to
+`cancelled`. A bug or a manual SQL edit therefore cannot turn an unpaid online order into a paid or shipped one.
+Widen these constraints only together with a payments ledger (signed PSP callback, amount and order match,
+idempotent settlement, stock reservation/expiry).
+
 ## Security and operations
 
 - Validation with Zod, body size limit, generic 5xx responses, rate limits and no public DB ports.
-- Assign **unique 32+ character** `ORDER_TOKEN_SECRET`, `ADMIN_API_KEY` and strong `POSTGRES_PASSWORD` in deployment. Do not use placeholder secrets in production.
-- Run SQL migrations before starting; migration lock prevents concurrent rollout collisions. Drizzle schema is mirrored by `sql/001_init.sql`.
+- Assign **unique 32+ character** `ORDER_TOKEN_SECRET`, `ADMIN_API_KEY` and strong `POSTGRES_PASSWORD` in deployment.
+  The API refuses to start without `ORDER_TOKEN_SECRET`, and rejects the `.env.example` placeholders.
+- Rate limits are per visitor. Browsers reach the API only through Next.js, which forwards the visitor address in
+  `X-Forwarded-For` (the last entry appended by Nginx). Set `TRUST_PROXY=true` (Compose does) only while the API
+  port is reachable solely from the Next.js server, or list the proxy addresses/CIDRs instead of `true`.
+  Exceeding a limit answers `429 rate_limited`.
+- Run SQL migrations before starting; migration lock prevents concurrent rollout collisions. Drizzle schema is mirrored by `sql/*.sql`.
 - Query cache is capped at 20 seconds; admin inventory updates bump its Redis revision. Multi-instance rate limiting requires a shared Redis limiter before launch.
 - No customer login, Iranian SMS OTP provider, real payment gateway/refund, fulfillment admin UI, audit log, consent management, or production deployment is included.
-- Validate API in CI and use real DB integration / concurrency tests, backup+restore tests and load tests before accepting real orders.
+- CI runs real-PostgreSQL integration tests (`tests/integration/`): concurrent COD orders never oversell,
+  parallel retries of one `Idempotency-Key` create one order, client prices are ignored, unpaid online orders
+  cannot be marked paid or fulfilled even by direct SQL, receipts need their token, rate limits are per client.
+  Backup+restore and load tests on the target server are still required before accepting real orders.
 
 ```sh
 cd backend
@@ -63,6 +78,8 @@ npm install
 npm run typecheck
 npm test
 npm run build
+# with PostgreSQL migrated and the API running (TRUST_PROXY=true):
+DATABASE_URL=... node --test --test-concurrency=1 tests/integration/*.mjs
 ```
 
 
@@ -84,24 +101,38 @@ npm run admin:create-owner -- owner_login /secure/path/admin-password.txt
 
 The file must contain a unique 12-256-character password. CLI refuses to create a second owner.
 Inside the production image the entry point is `node dist/admin/bootstrap.js owner_login /secure/path/admin-password.txt`.
-A password file must be explicitly and securely available within that container.
+A password file must be explicitly and securely available within that container, or pipe it through stdin so
+no copy stays in the container: `docker compose exec -T backend node dist/admin/bootstrap.js owner_login /dev/stdin < owner-pass`.
 
 Admin API uses 8-hour random bearer sessions; SHA-256 token hashes alone are persisted in PostgreSQL.
 Use HTTPS and an HttpOnly SameSite cookie in a server-side proxy, never browser-local storage.
 The legacy global stock API key endpoint is disabled by default; `LEGACY_STOCK_API_ENABLED=true`
 restores it only for short migrations (without per-user attribution).
 
-Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`, `/products`,
-`/products/:id/price`, `/products/:id/variants`, `/variants/:id/stock`, `/orders`,
-`/staff`, `/staff/:id`, `/audit`.
-Online orders stay unpaid pending PSP verification. Full product CRUD, image uploads, fulfillment
-transitions, 2FA, reports and payment reconciliation are later work before commercial launch.
+Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/password`,
+`/products` (`?q&status&stock&page&limit`), `/products/:id`, `/products/:id/price`, `/products/:id/variants`,
+`/products/:id/visibility`, `/variants/:id/stock`, `/orders` (`?status&q&page&limit`), `/orders/:id`,
+`/orders/:id/status`, `/staff`, `/staff/:id`, `/staff/:id/password`, `/media`, `/reports/overview`,
+`/audit` (`?before`).
+
+Accounts and sessions:
+- 10 consecutive failed logins lock the account for 15 minutes; the answer stays the generic
+  `invalid_credentials`. Logins are also limited to 5 per minute per visitor address.
+- `POST /auth/password` changes one's own password (current password required) and ends the account's
+  other sessions; the owner sets a new employee password with `PUT /staff/:id/password` (ends their
+  sessions, clears a lock). Any role/permission/activation change ends the employee's sessions at once.
+- Logins (also failed and locked attempts), logouts, password events, uploads and every change of
+  price, stock, product, order status and staff access are written to `admin_audit_log`.
 
 ## Product catalog editing and media (PR #7)
 
-New permissions: full create/edit requires all of `products:write`, `products:price` and
-`inventory:write`; archiving/publishing requires `products:write`.
-Staff without pricing access cannot bypass that restriction using full-product editing.
+Permissions: `products:write` edits content and publishes/archives. Creating a product also needs
+`products:price` (and `inventory:write` for opening stock). In a full edit, changing price or compare-at
+price needs `products:price` and any stock/variant change needs `inventory:write`; the API answers
+`403 {permission}` otherwise, so the full editor cannot bypass the quick price/stock permissions.
+Quick stock edits must send `expectedStock` (the value the employee saw): if orders changed it meanwhile,
+the API answers `409 stock_changed` with the current stock instead of overwriting sold units.
+Unpublishing a published product archives it (`archived_at`); a never-published product is a draft.
 
 Endpoints: `POST /v1/admin/products` (creates an **unpublished draft**);
 `GET /v1/admin/products/:id`, `PUT /v1/admin/products/:id`,
@@ -130,6 +161,15 @@ This allows admin-created products to be added to cart, survive reload, show cur
 and proceed to checkout; the server always recalculates totals and availability during ordering.
 If live lookup fails, the persisted cart is **not wiped** and checkout shows a retry message.
 
+## Orders in the admin
+
+Staff with `orders:read` list orders (no mobile numbers in the list) and open the detail (address, items
+with name/color snapshots, totals, status history from `order_status_history`). With `orders:fulfill`:
+COD `confirmed_cod → preparing → shipped → delivered`, and `confirmed_cod|preparing → cancelled`, which
+returns the units to stock in the same transaction. An unpaid online order (`pending_payment`) can only be
+`cancelled` (it never reserved stock); the API and the database constraints refuse every fulfilment state
+for it. Concurrent clicks record exactly one transition (row lock + 409).
+
 ## Store analytics overview (development branch)
 
 Owners and managers (or staff with an explicit reports:read grant) see a new
@@ -137,11 +177,11 @@ Owners and managers (or staff with an explicit reports:read grant) see a new
 GET /v1/admin/reports/overview, guarded by reports:read and proxied through
 the existing HttpOnly admin session at /api/admin/reports/overview.
 
-The cards display order counts today/this month, active/archived product counts,
-active variants with 1-3 or 0 stock, COD orders in progress, and unpaid online
-orders. The 7-day trend and today/monthly values count the *value of COD orders
-marked delivered* based on server-side audited delivery event timestamps,
-in the Asia/Tehran time zone. This is NOT confirmed revenue because the
+The cards display non-cancelled orders today and in the current **Solar Hijri month**
+(Asia/Tehran days), published/draft/archived product counts, out-of-stock and low-stock products,
+COD orders in progress, and unpaid online orders with their (uncollected) value. The 7-day series
+counts placed orders per day and the *value of COD orders marked delivered* on the delivery date
+recorded in `order_status_history`. This is NOT confirmed revenue because the
 current schema has no verified receipt/cash collection event. The chart and
 values are real SQL aggregates, not demo series, but the local database is
 seeded with demo products. "Top products" ranks quantities in accepted COD

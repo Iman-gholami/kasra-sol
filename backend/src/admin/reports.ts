@@ -1,63 +1,71 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { pool } from '../db/connection';
-import type { Permission } from './permissions';
+import { persianMonthStart } from './calendar';
+import type { Guard } from './identity';
 
-type Guard = (request: FastifyRequest, reply: FastifyReply, permission: Permission) => Promise<{ id: string } | null>;
-type TrendRow = { date: string; deliveredOrders: number; deliveredValue: string };
-type SummaryRow = { today_orders: number; month_orders: number; pending_online: number; cod_in_progress: number };
-type ProductRow = { total: number; active: number; archived: number; low_variants: number; out_of_stock_variants: number };
+type TrendRow = { date: string; orders: number; codOrders: number; onlineOrders: number; deliveredOrders: number; deliveredValue: string };
+type SummaryRow = { today_orders: number; month_orders: number; month_cancelled: number; pending_online: number;
+  pending_online_value: string; cod_in_progress: number };
+type ProductRow = { total: number; active: number; draft: number; archived: number; low_variants: number;
+  out_of_stock_variants: number; low_stock_products: number; out_of_stock_products: number };
 type TopRow = { id: string; name: string; units: number; orders: number };
 type LowRow = { id: string; name: string; colorId: string; colorName: string; size: string; stock: number };
 type AmountRow = { amount: string; orders: number };
 
+// Start of a Tehran calendar day as an absolute instant, so the comparison can use the created_at index.
+const TODAY = "((now() AT TIME ZONE 'Asia/Tehran')::date::timestamp AT TIME ZONE 'Asia/Tehran')";
+const WEEK = "(((now() AT TIME ZONE 'Asia/Tehran')::date - 6)::timestamp AT TIME ZONE 'Asia/Tehran')";
+const MONTH = "($1::date::timestamp AT TIME ZONE 'Asia/Tehran')";
+const LOCAL_DAY = (column: string) => '(' + column + " AT TIME ZONE 'Asia/Tehran')::date";
+
 export async function reportRoutes(app: FastifyInstance, guard: Guard) {
   app.get('/v1/admin/reports/overview', async (request, reply) => {
     if (!await guard(request, reply, 'reports:read')) return;
-    // Every day/month boundary is in Tehran local time, independent of the database server time zone.
-    // COD delivery is an operational status, not proof that money was collected.
+    // Days are Tehran local days; "month" is the current Solar Hijri month. Cancelled orders are not counted
+    // as orders. COD delivery is an operational status, not proof that money was collected.
+    const month = persianMonthStart();
     const [summary, catalog, monthlyDelivered, trend, top, low] = await Promise.all([
       pool.query<SummaryRow>([
-        "SELECT COUNT(*) FILTER (WHERE (created_at AT TIME ZONE 'Asia/Tehran')::date =",
-        "(now() AT TIME ZONE 'Asia/Tehran')::date)::int AS today_orders,",
-        "COUNT(*) FILTER (WHERE (created_at AT TIME ZONE 'Asia/Tehran')::date >=",
-        "date_trunc('month', now() AT TIME ZONE 'Asia/Tehran')::date)::int AS month_orders,",
+        "SELECT COUNT(*) FILTER (WHERE status<>'cancelled' AND created_at >=", TODAY, ')::int AS today_orders,',
+        "COUNT(*) FILTER (WHERE status<>'cancelled' AND created_at >=", MONTH, ')::int AS month_orders,',
+        "COUNT(*) FILTER (WHERE status='cancelled' AND created_at >=", MONTH, ')::int AS month_cancelled,',
         "COUNT(*) FILTER (WHERE payment='online' AND status='pending_payment')::int AS pending_online,",
-        "COUNT(*) FILTER (WHERE payment='cod' AND status IN",
-        "('confirmed_cod','preparing','shipped'))::int AS cod_in_progress FROM orders"
-      ].join(' ')),
+        "COALESCE(SUM(total) FILTER (WHERE payment='online' AND status='pending_payment'),0)::text AS pending_online_value,",
+        "COUNT(*) FILTER (WHERE payment='cod' AND status IN ('confirmed_cod','preparing','shipped'))::int AS cod_in_progress",
+        'FROM orders'
+      ].join(' '), [month.start]),
       pool.query<ProductRow>([
-        'SELECT COUNT(DISTINCT p.id)::int AS total,',
-        'COUNT(DISTINCT p.id) FILTER (WHERE p.active)::int AS active,',
-        'COUNT(DISTINCT p.id) FILTER (WHERE NOT p.active)::int AS archived,',
-        'COUNT(v.id) FILTER (WHERE p.active AND v.stock BETWEEN 1 AND 3)::int AS low_variants,',
-        'COUNT(v.id) FILTER (WHERE p.active AND v.stock=0)::int AS out_of_stock_variants',
-        'FROM products p LEFT JOIN product_variants v ON v.product_id=p.id'
+        'SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE active)::int AS active,',
+        'COUNT(*) FILTER (WHERE NOT active AND archived_at IS NULL)::int AS draft,',
+        'COUNT(*) FILTER (WHERE archived_at IS NOT NULL)::int AS archived,',
+        'COALESCE(SUM(low_count) FILTER (WHERE active),0)::int AS low_variants,',
+        'COALESCE(SUM(empty_count) FILTER (WHERE active),0)::int AS out_of_stock_variants,',
+        'COUNT(*) FILTER (WHERE active AND stock_total > 0 AND low_count > 0)::int AS low_stock_products,',
+        'COUNT(*) FILTER (WHERE active AND stock_total = 0)::int AS out_of_stock_products',
+        'FROM (SELECT p.active, p.archived_at, COALESCE(SUM(v.stock),0) AS stock_total,',
+        'COUNT(v.id) FILTER (WHERE v.stock BETWEEN 1 AND 3) AS low_count, COUNT(v.id) FILTER (WHERE v.stock=0) AS empty_count',
+        'FROM products p LEFT JOIN product_variants v ON v.product_id=p.id GROUP BY p.id) x'
       ].join(' ')),
       pool.query<AmountRow>([
-        "SELECT COALESCE(SUM(o.total),0)::text AS amount, COUNT(*)::int AS orders",
-        'FROM admin_audit_log a JOIN orders o ON o.id::text=a.target',
-        "WHERE a.action='orders.status' AND a.details->>'to'='delivered'",
-        "AND o.payment='cod' AND o.status='delivered'",
-        "AND (a.created_at AT TIME ZONE 'Asia/Tehran')::date >=",
-        "date_trunc('month', now() AT TIME ZONE 'Asia/Tehran')::date"
-      ].join(' ')),
+        'SELECT COALESCE(SUM(o.total),0)::text AS amount, COUNT(*)::int AS orders',
+        'FROM order_status_history h JOIN orders o ON o.id=h.order_id',
+        "WHERE h.to_status='delivered' AND o.payment='cod' AND o.status='delivered' AND h.created_at >=", MONTH
+      ].join(' '), [month.start]),
       pool.query<TrendRow>([
-        'WITH days AS (SELECT generate_series(',
-        "(now() AT TIME ZONE 'Asia/Tehran')::date - interval '6 days',",
-        "(now() AT TIME ZONE 'Asia/Tehran')::date, interval '1 day')::date AS day",
-        '), deliveries AS (',
-        "SELECT (a.created_at AT TIME ZONE 'Asia/Tehran')::date AS day,",
-        "COUNT(*)::int AS delivered_orders, COALESCE(SUM(o.total),0)::text AS delivered_value",
-        'FROM admin_audit_log a JOIN orders o ON o.id::text=a.target',
-        "WHERE a.action='orders.status' AND a.details->>'to'='delivered'",
-        "AND o.payment='cod' AND o.status='delivered'",
-        "AND (a.created_at AT TIME ZONE 'Asia/Tehran')::date >=",
-        "(now() AT TIME ZONE 'Asia/Tehran')::date - 6",
-        "GROUP BY (a.created_at AT TIME ZONE 'Asia/Tehran')::date",
-        ') SELECT to_char(d.day,',
-        "'YYYY-MM-DD') AS date, COALESCE(x.delivered_orders,0)::int AS \"deliveredOrders\",",
-        "COALESCE(x.delivered_value,'0')::text AS \"deliveredValue\"",
-        'FROM days d LEFT JOIN deliveries x ON x.day=d.day ORDER BY d.day'
+        "WITH days AS (SELECT generate_series(((now() AT TIME ZONE 'Asia/Tehran')::date - 6)::timestamp,",
+        "(now() AT TIME ZONE 'Asia/Tehran')::date::timestamp, interval '1 day')::date AS day),",
+        'placed AS (SELECT', LOCAL_DAY('created_at'), 'AS day,',
+        "COUNT(*) FILTER (WHERE status<>'cancelled')::int AS orders,",
+        "COUNT(*) FILTER (WHERE payment='cod' AND status<>'cancelled')::int AS cod,",
+        "COUNT(*) FILTER (WHERE payment='online' AND status<>'cancelled')::int AS online",
+        'FROM orders WHERE created_at >=', WEEK, 'GROUP BY 1),',
+        'delivered AS (SELECT', LOCAL_DAY('h.created_at'), 'AS day, COUNT(*)::int AS n, COALESCE(SUM(o.total),0)::text AS value',
+        'FROM order_status_history h JOIN orders o ON o.id=h.order_id',
+        "WHERE h.to_status='delivered' AND o.payment='cod' AND o.status='delivered' AND h.created_at >=", WEEK, 'GROUP BY 1)',
+        "SELECT to_char(d.day,'YYYY-MM-DD') AS date, COALESCE(p.orders,0)::int AS orders,",
+        'COALESCE(p.cod,0)::int AS "codOrders", COALESCE(p.online,0)::int AS "onlineOrders",',
+        'COALESCE(x.n,0)::int AS "deliveredOrders", COALESCE(x.value,\'0\')::text AS "deliveredValue"',
+        'FROM days d LEFT JOIN placed p ON p.day=d.day LEFT JOIN delivered x ON x.day=d.day ORDER BY d.day'
       ].join(' ')),
       pool.query<TopRow>([
         'SELECT oi.product_id AS id, COALESCE(MAX(p.name),MAX(oi.name)) AS name,',
@@ -76,15 +84,19 @@ export async function reportRoutes(app: FastifyInstance, guard: Guard) {
       ].join(' '))
     ]);
     const daily = trend.rows;
-    const today = daily.at(-1) ?? { date: '', deliveredOrders: 0, deliveredValue: '0' };
+    const today = daily.at(-1) ?? { deliveredOrders: 0, deliveredValue: '0' };
+    const s = summary.rows[0];
     return reply.header('Cache-Control', 'no-store').send({
       timezone: 'Asia/Tehran', currency: 'IRT', paymentVerificationAvailable: false,
       note: 'مبالغ، ارزش سفارش‌های پرداخت در محل با وضعیت تحویل‌شده هستند؛ دریافت وجه تأیید نشده و درآمد قطعی محسوب نمی‌شوند.',
+      period: { calendar: 'persian', monthStart: month.start, monthLabel: month.label },
       orders: {
-        today: summary.rows[0]?.today_orders ?? 0,
-        month: summary.rows[0]?.month_orders ?? 0,
-        pendingOnline: summary.rows[0]?.pending_online ?? 0,
-        codInProgress: summary.rows[0]?.cod_in_progress ?? 0
+        today: s?.today_orders ?? 0,
+        month: s?.month_orders ?? 0,
+        monthCancelled: s?.month_cancelled ?? 0,
+        pendingOnline: s?.pending_online ?? 0,
+        pendingOnlineValue: s?.pending_online_value ?? '0',
+        codInProgress: s?.cod_in_progress ?? 0
       },
       delivered: {
         todayOrders: today.deliveredOrders,
@@ -93,7 +105,8 @@ export async function reportRoutes(app: FastifyInstance, guard: Guard) {
         monthValue: monthlyDelivered.rows[0]?.amount ?? '0'
       },
       products: catalog.rows[0] ?? {
-        total: 0, active: 0, archived: 0, low_variants: 0, out_of_stock_variants: 0
+        total: 0, active: 0, draft: 0, archived: 0, low_variants: 0, out_of_stock_variants: 0,
+        low_stock_products: 0, out_of_stock_products: 0
       },
       trend: daily,
       topProducts: top.rows,

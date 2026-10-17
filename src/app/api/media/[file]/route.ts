@@ -7,8 +7,8 @@ export async function GET(_request: NextRequest, ctx: { params: Promise<{ file: 
   const base = process.env.BACKEND_INTERNAL_URL;
   if (!base) return new NextResponse(null, { status: 503 });
   try {
-    const image = await fetch(base + '/v1/media/' + file, { cache: 'force-cache',
-      signal: AbortSignal.timeout(8000) });
+    // Not stored in the Next.js data cache (a small tmpfs in Compose); the immutable headers let browsers and Nginx cache it.
+    const image = await fetch(base + '/v1/media/' + file, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
     if (!image.ok) return new NextResponse(null, { status: image.status });
     return new NextResponse(image.body, {
       status: 200,

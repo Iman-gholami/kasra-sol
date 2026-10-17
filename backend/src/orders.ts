@@ -3,22 +3,22 @@ import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db } from './db/connection';
-import { orders, orderItems, products, variants } from './db/schema';
+import { orders, orderItems, orderStatusHistory, products, variants } from './db/schema';
 import { calculate, DomainError } from './pricing';
 import { checkout } from './validation';
+import { requireSecret } from './config';
 
 type Checkout = z.infer<typeof checkout>;
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 const hash = (str: string) => createHash('sha256').update(str).digest('hex');
 
 function accessToken(orderId: string) {
-  const secret = process.env.ORDER_TOKEN_SECRET;
-  if (!secret || secret.length < 32) throw new Error('ORDER_TOKEN_SECRET must be at least 32 characters');
-  return createHmac('sha256', secret).update(orderId).digest('hex');
+  return createHmac('sha256', requireSecret('ORDER_TOKEN_SECRET', process.env.ORDER_TOKEN_SECRET)).update(orderId).digest('hex');
 }
 function receipt(order: typeof orders.$inferSelect) {
   return {
-    id: order.id, status: order.status, paymentStatus: 'unpaid', accessToken: accessToken(order.id),
+    // Read from the database, where a CHECK constraint keeps every order unpaid until PSP verification exists.
+    id: order.id, status: order.status, paymentStatus: order.paymentStatus, accessToken: accessToken(order.id),
     totals: { subtotal: order.subtotal, discount: order.discount, shipping: order.shippingCost, total: order.total },
     shipping: order.shipping, payment: order.payment, code: order.code ?? '', fields: order.address,
     createdAt: order.createdAt.toISOString()
@@ -56,15 +56,19 @@ export async function createOrder(data: Checkout, key: string) {
     const lines = await resolveCart(tx, data.items, lock);
     const totals = calculate(lines.map(x => ({ price: x.product.price, quantity: x.item.quantity })),
       data.shipping, data.payment, data.code, data.fields.province, data.fields.city);
+    const status = lock ? 'confirmed_cod' : 'pending_payment';
     const [order] = await tx.insert(orders).values({
       idempotencyKey: key, requestHash, address: data.fields, shipping: data.shipping, payment: data.payment,
-      status: lock ? 'confirmed_cod' : 'pending_payment', code: data.code,
+      status, code: data.code,
       subtotal: totals.subtotal, discount: totals.discount, shippingCost: totals.shipping, total: totals.total
     }).returning();
+    // Name and color label are snapshots: later product edits or archiving never change what was ordered.
     await tx.insert(orderItems).values(lines.map(x => ({
       orderId: order.id, productId: x.product.id, name: x.product.name,
-      colorId: x.item.colorId, size: x.item.size, quantity: x.item.quantity, unitPrice: x.product.price
+      colorId: x.item.colorId, size: x.item.size, quantity: x.item.quantity, unitPrice: x.product.price,
+      colorName: x.product.colors.find(color => color.id === x.item.colorId)?.name ?? null
     })));
+    await tx.insert(orderStatusHistory).values({ orderId: order.id, fromStatus: null, toStatus: status });
     if (lock) {
       for (const x of lines) {
         const updated = await tx.update(variants).set({ stock: sql`${variants.stock} - ${x.item.quantity}` })
@@ -109,7 +113,8 @@ export async function orderRoutes(app: FastifyInstance, opts: { invalidateCatalo
     if (!timingSafeEqual(expected, Buffer.from(bearer, 'hex'))) return reply.code(404).send({ error: 'not_found' });
     const items = await db.select().from(orderItems).where(eq(orderItems.orderId, found[0].id));
     return reply.header('Cache-Control','no-store').send({ ...receipt(found[0]), items: items.map(x => ({
-      productId: x.productId, name: x.name, colorId: x.colorId, size: x.size, quantity: x.quantity, unitPrice: x.unitPrice
+      productId: x.productId, name: x.name, colorId: x.colorId, colorName: x.colorName, size: x.size,
+      quantity: x.quantity, unitPrice: x.unitPrice
     })) });
   });
 }

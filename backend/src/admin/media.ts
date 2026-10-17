@@ -3,19 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Permission } from './permissions';
+import { detectImage, MAX_IMAGE_BYTES } from './image-type';
+import { pool } from '../db/connection';
+import { recordAudit } from './audit';
 
-const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const PATH = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(png|jpg|webp)$/;
 const mime: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
 const directory = () => resolve(process.env.MEDIA_DIR ?? join(process.cwd(), 'uploads'));
-
-export function detectImage(bytes: Buffer): 'png' | 'jpg' | 'webp' | null {
-  if (bytes.length > MAX_IMAGE_BYTES || bytes.length < 16) return null;
-  if (bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) return 'png';
-  if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return 'jpg';
-  if (bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') return 'webp';
-  return null;
-}
 export async function mediaRoutes(app: FastifyInstance, check:
   (req: FastifyRequest, reply: FastifyReply, permission: Permission) => Promise<{id:string}|null>) {
   // Parse only these three types as binary; all other content types remain rejected.
@@ -39,7 +33,8 @@ export async function mediaRoutes(app: FastifyInstance, check:
     await mkdir(directory(), { recursive: true });
     const fd = await open(join(directory(), filename), 'wx', 0o600);
     try { await fd.writeFile(body); } finally { await fd.close(); }
-    await app.log.info({ actor: actor.id, filename }, 'Product image uploaded');
+    app.log.info({ actor: actor.id, filename }, 'Product image uploaded');
+    await recordAudit(pool, actor.id, 'media.uploaded', filename, { bytes: body.length, type: extension });
     return reply.code(201).header('Cache-Control', 'no-store')
       .send({ url: '/api/media/' + filename });
   });
