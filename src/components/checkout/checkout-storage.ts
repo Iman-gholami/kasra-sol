@@ -48,6 +48,8 @@ export function loadDraft(): CheckoutDraft {
   };
 }
 export const saveDraft = (draft: CheckoutDraft) => write(DRAFT_KEY, draft);
+/** The cart applies the discount code; checkout reads it from the same draft. */
+export const saveCode = (code: string) => saveDraft({ ...loadDraft(), code });
 
 export function completeOrder(order: DemoOrder) {
   write(ORDER_KEY, order);

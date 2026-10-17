@@ -39,7 +39,7 @@ test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await expect(page.locator('.cart-item').getByText('شومیز لینن آوید')).toBeVisible();
   await page.getByRole('button', { name: 'افزایش تعداد شومیز لینن آوید' }).click();
   await expect(page.locator('.qty-stepper span').first()).toContainText('۲');
-  await page.getByRole('link', { name: 'ثبت سفارش' }).click();
+  await page.getByRole('link', { name: 'ادامه فرایند خرید' }).click();
   await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
   await expect(page.locator('.status-message.error')).toContainText('۶ مورد');
   await page.getByLabel('نام و نام خانوادگی تحویل‌گیرنده').fill('نام نمایشی کاربر');
@@ -165,15 +165,15 @@ test('added-to-cart confirmation focuses the safe choice, returns focus and link
   const add = page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true });
   await add.click();
   const sheet = page.getByRole('dialog', { name: 'به سبد خرید اضافه شد' });
-  await expect(sheet).toContainText('سبد خرید تو: ۱ کالا');
-  await expect(sheet).toContainText('ارسال با پست پیشتاز رایگان می‌شود');
+  await expect(sheet).toContainText('انتخاب قشنگیه!');
+  await expect(sheet).toContainText('رنگ کرم،سایز M،تعداد ۱');
   await expect(sheet.getByRole('button', { name: 'ادامه خرید' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(sheet).toBeHidden();
   await expect(add).toBeFocused();
   await add.click();
-  await expect(sheet).toContainText('سبد خرید تو: ۲ کالا');
-  await sheet.getByRole('link', { name: 'مشاهده و ویرایش سبد خرید' }).click();
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('link', { name: 'مشاهده سبد خرید' }).click();
   await expect(page).toHaveURL(/\/cart/);
   await expect(sheet).toBeHidden();
   await expect(page.getByRole('complementary', { name: 'خلاصه سفارش' })).toBeVisible();

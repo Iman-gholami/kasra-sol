@@ -147,7 +147,7 @@ test('cart: large steppers, remove with undo, total and checkout CTA always in t
   await page.goto('/cart');
   const taskBar = page.locator('.cart-task-bar');
   await expect(taskBar).toBeVisible();
-  await expect(taskBar.getByRole('link', { name: 'ثبت سفارش' })).toBeInViewport();
+  await expect(taskBar.getByRole('link', { name: 'ادامه فرایند خرید' })).toBeInViewport();
   const plus = page.getByRole('button', { name: 'افزایش تعداد شومیز لینن آوید' });
   const size = (await plus.boundingBox())!;
   expect(size.width).toBeGreaterThanOrEqual(44);
@@ -160,7 +160,10 @@ test('cart: large steppers, remove with undo, total and checkout CTA always in t
   await expect(taskBar.locator('strong')).not.toHaveText(before!);
   await page.getByRole('button', { name: 'بازگرداندن' }).click();
   await expect(taskBar.locator('strong')).toHaveText(before!);
-  await expect(page.locator('.summary-cta')).toBeHidden();
+  // The large button under the summary takes over once it scrolls into view.
+  await page.locator('.summary-cta').scrollIntoViewIfNeeded();
+  await expect(page.locator('.summary-cta')).toBeInViewport();
+  await expect(taskBar).toBeHidden();
 });
 
 test('checkout on a phone: collapsible summary, 16px fields with mobile keyboards, inline errors, two steps to demo success', async ({ page }) => {

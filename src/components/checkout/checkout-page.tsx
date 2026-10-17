@@ -3,15 +3,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useShop } from '@/components/shop-provider';
 import { completeOrder, loadDraft, saveDraft, type CheckoutDraft, type DemoOrder } from '@/components/checkout/checkout-storage';
 import { addressComplete } from '@/components/checkout/fields';
 import { ShippingStep } from '@/components/checkout/shipping-step';
 import { PaymentStep } from '@/components/checkout/payment-step';
 import { Breakdown, SummaryLines } from '@/components/checkout/order-summary';
+import { FlowHeader, FlowSteps } from '@/components/checkout/flow-chrome';
 import { orderTotals, resolveLines, shippingById, type Line } from '@/lib/checkout';
 import { formatNumber, toman } from '@/lib/format';
+
+/** The phone header's back link follows the step: payment goes back to shipping, shipping to the cart. */
+export function CheckoutFlowHeader() {
+  const payment = useSearchParams().get('step') === 'payment';
+  return payment
+    ? <FlowHeader back="/checkout" backLabel="بازگشت به اطلاعات ارسال"/>
+    : <FlowHeader back="/cart" backLabel="بازگشت به سبد خرید"/>;
+}
 
 export function CheckoutSkeleton() {
   return <div className="checkout-skeleton" role="status" aria-label="در حال بارگذاری تسویه‌حساب">
@@ -82,15 +91,7 @@ function CheckoutFlow({ lines, onPlaced }: { lines: Line[]; onPlaced: (order: De
   </>;
 
   return <>
-    <ol className="checkout-progress" aria-label="مراحل خرید">
-      <li data-done="true"><Link href="/cart"><span aria-hidden="true"><Check size={14}/></span>سبد خرید</Link></li>
-      {step === 'shipping'
-        ? <li data-current="true" aria-current="step"><span aria-hidden="true">۲</span>ارسال</li>
-        : <li data-done="true"><Link href="/checkout"><span aria-hidden="true"><Check size={14}/></span>ارسال</Link></li>}
-      <li data-current={step === 'payment' ? 'true' : undefined} aria-current={step === 'payment' ? 'step' : undefined}>
-        <span aria-hidden="true">۳</span>پرداخت
-      </li>
-    </ol>
+    <FlowSteps current={step === 'payment' ? 3 : 2}/>
     <details className="checkout-summary-mobile">
       <summary><span>خلاصه سفارش، {formatNumber(totals.units)} کالا</span><strong className="price">{toman(totals.total)}</strong></summary>
       <div className="checkout-summary-body">{summary}</div>

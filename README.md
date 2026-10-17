@@ -94,7 +94,7 @@ Production deployment to a VPS, Docker image verification, browser tests and loa
 
 ## Cart & Checkout 10.0
 
-The purchase flow now behaves like a real store while staying simulated: an add-to-cart confirmation sheet (bottom sheet on phones, panel under the cart icon on desktop), stock-aware adding, a free-shipping meter and "save for later" in the cart, a two-step checkout (address + shipping method → review, payment method, discount code) addressed by `?step=payment` so Back works, a simulated gateway with success, failure and cancel paths (no card data is ever asked for), and a confirmation page with the order summary. Sample rules live in `src/lib/checkout.ts`; the draft and the demo order are kept only in the tab's `sessionStorage`. See [Cart & Checkout 10.0](docs/CHECKOUT-V10.md).
+The purchase flow now behaves like a real store while staying simulated: an add-to-cart confirmation sheet (bottom sheet on phones, panel under the cart icon on desktop), stock-aware adding, a free-shipping meter and "save for later" in the cart, a two-step checkout (address + shipping method → review and payment method) addressed by `?step=payment` so Back works, a simulated gateway with success, failure and cancel paths (no card data is ever asked for), and a confirmation page with the order summary. Sample rules live in `src/lib/checkout.ts`; the draft and the demo order are kept only in the tab's `sessionStorage`. On phones (10.1) the flow follows benedito.ir's pattern in Kasra's style: a short confirmation sheet with stacked actions, a focused back-and-logo header with an icon stepper on cart and checkout, and the discount code inside the cart. See [Cart & Checkout 10.0](docs/CHECKOUT-V10.md).
 
 ## UX Overhaul 9.0
 

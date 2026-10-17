@@ -1,8 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-// Cart and checkout V10: free-shipping progress, stock-aware add, save for later, two-step checkout
-// (shipping → payment), method restrictions, discount codes, history and refresh, simulated gateway outcomes.
+// Cart and checkout V10: free-shipping progress, stock-aware add, save for later, discount code in the cart,
+// two-step checkout (shipping → payment), method restrictions, history and refresh, simulated gateway outcomes,
+// and the focused purchase-flow chrome on phones.
 
 type Line = { productId: string; colorId: string; size: string; quantity: number };
 const shomiz = (quantity = 1): Line => ({ productId: 'shomiz-01', colorId: 'cream', size: 'M', quantity }); // 589,000 · stock 3
@@ -26,7 +27,8 @@ test('cart: free-shipping progress, savings, stock notes and save for later with
   await seed(page, [shomiz(), manto]);
   await page.goto('/cart');
   const summary = page.getByRole('complementary', { name: 'خلاصه سفارش' });
-  await expect(summary).toContainText('۶۶۳٬۰۰۰ تومان خرید دیگر');
+  await expect(page.getByRole('list', { name: 'مراحل خرید' }).getByRole('listitem').first()).toHaveAttribute('aria-current', 'step');
+  await expect(page.locator('.ship-meter')).toContainText('۶۶۳٬۰۰۰ تومان خرید دیگر');
   await expect(summary).toContainText('سود تو از تخفیف کالاها');
   await expect(summary).toContainText('از ۸۵٬۰۰۰ تومان، در مرحله بعد');
   const line = page.locator('.cart-item', { hasText: 'شومیز لینن آوید' });
@@ -86,7 +88,36 @@ test('shipping step: free post above the threshold, courier only inside Tehran, 
   await expect(post).toBeChecked();
 });
 
-test('payment step: review, discount code states, Enter applies the code, pay-on-delivery only with the courier', async ({ page }) => {
+test('cart discount code: states, Enter applies, removal, and the code carries into the payment total', async ({ page }) => {
+  await seed(page, [shomiz()]);
+  await page.goto('/cart');
+  const code = page.getByLabel('کد تخفیف');
+  await code.fill('WELCOME');
+  await code.press('Enter');
+  await expect(code).toHaveAccessibleDescription(/۹۱۱٬۰۰۰ تومان دیگر/);
+  await code.fill('nope');
+  await page.getByRole('button', { name: 'ثبت کد' }).click();
+  await expect(code).toHaveAttribute('aria-invalid', 'true');
+  await expect(code).toHaveAccessibleDescription(/این کد معتبر نیست/);
+  await code.fill('kasra ۱۰');
+  await code.press('Enter');
+  const summary = page.getByRole('complementary', { name: 'خلاصه سفارش' });
+  await expect(page.locator('.discount-applied')).toContainText('KASRA10');
+  await expect(summary).toContainText('۵۸٬۹۰۰ تومان');
+  await expect(summary).toContainText('۵۳۰٬۱۰۰ تومان');
+  await page.getByRole('button', { name: 'حذف کد' }).click();
+  await expect(page.getByLabel('کد تخفیف')).toBeFocused();
+  await expect(summary).not.toContainText('۵۸٬۹۰۰');
+  await page.getByLabel('کد تخفیف').fill('KASRA10');
+  await page.getByRole('button', { name: 'ثبت کد' }).click();
+  await page.getByRole('link', { name: 'ادامه فرایند خرید' }).click();
+  await page.getByRole('button', { name: 'پر کردن با اطلاعات نمونه' }).click();
+  await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
+  await expect(page.locator('.checkout-code-note')).toContainText('KASRA10');
+  await expect(page.getByRole('button', { name: /^پرداخت/ })).toHaveText('پرداخت ۶۱۵٬۱۰۰ تومان');
+});
+
+test('payment step: review, focus on the step heading, pay-on-delivery only with the courier', async ({ page }) => {
   await seed(page, [shomiz()]);
   await toPayment(page);
   await expect(page.getByRole('heading', { name: 'بازبینی و پرداخت' })).toBeFocused();
@@ -95,25 +126,6 @@ test('payment step: review, discount code states, Enter applies the code, pay-on
   await expect(cod).toBeDisabled();
   await expect(cod).toHaveAccessibleDescription(/فقط همراه با پیک همان‌روز/);
 
-  const toggle = page.getByRole('button', { name: 'کد تخفیف داری؟' });
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  const code = page.getByLabel('کد تخفیف');
-  await code.fill('WELCOME');
-  await code.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'پرداخت سفارش کسری بوتیک' })).toHaveCount(0);
-  await expect(code).toHaveAccessibleDescription(/۹۱۱٬۰۰۰ تومان دیگر/);
-  await code.fill('nope');
-  await page.getByRole('button', { name: 'اعمال' }).click();
-  await expect(code).toHaveAttribute('aria-invalid', 'true');
-  await expect(code).toHaveAccessibleDescription(/این کد معتبر نیست/);
-  await code.fill('kasra ۱۰');
-  await code.press('Enter');
-  await expect(page.locator('.discount-applied')).toContainText('KASRA10');
-  await expect(page.getByRole('complementary', { name: 'خلاصه سفارش' })).toContainText('۵۸٬۹۰۰ تومان');
-  await expect(page.getByRole('button', { name: /^پرداخت/ })).toHaveText('پرداخت ۶۱۵٬۱۰۰ تومان');
-  await page.getByRole('button', { name: 'حذف کد' }).click();
-  await expect(page.getByLabel('کد تخفیف')).toBeFocused();
   await expect(page.getByRole('button', { name: /^پرداخت/ })).toHaveText('پرداخت ۶۷۴٬۰۰۰ تومان');
 
   await page.getByRole('link', { name: 'تغییر روش ارسال' }).click();
@@ -178,6 +190,44 @@ test('gateway: failure and cancel keep the cart for a retry; success shows the o
   await expect(page.getByRole('heading', { name: 'سبد خرید خالی است' })).toBeVisible();
 });
 
+test.describe('phone purchase-flow chrome', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('cart and checkout swap the site header and footer for a back-and-logo header; the floating bar yields to the inline CTA', async ({ page }) => {
+    await seed(page, [shomiz(), manto]);
+    await page.goto('/cart');
+    await expect(page.locator('.site-header')).toBeHidden();
+    await expect(page.locator('.footer')).toBeHidden();
+    await expect(page.getByRole('link', { name: 'بازگشت به فروشگاه' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'KASRA کسری بوتیک، صفحه اصلی' })).toBeVisible();
+    const bar = page.locator('.cart-task-bar');
+    await expect(bar).toBeVisible();
+    await page.locator('.summary-cta').scrollIntoViewIfNeeded();
+    await expect(page.locator('.summary-cta')).toBeInViewport();
+    await expect(bar).toBeHidden();
+    await page.locator('.summary-cta').click();
+    await expect(page.getByRole('link', { name: 'بازگشت به سبد خرید' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'سبد خرید (انجام شد)' })).toBeVisible();
+    await page.getByRole('button', { name: 'پر کردن با اطلاعات نمونه' }).click();
+    await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
+    const back = page.getByRole('link', { name: 'بازگشت به اطلاعات ارسال' });
+    await expect(back).toBeVisible();
+    await back.click();
+    await expect(page.getByRole('heading', { name: 'نشانی و روش ارسال' })).toBeVisible();
+    await page.goto('/order-confirmation');
+    await expect(page.locator('.site-header')).toBeVisible();
+  });
+});
+
+test('desktop keeps the site header and hides the phone flow header', async ({ page }) => {
+  await seed(page, [shomiz()]);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/cart');
+  await expect(page.locator('.site-header')).toBeVisible();
+  await expect(page.locator('.flow-header')).toBeHidden();
+  await expect(page.getByRole('heading', { level: 1, name: 'سبد خرید' })).toBeVisible();
+});
+
 // The shared header/footer wordmarks and the phone bottom navigation already fail axe's label-in-name rule
 // before this change (see a11y.spec.ts); they are excluded here so these screens are audited on their own.
 const SHARED_LAYOUT = ['.brand', '.footer-wordmark', '.bottom-nav'];
@@ -200,6 +250,8 @@ for (const [name, use] of [
       await seed(page, [shomiz(), manto]);
       await page.goto('/cart');
       await expect(page.locator('.cart-item').first()).toBeVisible();
+      await page.getByLabel('کد تخفیف').fill('x');
+      await page.getByRole('button', { name: 'ثبت کد' }).click();
       await audit(page, name + ' cart');
       await page.goto('/checkout');
       await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
@@ -207,9 +259,7 @@ for (const [name, use] of [
       await audit(page, name + ' shipping with errors');
       await page.getByRole('button', { name: 'پر کردن با اطلاعات نمونه' }).click();
       await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
-      await page.getByRole('button', { name: 'کد تخفیف داری؟' }).click();
-      await page.getByLabel('کد تخفیف').fill('x');
-      await page.getByRole('button', { name: 'اعمال' }).click();
+      await expect(page.getByRole('heading', { name: 'بازبینی و پرداخت' })).toBeVisible();
       await audit(page, name + ' payment');
       await page.getByRole('button', { name: /^پرداخت/ }).click();
       await expect(page.getByRole('dialog', { name: 'پرداخت سفارش کسری بوتیک' })).toBeVisible();

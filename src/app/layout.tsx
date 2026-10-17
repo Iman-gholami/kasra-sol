@@ -5,6 +5,7 @@ import { Footer } from '@/components/layout/footer';
 import { ShopProvider } from '@/components/shop-provider';
 import { AddedToCart } from '@/components/cart/added-to-cart';
 import { BottomNav } from '@/components/layout/bottom-nav';
+import { SiteShell } from '@/components/layout/site-shell';
 import { ToastProvider } from '@/components/ui/toast';
 import './globals.css';
 
@@ -44,11 +45,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <ShopProvider>
           <ToastProvider>
-            <div className="site-shell">
+            <SiteShell>
               <Header />
               <main id="main-content" tabIndex={-1}>{children}</main>
               <Footer />
-            </div>
+            </SiteShell>
             <BottomNav />
             <AddedToCart />
           </ToastProvider>
