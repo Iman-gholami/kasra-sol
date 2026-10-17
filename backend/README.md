@@ -48,14 +48,29 @@ Use a colorId belonging to an existing product. Never trust prices, discounts or
 
 **Order semantics:** `confirmed_cod` orders atomically decrement inventory using row locks. `pending_payment` online orders are stored as **unpaid** and **do not reserve or decrement stock**; no payment confirmation can occur before integrating a real PSP and its verified, idempotent callback. No fake successful payment is emitted. Guest receipts require an unpredictable per-order HMAC access token; do not place it in a public URL or logs.
 
+**Database guarantees (`sql/004_order_integrity.sql`):** CHECK constraints restrict payment, shipping and status
+values, require `total = subtotal - discount + shipping_cost`, keep every order's `payment_status` at `unpaid`
+(no verified settlement exists yet), and forbid an online order from leaving `pending_payment` except to
+`cancelled`. A bug or a manual SQL edit therefore cannot turn an unpaid online order into a paid or shipped one.
+Widen these constraints only together with a payments ledger (signed PSP callback, amount and order match,
+idempotent settlement, stock reservation/expiry).
+
 ## Security and operations
 
 - Validation with Zod, body size limit, generic 5xx responses, rate limits and no public DB ports.
-- Assign **unique 32+ character** `ORDER_TOKEN_SECRET`, `ADMIN_API_KEY` and strong `POSTGRES_PASSWORD` in deployment. Do not use placeholder secrets in production.
-- Run SQL migrations before starting; migration lock prevents concurrent rollout collisions. Drizzle schema is mirrored by `sql/001_init.sql`.
+- Assign **unique 32+ character** `ORDER_TOKEN_SECRET`, `ADMIN_API_KEY` and strong `POSTGRES_PASSWORD` in deployment.
+  The API refuses to start without `ORDER_TOKEN_SECRET`, and rejects the `.env.example` placeholders.
+- Rate limits are per visitor. Browsers reach the API only through Next.js, which forwards the visitor address in
+  `X-Forwarded-For` (the last entry appended by Nginx). Set `TRUST_PROXY=true` (Compose does) only while the API
+  port is reachable solely from the Next.js server, or list the proxy addresses/CIDRs instead of `true`.
+  Exceeding a limit answers `429 rate_limited`.
+- Run SQL migrations before starting; migration lock prevents concurrent rollout collisions. Drizzle schema is mirrored by `sql/*.sql`.
 - Query cache is capped at 20 seconds; admin inventory updates bump its Redis revision. Multi-instance rate limiting requires a shared Redis limiter before launch.
 - No customer login, Iranian SMS OTP provider, real payment gateway/refund, fulfillment admin UI, audit log, consent management, or production deployment is included.
-- Validate API in CI and use real DB integration / concurrency tests, backup+restore tests and load tests before accepting real orders.
+- CI runs real-PostgreSQL integration tests (`tests/integration/`): concurrent COD orders never oversell,
+  parallel retries of one `Idempotency-Key` create one order, client prices are ignored, unpaid online orders
+  cannot be marked paid or fulfilled even by direct SQL, receipts need their token, rate limits are per client.
+  Backup+restore and load tests on the target server are still required before accepting real orders.
 
 ```sh
 cd backend
@@ -63,6 +78,8 @@ npm install
 npm run typecheck
 npm test
 npm run build
+# with PostgreSQL migrated and the API running (TRUST_PROXY=true):
+DATABASE_URL=... node --test tests/integration/*.mjs
 ```
 
 

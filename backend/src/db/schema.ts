@@ -39,6 +39,7 @@ export const orders = pgTable('orders', {
   shipping: varchar('shipping', { length: 20 }).notNull(),
   payment: varchar('payment', { length: 20 }).notNull(),
   status: varchar('status', { length: 30 }).notNull(),
+  paymentStatus: varchar('payment_status', { length: 20 }).notNull().default('unpaid'),
   code: varchar('code', { length: 60 }),
   subtotal: integer('subtotal').notNull(),
   discount: integer('discount').notNull(),

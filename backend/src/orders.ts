@@ -6,19 +6,19 @@ import { db } from './db/connection';
 import { orders, orderItems, products, variants } from './db/schema';
 import { calculate, DomainError } from './pricing';
 import { checkout } from './validation';
+import { requireSecret } from './config';
 
 type Checkout = z.infer<typeof checkout>;
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 const hash = (str: string) => createHash('sha256').update(str).digest('hex');
 
 function accessToken(orderId: string) {
-  const secret = process.env.ORDER_TOKEN_SECRET;
-  if (!secret || secret.length < 32) throw new Error('ORDER_TOKEN_SECRET must be at least 32 characters');
-  return createHmac('sha256', secret).update(orderId).digest('hex');
+  return createHmac('sha256', requireSecret('ORDER_TOKEN_SECRET', process.env.ORDER_TOKEN_SECRET)).update(orderId).digest('hex');
 }
 function receipt(order: typeof orders.$inferSelect) {
   return {
-    id: order.id, status: order.status, paymentStatus: 'unpaid', accessToken: accessToken(order.id),
+    // Read from the database, where a CHECK constraint keeps every order unpaid until PSP verification exists.
+    id: order.id, status: order.status, paymentStatus: order.paymentStatus, accessToken: accessToken(order.id),
     totals: { subtotal: order.subtotal, discount: order.discount, shipping: order.shippingCost, total: order.total },
     shipping: order.shipping, payment: order.payment, code: order.code ?? '', fields: order.address,
     createdAt: order.createdAt.toISOString()
