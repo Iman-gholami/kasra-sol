@@ -14,6 +14,7 @@ RUN addgroup -S nodejs && adduser -S -G nodejs api
 COPY --from=build --chown=api:nodejs /app/backend/node_modules ./node_modules
 COPY --from=build --chown=api:nodejs /app/backend/dist ./dist
 COPY --from=build --chown=api:nodejs /app/backend/sql ./sql
+RUN mkdir -p /app/backend/uploads && chown api:nodejs /app/backend/uploads
 USER api
 EXPOSE 4000
 CMD ["sh", "-c", "node dist/db/migrate.js && if [ \"$SEED_DEMO_DATA\" = 'true' ]; then node dist/db/seed.js; fi && node dist/index.js"]

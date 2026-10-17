@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { byId } from '@/data/products';
+import { getShopProduct } from '@/components/shop-provider';
 import { useShop } from '@/components/shop-provider';
 import { cartTotals } from '@/lib/checkout';
 import type { CartItem, Product } from '@/types/store';
@@ -19,7 +19,7 @@ type Removed = { item: CartItem; moved: boolean };
  * undo re-adds the same variant and quantity, which keeps its original position on screen.
  * "Save for later" is a removal that also puts the product in the wishlist. */
 export function useCartLines() {
-  const { cart, hydrated, wishlist, addToCart, removeFromCart, updateQuantity, toggleWishlist } = useShop();
+  const { cart, hydrated, catalogError, wishlist, addToCart, removeFromCart, updateQuantity, toggleWishlist } = useShop();
   const [order, setOrder] = useState<string[]>([]);
   const [removed, setRemoved] = useState<Record<string, Removed>>({});
 
@@ -30,13 +30,13 @@ export function useCartLines() {
   const rows: CartRow[] = merged.flatMap((key): CartRow[] => {
     const item = cart.find(entry => lineKey(entry) === key);
     if (item) {
-      const product = byId(item.productId);
+      const product = getShopProduct(item.productId);
       if (!product) return [];
       const stock = product.variants.find(v => v.colorId === item.colorId && v.size === item.size)?.stock ?? 0;
       return [{ kind: 'line', key, item, product, stock }];
     }
     const gone = removed[key];
-    const product = gone && byId(gone.item.productId);
+    const product = gone && getShopProduct(gone.item.productId);
     return gone && product ? [{ kind: 'removed', key, item: gone.item, product, moved: gone.moved }] : [];
   });
   const lines = rows.filter((row): row is Extract<CartRow, { kind: 'line' }> => row.kind === 'line');
@@ -56,5 +56,5 @@ export function useCartLines() {
     });
   }
 
-  return { hydrated, rows, lines, ...totals, remove, undo, updateQuantity };
+  return { hydrated, catalogError, rows, lines, ...totals, remove, undo, updateQuantity };
 }

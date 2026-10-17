@@ -8,10 +8,11 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts src/db/migrate.ts src/db/seed.ts --format esm --platform node --target node22 --out-dir dist --clean",
+    "build": "tsup src/index.ts src/db/migrate.ts src/db/seed.ts src/admin/bootstrap.ts --format esm --platform node --target node22 --out-dir dist --clean",
     "start": "node dist/index.js",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "admin:create-owner": "tsx src/admin/bootstrap.ts",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
