@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db } from './db/connection';
@@ -28,7 +28,11 @@ async function resolveCart(tx: Tx, items: Checkout['items'], lock: boolean) {
   const ids = [...new Set(items.map(item => item.productId))];
   const productRows = await tx.select().from(products).where(inArray(products.id, ids));
   if (productRows.length !== ids.length) throw new DomainError(422, 'یک یا چند کالا یافت نشد.');
-  const variantsQuery = tx.select().from(variants).where(inArray(variants.productId, ids))
+  // Lock only the requested SKUs, in stable order, instead of every size/color of each product.
+  const requested = items.map(item => and(
+    eq(variants.productId, item.productId),
+    eq(variants.colorId, item.colorId), eq(variants.size, item.size)));
+  const variantsQuery = tx.select().from(variants).where(or(...requested))
     .orderBy(variants.productId, variants.colorId, variants.size);
   const variantRows = lock ? await variantsQuery.for('update') : await variantsQuery;
   const lines = items.map(item => {
