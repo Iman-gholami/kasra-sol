@@ -206,7 +206,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
           <div className="admin-avatar" aria-hidden="true">{user.displayName.slice(0, 1)}</div>
         </div>
       </header>
-      <main className="admin-main">
+      <div className="admin-main">
     {error && <p role="alert" className="mb-4 rounded border border-red-300 p-3 text-red-700">{error}</p>}
     {loading && section !== 'overview' && <p role="status">در حال دریافت اطلاعات…</p>}
     {section === 'overview' && can('reports:read') && <SalesOverview/>}
@@ -271,7 +271,7 @@ export function AdminDashboard({ user }: { user: AdminUser }) {
         <p className="text-sm">{item.target} · {dateTime(item.created_at)}</p>
       </div>)}
     </div>}
-      </main>
+      </div>
     </div>
   </section>;
 }
