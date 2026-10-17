@@ -1,0 +1,72 @@
+name: Admin panel E2E
+# Owner / manager / staff browser tests against the real Fastify API, PostgreSQL and Redis.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths: ["src/**", "backend/**", "tests-admin/**", "playwright.admin.config.ts", "package.json", ".github/workflows/admin-e2e.yml"]
+concurrency:
+  group: admin-e2e-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  admin-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: kasra
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: kasra
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kasra -d kasra"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      DATABASE_URL: postgres://kasra:ci_test_password@localhost:5432/kasra
+      ORDER_TOKEN_SECRET: ci_test_only_secret_that_is_long_enough_to_verify
+      REDIS_URL: redis://localhost:6379
+      MEDIA_DIR: /tmp/kasra-e2e-media
+      # Build-time flags: the storefront talks to the API and the admin proxy checks this origin.
+      NEXT_PUBLIC_BACKEND_ENABLED: "true"
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install storefront dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build API, migrate and seed demo catalog
+        working-directory: backend
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          npm run db:migrate
+          npm run db:seed
+      - name: Build backend-enabled storefront
+        run: npm run build
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Admin end-to-end tests
+        run: npx playwright test -c playwright.admin.config.ts
+      - name: Upload admin screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-screenshots
+          path: artifacts/screenshots
+          if-no-files-found: ignore
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-playwright-traces
+          path: test-results
+          if-no-files-found: ignore
