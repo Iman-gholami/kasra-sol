@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
-type Color = { id: string; name: string; hex: string };
+type Color = { id: string; name: string; hex: string; familyId?: string };
 type Variant = { colorId: string; size: string; stock: number };
 type CatalogProduct = {
   id: string; slug: string; name: string; category: 'shomiz' | 'manto' | 'tshirt';
@@ -74,7 +74,7 @@ export function ProductEditor({ productId, done }: Props) {
     setError(''); setMessage('');
     const payload = {
       ...item, sizes, variants: combination,
-      colors: item.colors.map(({ id, name, hex }) => ({ id: id.trim(), name: name.trim(), hex })),
+      colors: item.colors.map(({ id, name, hex, familyId }) => ({ id: id.trim(), name: name.trim(), hex, ...(familyId ? { familyId } : {}) })),
       compareAt: item.compareAt === null ? null : Number(item.compareAt)
     };
     delete (payload as Partial<CatalogProduct>).active;
