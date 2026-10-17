@@ -6,6 +6,7 @@ import { ShopProvider } from '@/components/shop-provider';
 import { AddedToCart } from '@/components/cart/added-to-cart';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { SiteShell } from '@/components/layout/site-shell';
+import { StoreChrome } from '@/components/layout/store-chrome';
 import { ToastProvider } from '@/components/ui/toast';
 import './globals.css';
 
@@ -46,12 +47,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ShopProvider>
           <ToastProvider>
             <SiteShell>
-              <Header />
+              <StoreChrome><Header /></StoreChrome>
               <main id="main-content" tabIndex={-1}>{children}</main>
-              <Footer />
+              <StoreChrome><Footer /></StoreChrome>
             </SiteShell>
-            <BottomNav />
-            <AddedToCart />
+            <StoreChrome><BottomNav /><AddedToCart /></StoreChrome>
           </ToastProvider>
         </ShopProvider>
       </body>
