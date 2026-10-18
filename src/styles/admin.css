@@ -71,8 +71,6 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 /* Layout helpers */
 .admin-stack { display: grid; gap: 18px; align-content: start; }
 .admin-stack-sm { display: grid; gap: 12px; }
-/* Let a wide table scroll inside its panel instead of expanding the grid at tablet widths. */
-.admin-stack, .admin-stack-sm { grid-template-columns: minmax(0, 1fr); }
 .admin-narrow { max-width: 760px; }
 .admin-two-col { display: grid; gap: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .admin-split { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -335,6 +333,11 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .admin-color-row { grid-template-columns: 1fr; }
   .admin-member .admin-inline-field { flex-basis: 100%; }
   .admin-dl div { grid-template-columns: 1fr; gap: 0; }
+  .admin-login-card { padding: 28px 20px; }
+}
+
+/* The sidebar leaves too little table width on tablets. Reuse the existing labelled cards. */
+@media (max-width: 1080px) {
   /* Tables become one card per row: each cell shows its column name. */
   .admin-table-cards, .admin-product-table { min-width: 0; }
   .admin-table-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -346,7 +349,6 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .admin-table-cards td:first-child, .admin-table-cards td:last-child, .admin-product-table td:nth-child(4) { grid-column: 1 / -1; }
   .admin-table-cards tbody tr.admin-variant-row { display: block; padding: 0; }
   .admin-table-cards td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; color: var(--admin-muted); font-weight: 700; }
-  .admin-login-card { padding: 28px 20px; }
 }
 
 /* Traffic statistics. Series colors are the validated categorical palette (slots 1-5, adjacent pairs
