@@ -185,7 +185,8 @@
   /* Keyboard up: the bottom nav would cover the field being edited. */
   .bottom-nav[data-keyboard] { display: none; }
 
-  html[data-bottom-bar="nav"] { --bottom-bar-space: calc(60px + var(--safe-bottom)); }
+  /* Allow for the bottom-nav border and fractional viewport rounding at maximum scroll. */
+  html[data-bottom-bar="nav"] { --bottom-bar-space: calc(64px + var(--safe-bottom)); }
   html[data-bottom-bar="pdp"] { --bottom-bar-space: var(--pdp-bar-h, calc(76px + var(--safe-bottom))); }
   html[data-bottom-bar="cart"] { --bottom-bar-space: calc(74px + var(--safe-bottom)); }
   .site-shell { padding-block-end: var(--bottom-bar-space, 0px); }
