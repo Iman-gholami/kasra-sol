@@ -200,6 +200,32 @@ describe('role-based access and escalation attempts', () => {
 });
 
 describe('inventory and pricing integrity', () => {
+  it('preserves SKUs reserved by open COD orders and refuses partial cancellation of missing SKUs', async () => {
+    const id = 'it-reserved-' + run;
+    assert.equal((await api('/v1/admin/products', { method: 'POST', token: owner.token,
+      body: productBody({ id, slug: id }) })).status, 201);
+    await api('/v1/admin/products/' + id + '/visibility', { method: 'PATCH', token: owner.token, body: { active: true } });
+    const order = await placeOrder(id);
+    const latest = (await api('/v1/admin/products/' + id, { token: owner.token })).data;
+    const withoutM = { ...editable(latest.item), sizes: ['L'], variants: latest.item.variants.filter(v => v.size === 'L') };
+    const edit = await api('/v1/admin/products/' + id, { method: 'PUT', token: owner.token,
+      headers: { 'If-Match': '"' + latest.revision + '"' }, body: withoutM });
+    assert.equal(edit.status, 409);
+    assert.equal(edit.data.error, 'variant_reserved_by_order');
+    assert.equal(await stockOf(id), 9);
+    // Simulate already-damaged legacy data in the disposable test database only.
+    await pool.query("DELETE FROM product_variants WHERE product_id=$1 AND size='M'", [id]);
+    const cancel = () => api('/v1/admin/orders/' + order.id + '/status', {
+      method: 'PATCH', token: owner.token, body: { status: 'cancelled' } });
+    assert.equal((await cancel()).data.error, 'restock_variant_missing');
+    assert.equal((await api('/v1/admin/orders/' + order.id, { token: owner.token })).data.item.status, 'confirmed_cod');
+    await pool.query("INSERT INTO product_variants(product_id,color_id,size,stock) VALUES($1,'black','M',9)", [id]);
+    assert.equal((await cancel()).status, 200);
+    assert.equal(await stockOf(id), 10);
+    const fresh = (await api('/v1/admin/products/' + id, { token: owner.token })).data;
+    assert.equal((await api('/v1/admin/products/' + id, { method: 'PUT', token: owner.token,
+      headers: { 'If-Match': '"' + fresh.revision + '"' }, body: withoutM })).status, 200);
+  });
   it('rejects a stock edit based on a stale value instead of overwriting sold units', async () => {
     const variant = (await pool.query("SELECT id,stock FROM product_variants WHERE product_id=$1 AND size='L'", [PRODUCT])).rows[0];
     const seen = variant.stock;
@@ -319,6 +345,19 @@ describe('order lifecycle', () => {
 });
 
 describe('catalog management', () => {
+  it('matches color families and size/stock on the same SKU in the live catalog', async () => {
+    const id = 'it-color-' + run;
+    const body = productBody({ id, slug: id, sizes: ['XXL', 'XXXL'],
+      colors: [{ id: 'night', familyId: 'midnight', name: 'شب', hex: '#111111' }],
+      variants: [{ colorId: 'night', size: 'XXL', stock: 2 }, { colorId: 'night', size: 'XXXL', stock: 0 }] });
+    assert.equal((await api('/v1/admin/products', { method: 'POST', token: owner.token, body })).status, 201);
+    await api('/v1/admin/products/' + id + '/visibility', { method: 'PATCH', token: owner.token, body: { active: true } });
+    for (const [size, expected] of [['XXL', true], ['XXXL', false]]) {
+      const result = await api('/v1/products?color=midnight&size=' + size + '&stock=1');
+      assert.equal(result.status, 200);
+      assert.equal(result.data.items.some(item => item.id === id), expected);
+    }
+  });
   it('pages, searches and separates drafts from archived products on the server', async () => {
     const page = await api('/v1/admin/products?limit=5&page=2', { token: staff.token });
     assert.equal(page.status, 200);

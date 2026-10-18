@@ -353,3 +353,18 @@ test.describe('phone layout', () => {
     expect(await firstCell.evaluate(cell => getComputedStyle(cell).display)).toBe('block');
   });
 });
+
+test('audit viewport matrix keeps admin sections within the viewport', async ({ page }) => {
+  test.setTimeout(180_000);
+  await signIn(page, accounts().owner);
+  for (const width of [360, 390, 430, 768, 1280, 1440, 1920]) {
+    await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
+    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'],
+      ['محصولات و موجودی', 'products'], ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff']] as const) {
+      await openTab(page, label);
+      await expect(page.locator('.admin-loading')).toHaveCount(0);
+      expect(await overflowing(page), label + ' at ' + width).toEqual([]);
+      if (width === 390 || width === 1440) await shot(page, name + '-audit-' + width);
+    }
+  }
+});

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, gt, gte, ilike, inArray, lte, count } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, gt, gte, ilike, inArray, lte, count, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from './db/connection';
 import { products, variants } from './db/schema';
@@ -30,7 +30,9 @@ async function hydrate(rows: (typeof products.$inferSelect)[]) {
 export async function listProducts(query: z.infer<typeof filters>) {
   const variantFilter = and(eq(variants.productId, products.id),
     query.size ? eq(variants.size, query.size) : undefined,
-    query.color ? eq(variants.colorId, query.color) : undefined,
+    query.color ? sql`EXISTS (SELECT 1 FROM jsonb_array_elements(${products.colors}) AS color
+      WHERE color->>'id' = ${variants.colorId}
+      AND COALESCE(color->>'familyId', color->>'id') = ${query.color})` : undefined,
     query.stock === '1' ? gte(variants.stock, 1) : undefined);
   const where = and(
     eq(products.active, true),

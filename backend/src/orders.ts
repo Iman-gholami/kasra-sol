@@ -26,7 +26,11 @@ function receipt(order: typeof orders.$inferSelect) {
 }
 async function resolveCart(tx: Tx, items: Checkout['items'], lock: boolean) {
   const ids = [...new Set(items.map(item => item.productId))];
-  const productRows = await tx.select().from(products).where(and(inArray(products.id, ids), eq(products.active, true)));
+  const productQuery = tx.select().from(products)
+    .where(and(inArray(products.id, ids), eq(products.active, true))).orderBy(products.id);
+  // Coordinate COD checkout with full edits and archiving before locking SKUs. A writer that
+  // holds the product lock must finish before we read its price, visibility and variant set.
+  const productRows = lock ? await productQuery.for('share') : await productQuery;
   if (productRows.length !== ids.length) throw new DomainError(422, 'یک یا چند کالا یافت نشد.');
   // Lock only the requested SKUs, in stable order, instead of every size/color of each product.
   const requested = items.map(item => and(

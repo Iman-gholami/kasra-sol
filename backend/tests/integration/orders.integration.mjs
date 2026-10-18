@@ -51,6 +51,31 @@ before(async () => {
 after(() => pool.end());
 
 describe('inventory under concurrency', () => {
+  it('waits for a concurrent archive and refuses the now-inactive product', async () => {
+    await setStock('M', 5);
+    const client = await pool.connect();
+    let pending;
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE products SET active=false WHERE id=$1', [PRODUCT]);
+      pending = order(cod());
+      let waiting = false;
+      for (let attempt = 0; attempt < 100 && !waiting; attempt++) {
+        const result = await pool.query("SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock' AND query ILIKE '%for share%'");
+        waiting = result.rowCount > 0;
+        if (!waiting) await new Promise(resolve => setTimeout(resolve, 30));
+      }
+      assert.ok(waiting, 'checkout must wait for the product writer before reading its state');
+      await client.query('COMMIT');
+      assert.equal((await pending).status, 422);
+      assert.equal(await stockOf('M'), 5);
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+      if (pending) await pending;
+      await pool.query('UPDATE products SET active=true WHERE id=$1', [PRODUCT]);
+    }
+  });
   it('never oversells when many COD orders race for the last units', async () => {
     await setStock('M', 3);
     const results = await Promise.all(Array.from({ length: 12 }, () => order(cod())));

@@ -204,6 +204,18 @@ export async function productAdminRoutes(app: FastifyInstance, check: Guard,
       if (missing) {
         await client.query('ROLLBACK'); return reply.code(403).send({ error: 'forbidden', permission: missing });
       }
+      const removed = stock.filter(change => change.to === null);
+      if (removed.length) {
+        // Pending COD units may still be returned by cancellation. Deleting their SKU would
+        // make that stock disappear. The product lock also serialises new COD checkouts.
+        const reserved = await client.query<{ color_id: string; size: string }>(
+          'SELECT DISTINCT i.color_id,i.size FROM order_items i JOIN orders o ON o.id=i.order_id ' +
+          "WHERE i.product_id=$1 AND o.payment='cod' AND o.status IN ('confirmed_cod','preparing')", [id.data]);
+        if (reserved.rows.some(row => removed.some(change => change.colorId === row.color_id && change.size === row.size))) {
+          await client.query('ROLLBACK');
+          return reply.code(409).send({ error: 'variant_reserved_by_order' });
+        }
+      }
       await client.query(
         'UPDATE products SET slug=$2,name=$3,category=$4,description=$5,price=$6,compare_at=$7,' +
         'images=$8::jsonb,colors=$9::jsonb,sizes=$10::jsonb,material=$11,fit=$12,care=$13,featured=$14,' +
