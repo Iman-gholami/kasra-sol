@@ -7,6 +7,7 @@ import { productAdminRoutes } from './product-routes';
 import { orderAdminRoutes } from './order-routes';
 import { mediaRoutes } from './media';
 import { reportRoutes } from './reports';
+import { trafficRoutes } from './traffic';
 import { recordAudit } from './audit';
 import type { Identity } from './identity';
 import { PERMISSIONS, assignable, effectivePermissions, may, type Permission } from './permissions';
@@ -221,6 +222,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
   await orderAdminRoutes(app, requirePermission, opts);
   await mediaRoutes(app, requirePermission);
   await reportRoutes(app, requirePermission);
+  await trafficRoutes(app, requirePermission);
 
   app.get('/v1/admin/audit', async (req, reply) => {
     if (!await requirePermission(req, reply, 'staff:manage')) return;

@@ -376,3 +376,55 @@ describe('image uploads', () => {
     assert.match(served.headers.get('content-security-policy'), /sandbox/);
   });
 });
+
+describe('traffic statistics', () => {
+  const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  const view = (path, { ua = CHROME, ip = nextIp(), referrer } = {}) => fetch(base + '/v1/analytics/view', {
+    method: 'POST', body: JSON.stringify({ path, ...(referrer ? { referrer } : {}) }),
+    headers: { 'Content-Type': 'application/json', 'User-Agent': ua, 'X-Forwarded-For': ip } });
+  const traffic = async (token = manager.token) => (await api('/v1/admin/reports/traffic?days=7', { token })).data;
+
+  it('counts real page views and daily visitors, ignores bots and back-office pages, and reports them', async () => {
+    const before = await traffic();
+    const phone = nextIp(), desk = nextIp();
+    for (const [path, ua, ip, referrer] of [
+      ['/product/' + PRODUCT, IPHONE, phone, 'https://www.google.com/search?q=private'], ['/shop?q=09121112233', IPHONE, phone],
+      ['/product/' + PRODUCT, CHROME, desk, 'https://l.instagram.com/x'], ['/', CHROME, desk]
+    ]) assert.equal((await view(path, { ua, ip, referrer })).status, 204);
+    assert.equal((await view('/admin', { ip: desk })).status, 204);
+    assert.equal((await view('/', { ua: 'Googlebot/2.1 (+http://www.google.com/bot.html)' })).status, 204);
+    assert.equal((await view('/', { ua: 'Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/130.0 Safari/537.36' })).status, 204);
+    const after = await traffic();
+    assert.equal(after.today.views - before.today.views, 4, 'bots and /admin are not counted');
+    assert.equal(after.today.visitors - before.today.visitors, 2, 'one visitor per address and browser per day');
+    assert.ok(after.live >= 2);
+    const product = after.products.find(p => p.slug === PRODUCT);
+    assert.equal(product.views - (before.products.find(p => p.slug === PRODUCT)?.views ?? 0), 2);
+    assert.equal(product.name, (await revision()).item.name);
+    const sources = Object.fromEntries(after.sources.map(s => [s.source, s.views]));
+    const was = Object.fromEntries(before.sources.map(s => [s.source, s.views]));
+    assert.equal(sources.search - was.search, 1);
+    assert.equal(sources.social - was.social, 1);
+    assert.equal(sources.direct - was.direct, 2);
+    const devices = Object.fromEntries(after.devices.map(d => [d.device, d.views]));
+    const hadDevices = Object.fromEntries(before.devices.map(d => [d.device, d.views]));
+    assert.equal(devices.mobile - hadDevices.mobile, 2);
+    assert.equal(devices.desktop - hadDevices.desktop, 2);
+    assert.equal(after.daily.length, 7);
+    assert.equal(after.hours.length, 24);
+    assert.ok(after.pages.some(p => p.path === '/shop'), 'query strings are dropped');
+  });
+
+  it('stores no address, browser string, query or referrer path, and is reserved for report readers', async () => {
+    const columns = (await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name='page_views'")).rows
+      .map(row => row.column_name).sort();
+    assert.deepEqual(columns, ['day', 'device', 'id', 'path', 'product_slug', 'referrer_host', 'viewed_at', 'visitor']);
+    const leaked = await pool.query("SELECT COUNT(*)::int AS n FROM page_views WHERE path LIKE '%?%' OR referrer_host LIKE '%/%' OR visitor !~ '^[a-f0-9]{32}$'");
+    assert.equal(leaked.rows[0].n, 0);
+    assert.equal((await api('/v1/admin/reports/traffic?days=7', { token: staff.token })).status, 403);
+    assert.equal((await api('/v1/admin/reports/traffic?days=7')).status, 401);
+    assert.equal((await api('/v1/admin/reports/traffic?days=5', { token: owner.token })).status, 400);
+    assert.equal((await api('/v1/admin/reports/traffic?days=90', { token: owner.token })).data.daily.length, 90);
+  });
+});
