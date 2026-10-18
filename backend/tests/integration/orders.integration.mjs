@@ -92,6 +92,35 @@ describe('inventory under concurrency', () => {
 });
 
 describe('server-authoritative totals', () => {
+  it('returns 422 for oversized totals without creating an order or decrementing stock', async () => {
+    await setStock('M', 10);
+    const key = randomUUID();
+    await pool.query('UPDATE products SET price=1000000000 WHERE id=$1', [PRODUCT]);
+    try {
+      const result = await order(cod(3), { key });
+      assert.equal(result.status, 422);
+      assert.equal(await stockOf('M'), 10);
+      assert.equal((await pool.query('SELECT id FROM orders WHERE idempotency_key=$1', [key])).rowCount, 0);
+    } finally {
+      await pool.query('UPDATE products SET price=$1 WHERE id=$2', [PRICE, PRODUCT]);
+    }
+  });
+
+  it('only includes actual price reductions in the sale filter', async () => {
+    try {
+      for (const [compareAt, expected] of [[PRICE, false], [PRICE + 1, true], [null, false]]) {
+        await pool.query('UPDATE products SET compare_at=$1 WHERE id=$2', [compareAt, PRODUCT]);
+        // Distinct query strings avoid the optional catalog cache between fixtures.
+        const response = await fetch(base + '/v1/products?sale=1&q=test&min=' + PRICE + '&max=' + PRICE +
+          '&limit=' + (expected ? 47 : compareAt === null ? 46 : 48),
+          { headers: { 'X-Forwarded-For': nextClient() } });
+        assert.equal(response.status, 200);
+        assert.equal((await response.json()).items.some(item => item.id === PRODUCT), expected);
+      }
+    } finally {
+      await pool.query('UPDATE products SET compare_at=NULL WHERE id=$1', [PRODUCT]);
+    }
+  });
   it('ignores client-supplied prices and totals', async () => {
     await setStock('M', 5);
     const body = cod(2);

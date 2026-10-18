@@ -385,6 +385,19 @@ describe('traffic statistics', () => {
     headers: { 'Content-Type': 'application/json', 'User-Agent': ua, 'X-Forwarded-For': ip } });
   const traffic = async (token = manager.token) => (await api('/v1/admin/reports/traffic?days=7', { token })).data;
 
+  it('includes more than 50 referring hosts in source totals while bounding the displayed list', async () => {
+    const before = await traffic();
+    for (let index = 0; index < 55; index++) {
+      assert.equal((await view('/shop', { referrer: `https://audit-${run}-${index}.example/page` })).status, 204);
+    }
+    const after = await traffic();
+    assert.equal(after.totals.views - before.totals.views, 55);
+    assert.equal(after.sources.reduce((sum, source) => sum + source.views, 0), after.totals.views);
+    assert.equal(after.sources.find(source => source.source === 'other').views -
+      before.sources.find(source => source.source === 'other').views, 55);
+    assert.ok(after.referrers.length <= 8);
+  });
+
   it('counts real page views and daily visitors, ignores bots and back-office pages, and reports them', async () => {
     const before = await traffic();
     const phone = nextIp(), desk = nextIp();

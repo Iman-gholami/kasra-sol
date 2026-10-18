@@ -50,7 +50,8 @@ export async function trafficRoutes(app: FastifyInstance, guard: Guard) {
       ].join(' '), range),
       pool.query<CountRow>([
         'SELECT referrer_host AS key, COUNT(*)::int AS views, COUNT(DISTINCT (day, visitor))::int AS visitors',
-        'FROM page_views WHERE day >=', RANGE_DAYS, 'GROUP BY referrer_host ORDER BY views DESC LIMIT 50'
+        // Source totals must include the long tail; only the displayed referrer list is truncated below.
+        'FROM page_views WHERE day >=', RANGE_DAYS, 'GROUP BY referrer_host ORDER BY views DESC, referrer_host'
       ].join(' '), range),
       pool.query<CountRow>([
         'SELECT device AS key, COUNT(*)::int AS views, COUNT(DISTINCT (day, visitor))::int AS visitors',

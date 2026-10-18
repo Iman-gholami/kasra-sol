@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { calculate, DomainError } from '../src/pricing';
 
 describe('server-side price rules', () => {
+  it('rejects integer overflow in either subtotal or total before writing an order', () => {
+    const invalid = (lines: { price: number; quantity: number }[]) =>
+      calculate(lines, 'courier', 'cod', '', 'تهران', 'تهران');
+    assert.throws(() => invalid([{ price: 1_000_000_000, quantity: 3 }]),
+      (error: unknown) => error instanceof DomainError && error.status === 422);
+    assert.throws(() => invalid([{ price: 2_147_483_647, quantity: 1 }]), DomainError);
+    assert.equal(invalid([{ price: 2_147_483_647 - 120_000, quantity: 1 }]).total, 2_147_483_647);
+  });
   it('calculates discounts and shipping from authoritative item prices', () => {
     const totals = calculate([{ price: 1_000_000, quantity: 2 }], 'post', 'online', 'KASRA10', 'فارس','شیراز');
     assert.deepEqual(totals, { subtotal: 2_000_000, discount: 200_000, shipping: 85_000, total: 1_885_000 });

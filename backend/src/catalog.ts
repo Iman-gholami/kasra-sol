@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, gte, ilike, inArray, lte, count } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, gt, gte, ilike, inArray, lte, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from './db/connection';
 import { products, variants } from './db/schema';
@@ -38,7 +38,7 @@ export async function listProducts(query: z.infer<typeof filters>) {
     query.q ? ilike(products.searchText, '%' + normalizeSearch(query.q).replace(/[%_\\]/g, '\\$&') + '%') : undefined,
     query.min !== undefined ? gte(products.price, query.min) : undefined,
     query.max !== undefined ? lte(products.price, query.max) : undefined,
-    query.sale === '1' ? gte(products.compareAt, 1) : undefined,
+    query.sale === '1' ? gt(products.compareAt, products.price) : undefined,
     query.size || query.color || query.stock === '1' ? exists(db.select({ id: variants.id }).from(variants).where(variantFilter)) : undefined);
   const [{ total }] = await db.select({ total: count() }).from(products).where(where);
   const pages = Math.max(1, Math.ceil(total / query.limit));
