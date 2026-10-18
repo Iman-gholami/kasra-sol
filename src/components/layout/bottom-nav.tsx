@@ -10,7 +10,7 @@ import { formatNumber } from '@/lib/format';
 import { useBottomBar } from '@/components/ui/document-flags';
 
 /** Task pages own the bottom of the screen with their own action bar, so the bottom nav steps aside there. */
-const TASK_PAGES = [/^\/product\//, /^\/cart\/?$/, /^\/checkout\/?$/];
+const TASK_PAGES = [/^\/product\//, /^\/cart\/?$/, /^\/checkout\/?$/, /^\/admin(?:\/|$)/];
 
 /** Phone-only (≤ 600px) bottom navigation for browsing pages. */
 export function BottomNav() {

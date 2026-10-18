@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check, Heart, Info, Ruler, ShoppingBag, X } from 'lucide-react';
 import { getVariant } from '@/data/products';
-import { useShop } from '@/components/shop-provider';
+import { useShop, registerShopProduct } from '@/components/shop-provider';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
 import { useBottomBar } from '@/components/ui/document-flags';
@@ -40,6 +40,7 @@ export function PurchasePanel({ product }: { product: Product }) {
   const allInCart = Boolean(colorId && size && variant?.stock && room < 1);
 
   useBottomBar('pdp');
+  useEffect(() => { registerShopProduct(product); }, [product]);
 
   // Reserve exactly the bar's height (it grows by one line while confirming an add) so it never covers content.
   useEffect(() => {
@@ -78,6 +79,7 @@ export function PurchasePanel({ product }: { product: Product }) {
   }
 
   function add() {
+    if (!hydrated) { setNotice({ text: 'در حال دریافت اطلاعات سبد خرید…', error: true }); return; }
     if (!colorId || !size) {
       const missing = !colorId ? 'color' : 'size';
       setNotice({ text: missing === 'color' ? 'اول رنگ موردنظرت رو انتخاب کن.' : 'برای ادامه یک سایز موجود انتخاب کن.', error: true });
@@ -94,7 +96,7 @@ export function PurchasePanel({ product }: { product: Product }) {
       return;
     }
     const item = { productId: product.id, colorId, size, quantity: Math.min(quantity, room) };
-    if (!addToCart(item)) {
+    if (!addToCart(item, product)) {
       setNotice({ text: 'افزودن به سبد خرید ممکن نیست.', error: true });
       return;
     }
@@ -148,7 +150,7 @@ export function PurchasePanel({ product }: { product: Product }) {
         <span className="variant-label">تعداد</span>
         <QuantityStepper value={quantity} max={Math.max(1, room)} onChange={value => setQuantity(Math.max(1, value))}/>
         {/* A word always separates the two numbers so they cannot read as one ("۳، ۱" → "۱،۳"). */}
-        {variant?.stock ? <span className="stock-note">موجودی نمونه: {formatNumber(variant.stock)} عدد
+        {variant?.stock ? <span className="stock-note">{process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true' ? 'موجودی:' : 'موجودی نمونه:'} {formatNumber(variant.stock)} عدد
           {inCart > 0 && '، ' + formatNumber(inCart) + ' عدد در سبد خریدت'}</span> : null}
       </div>
       {notice && <div role={notice.error ? 'alert' : 'status'} className={'status-message purchase-feedback' + (notice.error ? ' error' : '')}>
@@ -168,7 +170,9 @@ export function PurchasePanel({ product }: { product: Product }) {
           <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} aria-hidden="true"/>
         </button>
       </div>
-      <p className="buy-panel-note"><Info size={15} aria-hidden="true"/> رنگ، سایز، موجودی و قیمت در این نسخه نمایشی‌اند و سفارشی ثبت نمی‌شود.</p>
+      <p className="buy-panel-note"><Info size={15} aria-hidden="true"/> {process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true'
+        ? 'موجودی ممکن است تغییر کند؛ قبل از ثبت سفارش دوباره بررسی می‌شود. درگاه پرداخت آنلاین هنوز فعال نیست.'
+        : 'رنگ، سایز، موجودی و قیمت در این نسخه نمایشی‌اند و سفارشی ثبت نمی‌شود.'}</p>
     </section>
 
     {guideMounted && <Sheet open={guideOpen} onClose={() => setGuideOpen(false)} labelledBy="size-guide-title"

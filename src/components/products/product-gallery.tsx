@@ -80,7 +80,8 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
               sizes="(max-width: 600px) 100vw, (max-width: 1080px) 48vw, 620px"/>
           </button>)}
         </div>
-        <span className="gallery-demo-label">تصویر نمایشی</span>
+        {images.every(image => image.startsWith('/images/lookbook/')) &&
+          <span className="gallery-demo-label">تصویر نمایشی</span>}
         {count > 1 && <>
           <button type="button" className="pdp-gallery-arrow pdp-gallery-prev" aria-label="تصویر قبلی" onClick={() => show(index - 1)}>
             <ChevronRight size={22} aria-hidden="true"/></button>

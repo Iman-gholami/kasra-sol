@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
 import { categories } from '@/data/products';
-import { getHomeProducts } from '@/lib/backend-products';
+import { getCatalogProducts } from '@/lib/backend-products';
 import { ProductGrid } from '@/components/products/product-grid';
 import { ShopByColor } from '@/components/home/shop-by-color';
 import { getShopByColorResults } from '@/lib/shop-by-color';
@@ -21,10 +21,11 @@ const categorySizes = [
 
 export const dynamic = 'force-dynamic';
 export default async function HomePage() {
-  const products = await getHomeProducts();
+  // With the API enabled every section reflects published products only: archived ones disappear and new ones appear.
+  const products = await getCatalogProducts();
   const arrivals = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
-  const colors = getShopByColorResults();
+  const colors = getShopByColorResults(products);
 
   return <>
     <section className="hero container wide-editorial" aria-labelledby="hero-title">

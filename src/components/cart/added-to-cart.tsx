@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Check, ShoppingBag, X } from 'lucide-react';
-import { byId } from '@/data/products';
+import { getShopProduct } from '@/components/shop-provider';
 import { useShop, type AddedItem } from '@/components/shop-provider';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
 import { LineDetails } from '@/components/cart/line-details';
@@ -31,7 +31,7 @@ export function AddedToCart() {
 }
 
 function AddedContent({ item, onClose }: { item: AddedItem; onClose: () => void }) {
-  const product = byId(item.productId);
+  const product = getShopProduct(item.productId);
   if (!product) return null;
   return <div className="sheet-inner added-sheet">
     <div className="sheet-header" data-sheet-drag>

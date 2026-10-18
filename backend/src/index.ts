@@ -6,8 +6,10 @@ import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { pool, db } from './db/connection';
 import { variants } from './db/schema';
-import { filters, getProduct, listProducts } from './catalog';
+import { filters, getProduct, getProductsByIds, listProducts } from './catalog';
 import { orderRoutes } from './orders';
+import { adminRoutes } from './admin/routes';
+import { analyticsRoutes } from './analytics';
 import { DomainError } from './pricing';
 import { normalizeSearch } from './search';
 import { assertProductionDatabaseUrl, isUsableSecret, requireSecret, trustProxySetting } from './config';
@@ -76,6 +78,14 @@ app.get('/v1/products', async (req, reply) => {
   if (!parsed.success) return reply.code(400).send({ error: 'invalid_query', details: parsed.error.flatten() });
   return cached('products:' + JSON.stringify(parsed.data), () => listProducts(parsed.data));
 });
+app.get('/v1/products/lookup', async (req, reply) => {
+  const parsed = z.object({ ids: z.string().min(1).max(6000) }).safeParse(req.query);
+  if (!parsed.success) return reply.code(400).send({ error: 'invalid_query' });
+  const ids = [...new Set(parsed.data.ids.split(','))];
+  if (ids.length > 80 || ids.some(id => !/^[a-z0-9][a-z0-9-]{1,78}$/.test(id)))
+    return reply.code(400).send({ error: 'invalid_product_ids' });
+  return reply.header('Cache-Control', 'no-store').send({ items: await getProductsByIds(ids) });
+});
 app.get('/v1/products/:slug', async (req, reply) => {
   const slug = (req.params as { slug: string }).slug;
   if (slug.length > 100) return reply.code(404).send({ error: 'not_found' });
@@ -107,6 +117,7 @@ function isAdmin(value: string | undefined) {
   return timingSafeEqual(a,b);
 }
 app.put('/v1/admin/stock', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
+  if (process.env.LEGACY_STOCK_API_ENABLED !== 'true') return reply.code(404).send({ error: 'not_found' });
   if (!isAdmin(req.headers.authorization?.replace(/^Bearer /i,''))) return reply.code(401).send({ error: 'unauthorized' });
   const input = z.object({ productId: z.string().min(1).max(80), colorId: z.string().min(1).max(80),
     size: z.string().min(1).max(20), stock: z.number().int().min(0).max(1_000_000) }).safeParse(req.body);
@@ -120,6 +131,12 @@ app.put('/v1/admin/stock', { config: { rateLimit: { max: 30, timeWindow: '1 minu
   return { ok: true, stock: updated[0].stock };
 });
 await app.register(orderRoutes, {
+  invalidateCatalog: async () => {
+    if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
+  }
+});
+await app.register(analyticsRoutes);
+await app.register(adminRoutes, {
   invalidateCatalog: async () => {
     if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
   }

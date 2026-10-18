@@ -45,6 +45,9 @@ services:
       TRUST_PROXY: "true"
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      MEDIA_DIR: /app/backend/uploads
+    volumes:
+      - media_data:/app/backend/uploads
     cpus: 2.0
     mem_limit: 1g
     healthcheck:
@@ -102,3 +105,4 @@ services:
         max-file: "5"
 volumes:
   postgres_data:
+  media_data:

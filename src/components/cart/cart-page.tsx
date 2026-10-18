@@ -24,7 +24,7 @@ const LOW_STOCK = 3;
  * the discount code, the summary and one large call to action. The page heading is server-rendered; until
  * the browser store is read this renders a viewport-tall skeleton, so nothing visible shifts. */
 export function CartPage() {
-  const { hydrated, rows, lines, subtotal, original, savings, units, remove, undo, updateQuantity } = useCartLines();
+  const { hydrated, catalogError, rows, lines, subtotal, original, savings, units, remove, undo, updateQuantity } = useCartLines();
   // The code lives in the checkout draft (sessionStorage). Only read on the client: before the store
   // hydrates this component renders the skeleton, so the value never reaches the server markup.
   const [code, setCode] = useState(() => loadDraft().code);
@@ -45,6 +45,7 @@ export function CartPage() {
   }, [hasLines]);
 
   if (!hydrated) return <CartSkeleton/>;
+  if (catalogError) return <div className="empty-state" role="alert">اطلاعات به‌روز محصولات در دسترس نیست. سبد خرید محفوظ است؛ صفحه را تازه کنید.</div>;
   if (!rows.length) return <div className="empty-state cart-empty">
     <ShoppingBag size={34} strokeWidth={1.4} aria-hidden="true"/>
     <h2>سبدت هنوز خالیه</h2>

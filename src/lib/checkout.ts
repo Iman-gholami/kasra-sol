@@ -56,8 +56,8 @@ export function freeShippingProgress(subtotal: number) {
 
 export type Line = { item: CartItem; product: Product };
 
-export const resolveLines = (cart: CartItem[]): Line[] =>
-  cart.flatMap(item => { const product = byId(item.productId); return product ? [{ item, product }] : []; });
+export const resolveLines = (cart: CartItem[], lookup: (id: string) => Product | undefined = byId): Line[] =>
+  cart.flatMap(item => { const product = lookup(item.productId); return product ? [{ item, product }] : []; });
 
 /** `original` is the price before product markdowns; `savings` is what those markdowns take off. */
 export function cartTotals(lines: Line[]) {

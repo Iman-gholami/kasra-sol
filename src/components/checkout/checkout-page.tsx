@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { useShop } from '@/components/shop-provider';
+import { useShop, getShopProduct } from '@/components/shop-provider';
 import { completeOrder, loadDraft, saveDraft, type CheckoutDraft, type DemoOrder } from '@/components/checkout/checkout-storage';
 import { addressComplete } from '@/components/checkout/fields';
 import { ShippingStep } from '@/components/checkout/shipping-step';
@@ -32,11 +32,12 @@ export function CheckoutSkeleton() {
  * addressed by `?step=payment`, so browser Back returns to the previous step instead of leaving checkout. */
 export function CheckoutPage() {
   const router = useRouter();
-  const { cart, hydrated, clearCart } = useShop();
+  const { cart, hydrated, catalogError, clearCart } = useShop();
   const [placed, setPlaced] = useState(false);
 
   if (!hydrated || placed) return <CheckoutSkeleton/>;
-  const lines = resolveLines(cart);
+  if (catalogError) return <p role="alert">دریافت اطلاعات محصولات ممکن نیست؛ صفحه را تازه کنید و دوباره تلاش کنید.</p>;
+  const lines = resolveLines(cart, getShopProduct);
   if (!lines.length) return <div className="empty-state">
     <h2>سبد خرید خالی است</h2>
     <p>برای ثبت سفارش، اول لباسی را که دوست داری به سبد خرید اضافه کن.</p>
