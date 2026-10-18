@@ -7,7 +7,7 @@ const PRODUCT = '[a-z0-9][a-z0-9-]{1,78}';
 const UUID = '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
 // Only these admin endpoints are reachable from the browser; the API checks the session's permissions on each.
 const ROUTES: Record<string, RegExp> = {
-  GET: new RegExp('^(auth/me|reports/overview|products|products/' + PRODUCT + '|products/' + PRODUCT + '/variants|' +
+  GET: new RegExp('^(auth/me|reports/overview|reports/traffic|products|products/' + PRODUCT + '|products/' + PRODUCT + '/variants|' +
     'orders|orders/' + UUID + '|staff|audit)$'),
   POST: /^(auth\/logout|auth\/password|staff|products)$/,
   PATCH: new RegExp('^(staff/' + UUID + '|products/' + PRODUCT + '/(price|visibility)|variants/' + UUID + '/stock|' +
@@ -16,7 +16,8 @@ const ROUTES: Record<string, RegExp> = {
 };
 // List endpoints accept these query parameters; anything else is dropped rather than forwarded.
 const QUERY: Record<string, string[]> = {
-  products: ['q', 'status', 'stock', 'page', 'limit'], orders: ['q', 'status', 'page', 'limit'], audit: ['before']
+  products: ['q', 'status', 'stock', 'page', 'limit'], orders: ['q', 'status', 'page', 'limit'], audit: ['before'],
+  'reports/traffic': ['days']
 };
 
 async function handle(request: NextRequest, context: Ctx) {

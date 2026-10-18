@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardList, ExternalLink, LayoutDashboard, LogOut, Package, ScrollText, UserCog, UsersRound } from 'lucide-react';
+import { Activity, ClipboardList, ExternalLink, LayoutDashboard, LogOut, Package, ScrollText, UserCog, UsersRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/components/admin/admin-api';
 import { ROLE } from '@/components/admin/labels';
 import { ProductEditor } from '@/components/admin/product-editor';
 import { ProductList } from '@/components/admin/product-list';
 import { SalesOverview } from '@/components/admin/sales-overview';
+import { TrafficOverview } from '@/components/admin/traffic-overview';
 import { OrderManager } from '@/components/admin/order-manager';
 import { StaffManager } from '@/components/admin/staff-manager';
 import { AuditLog } from '@/components/admin/audit-log';
@@ -18,10 +19,11 @@ export type AdminUser = {
   id: string; username: string; displayName: string; role: 'owner' | 'manager' | 'staff';
   active: boolean; grants: string[]; revokes: string[]; permissions: string[];
 };
-export type Section = 'overview' | 'products' | 'orders' | 'staff' | 'audit' | 'account';
+export type Section = 'overview' | 'traffic' | 'products' | 'orders' | 'staff' | 'audit' | 'account';
 // The menu mirrors the API's permissions; the API still enforces every one of them on each request.
 const SECTIONS: { id: Section; label: string; title: string; permission: string | null; icon: typeof Package }[] = [
   { id: 'overview', label: 'داشبورد', title: 'داشبورد فروشگاه', permission: 'reports:read', icon: LayoutDashboard },
+  { id: 'traffic', label: 'آمار بازدید', title: 'آمار بازدید', permission: 'reports:read', icon: Activity },
   { id: 'products', label: 'محصولات و موجودی', title: 'محصولات و موجودی', permission: 'products:read', icon: Package },
   { id: 'orders', label: 'سفارش‌ها', title: 'مدیریت سفارش‌ها', permission: 'orders:read', icon: ClipboardList },
   { id: 'staff', label: 'کارکنان و مجوزها', title: 'کارکنان و مجوزها', permission: 'staff:manage', icon: UsersRound },
@@ -93,6 +95,7 @@ export function AdminDashboard({ user, initialSection }: { user: AdminUser; init
       </header>
       <div className="admin-main" id="admin-content" tabIndex={-1}>
         {section === 'overview' && <SalesOverview/>}
+        {section === 'traffic' && <TrafficOverview/>}
         {section === 'products' && (productEditor !== null
           ? <ProductEditor productId={productEditor === 'new' ? undefined : productEditor} permissions={user.permissions}
             done={saved => { setProductEditor(null); if (saved) setListVersion(v => v + 1); }}/>
