@@ -192,6 +192,52 @@ test('manager: runs the store but cannot administer staff', async ({ page }) => 
   expect(await page.evaluate(async () => (await fetch('/api/admin/staff')).status)).toBe(403);
 });
 
+test('traffic statistics: real storefront visits appear in the owner dashboard, bots do not', async ({ page, browser }) => {
+  const report = () => page.evaluate(async () => (await fetch('/api/admin/reports/traffic?days=7')).json()) as
+    Promise<{ today: { views: number; visitors: number } }>;
+  await signIn(page, accounts().owner);
+  const before = await report();
+  const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  const visit = async (userAgent: string, paths: string[], referer?: string) => {
+    const context = await browser.newContext({ userAgent, extraHTTPHeaders: { 'X-Forwarded-For': visitorAddress() } });
+    // Look like a person's browser: automated ones (navigator.webdriver) are deliberately not counted.
+    await context.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => false }));
+    const visitor = await context.newPage();
+    for (const [i, path] of paths.entries()) {
+      const beacon = visitor.waitForResponse(response => response.url().endsWith('/api/analytics/view'));
+      await visitor.goto(path, i === 0 && referer ? { referer } : undefined);
+      await beacon;
+    }
+    await context.close();
+  };
+  await visit(CHROME, ['/', '/product/' + PRODUCT], 'https://www.google.com/search?q=manto');
+  await visit(IPHONE, ['/shop', '/product/' + PRODUCT], 'https://l.instagram.com/');
+  const after = await report();
+  expect(after.today.views - before.today.views).toBe(4);
+  expect(after.today.visitors - before.today.visitors).toBe(2);
+
+  await openTab(page, 'آمار بازدید');
+  const traffic = page.getByTestId('traffic-overview');
+  await expect(traffic.getByTestId('traffic-today-views')).toContainText(new Intl.NumberFormat('fa-IR').format(after.today.views));
+  await expect(traffic.getByTestId('traffic-live').locator('.tr-tile-value')).not.toHaveText('۰');
+  await expect(traffic.locator('.tr-ranked').first()).toContainText(PRODUCT_NAME);
+  await expect(traffic.getByRole('img', { name: /سهم منابع ورود/ })).toHaveAttribute('aria-label', /موتور جست‌وجو/);
+  await expect(traffic.getByRole('img', { name: /سهم دستگاه‌ها/ })).toHaveAttribute('aria-label', /موبایل/);
+  const chart = traffic.getByRole('group', { name: /نمودار بازدید روزانه/ });
+  await chart.focus();
+  await page.keyboard.press('End');
+  await expect(traffic.locator('.tr-tooltip')).toContainText('بازدید صفحه');
+  await traffic.getByRole('button', { name: 'نمایش جدول' }).click();
+  await expect(traffic.locator('#tr-daily-table tbody tr')).toHaveCount(7);
+  const scan = await new AxeBuilder({ page }).include('[data-testid="traffic-overview"]').withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(scan.violations.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', '))).toEqual([]);
+  await shot(page, 'traffic-desktop');
+  await traffic.getByRole('button', { name: '۳۰ روز' }).click();
+  await expect(traffic.getByRole('heading', { name: /۳۰ روز اخیر/ })).toBeVisible();
+  await expect(traffic.locator('#tr-daily-table tbody tr')).toHaveCount(30);
+});
+
 test('owner manages an employee: new account, own password change, permission grant, deactivation ends sessions', async ({ page, browser }) => {
   page.on('dialog', dialog => void dialog.accept());
   await signIn(page, accounts().owner);
@@ -262,7 +308,7 @@ test.describe('phone layout', () => {
     expect(await overflowing(page)).toEqual([]);
     await shot(page, 'login-mobile');
     await signIn(page, accounts().owner);
-    for (const [label, name] of [['داشبورد', 'dashboard'], ['محصولات و موجودی', 'products'], ['سفارش‌ها', 'orders'],
+    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'], ['محصولات و موجودی', 'products'], ['سفارش‌ها', 'orders'],
       ['کارکنان و مجوزها', 'staff'], ['تاریخچه فعالیت‌ها', 'audit'], ['حساب من', 'account']] as const) {
       await openTab(page, label);
       await expect(page.locator('.admin-loading')).toHaveCount(0);
