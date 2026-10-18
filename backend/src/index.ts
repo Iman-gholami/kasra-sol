@@ -9,6 +9,7 @@ import { variants } from './db/schema';
 import { filters, getProduct, getProductsByIds, listProducts } from './catalog';
 import { orderRoutes } from './orders';
 import { adminRoutes } from './admin/routes';
+import { analyticsRoutes } from './analytics';
 import { DomainError } from './pricing';
 import { normalizeSearch } from './search';
 import { assertProductionDatabaseUrl, isUsableSecret, requireSecret, trustProxySetting } from './config';
@@ -134,6 +135,7 @@ await app.register(orderRoutes, {
     if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
   }
 });
+await app.register(analyticsRoutes);
 await app.register(adminRoutes, {
   invalidateCatalog: async () => {
     if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
