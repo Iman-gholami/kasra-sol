@@ -30,6 +30,7 @@ Demo seed runs only if **no products exist**; restarting never resets stock. Dem
 | POST | `/v1/orders` | Durable guest order, requires `Idempotency-Key` |
 | GET | `/v1/orders/:id` | Receipt with `Authorization: Bearer <accessToken>` |
 | PUT | `/v1/admin/stock` | Change variant stock with `ADMIN_API_KEY` bearer secret |
+| POST | `/v1/analytics/view` | Anonymous page view from the storefront (always `204`) |
 
 `POST /v1/orders` accepts:
 
@@ -190,3 +191,24 @@ orders; these are not proof of settled sales.
 A future payment integration must add immutable payment settlement/refund events
 before any revenue or profit metric is shown. No customer PII is returned by the
 reporting endpoint. A manual "Refresh" fetches the current database results.
+
+## Traffic statistics (آمار بازدید)
+
+The storefront reports each page shown in a real browser to `POST /v1/analytics/view` (through the same-origin
+Next route `/api/analytics/view`, which forwards the client address and user agent). Owners and managers, or staff
+with a `reports:read` grant, read the result in the admin "آمار بازدید" tab, backed by
+`GET /v1/admin/reports/traffic?days=7|30|90`. The report covers views and visitors today versus yesterday,
+visitors in the last 5 minutes, conversion (non-cancelled orders ÷ daily visitors), a daily series, busiest hours,
+top pages and products (with units ordered in the same range), traffic sources and devices. Days are Asia/Tehran days.
+
+**Privacy by design (`sql/006_traffic.sql`):** no cookie, no IP address, no user agent and no query string is stored.
+A row keeps the day, the path (without `?`/`#`), the referring site's host name, a device class and a 32-hex visitor
+hash: `sha256(daily random salt | IP | user agent)`. The salt lives in `analytics_salts` and is deleted after the
+next day, so hashes from different days cannot be linked and nobody (including the shop) can recover an IP from
+them. A visitor is therefore counted once per day; a range's "visitors" is the sum of daily visitors. Page views
+older than 400 days are deleted. Admin, API and Next internals are never recorded.
+
+**Not counted:** crawlers, link previews, scripts and headless or automated browsers (user-agent rules plus the
+browser's `navigator.webdriver` flag). The endpoint is rate limited (60/minute per address), ignores invalid input
+silently and has no read side, so it cannot be used to probe anything. It is disabled together with the backend
+(`NEXT_PUBLIC_BACKEND_ENABLED` unset), in which case the storefront sends nothing.
