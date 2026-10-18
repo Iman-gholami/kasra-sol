@@ -145,7 +145,7 @@ Catalog, product pages, search suggestions and checkout use the API in Compose. 
 
 ```sh
 cp .env.example .env
-# Replace all placeholder secrets before deployment!
+# Replace every placeholder secret (e.g. `openssl rand -hex 32`); the API refuses the examples.
 docker compose up --build -d
 curl -f http://127.0.0.1:4000/health/ready
 curl -f 'http://127.0.0.1:4000/v1/products?limit=12'
