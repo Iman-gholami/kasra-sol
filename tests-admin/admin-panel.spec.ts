@@ -320,7 +320,7 @@ test('a committed order with a lost response is retried after reload without dup
     await route.abort('connectionfailed');
   }, { times: 1 });
   await page.getByRole('button', { name: 'ثبت سفارش در انتظار پرداخت' }).click();
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.locator('.checkout-outcome[role="alert"]')).toBeVisible();
   expect(firstId).not.toBe('');
   await page.reload();
   const response = page.waitForResponse(r => r.url().endsWith('/api/orders') && r.request().method() === 'POST');
@@ -364,7 +364,7 @@ test('audit viewport matrix keeps admin sections within the viewport', async ({ 
       await openTab(page, label);
       await expect(page.locator('.admin-loading')).toHaveCount(0);
       expect(await overflowing(page), label + ' at ' + width).toEqual([]);
-      if (width === 390 || width === 1440) await shot(page, name + '-audit-' + width);
+      if (width === 390 || width === 768 || width === 1440) await shot(page, name + '-audit-' + width);
     }
   }
 });

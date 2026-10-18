@@ -71,6 +71,8 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 /* Layout helpers */
 .admin-stack { display: grid; gap: 18px; align-content: start; }
 .admin-stack-sm { display: grid; gap: 12px; }
+/* Let a wide table scroll inside its panel instead of expanding the grid at tablet widths. */
+.admin-stack, .admin-stack-sm { grid-template-columns: minmax(0, 1fr); }
 .admin-narrow { max-width: 760px; }
 .admin-two-col { display: grid; gap: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .admin-split { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
