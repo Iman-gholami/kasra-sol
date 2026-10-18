@@ -9,6 +9,7 @@ import type { CheckoutDraft, DemoOrder } from '@/components/checkout/checkout-st
 import { DEFAULT_PAYMENT, paymentById, paymentMethods, paymentRestriction, shippingById,
   type Line, type OrderTotals, type PaymentMethodId } from '@/lib/checkout';
 import { toPersianDigits, toman } from '@/lib/format';
+import { orderAttempt } from '@/lib/order-attempt';
 
 type Outcome = 'failed' | 'cancelled' | null;
 
@@ -24,7 +25,7 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
   const [outcome, setOutcome] = useState<Outcome>(null);
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState('');
-  const idempotency = useRef({ fingerprint: '', key: '' });
+  const submitting = useRef(false);
   const backendEnabled = process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true';
   const { fields } = draft;
   const shipping = shippingById(draft.shipping);
@@ -32,20 +33,21 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
 
   async function place(method: PaymentMethodId) {
     if (backendEnabled) {
+      if (submitting.current) return;
+      submitting.current = true;
       const payload = {
         items: lines.map(line => line.item),
         fields: { ...fields, mobile: normalizeMobile(fields.mobile), postal: normalizePostal(fields.postal) },
         shipping: draft.shipping, payment: method, code: totals.discount ? draft.code : ''
       };
       const fingerprint = JSON.stringify(payload);
-      if (idempotency.current.fingerprint !== fingerprint)
-        idempotency.current = { fingerprint, key: crypto.randomUUID() };
       setSaving(true);
       setApiError('');
       try {
+        const attempt = await orderAttempt(fingerprint);
         const response = await fetch('/api/orders', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotency.current.key },
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': attempt.key },
           body: fingerprint
         });
         const order = await response.json();
@@ -56,6 +58,7 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
           totals: { ...totals, ...order.totals }, status: order.status
         });
       } catch (error) {
+        submitting.current = false;
         setApiError(error instanceof Error ? error.message : 'ارتباط با سرور برقرار نشد.');
         setSaving(false);
       }

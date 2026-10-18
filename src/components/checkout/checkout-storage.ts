@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { DEFAULT_PAYMENT, DEFAULT_SHIPPING, paymentMethods, shippingMethods,
   type OrderTotals, type PaymentMethodId, type ShippingMethodId } from '@/lib/checkout';
 import type { CartItem } from '@/types/store';
+import { clearOrderAttempt } from '@/lib/order-attempt';
 
 /** Checkout state that must survive a refresh or a step change, kept in sessionStorage: it never leaves
  * this browser tab, is never sent anywhere and disappears when the tab closes. */
@@ -53,6 +54,7 @@ export const saveCode = (code: string) => saveDraft({ ...loadDraft(), code });
 
 export function completeOrder(order: DemoOrder) {
   write(ORDER_KEY, order);
+  clearOrderAttempt();
   write(DRAFT_KEY, null);
   cachedRaw = undefined;
 }

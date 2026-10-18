@@ -21,6 +21,8 @@ jobs:
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
+      - name: Checkout retry unit tests
+        run: npm run test:unit
       - name: Build
         run: npm run build
       - name: Install browser
