@@ -1,0 +1,66 @@
+name: Fastify Backend CI
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**"]
+  pull_request:
+    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**"]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: kasra
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: kasra
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kasra -d kasra"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://kasra:ci_test_password@localhost:5432/kasra
+      ORDER_TOKEN_SECRET: ci_test_only_secret_that_is_long_enough_to_verify
+      ADMIN_API_KEY: ci_test_only_admin_key_that_is_long_enough_to_verify
+      # The integration tests impersonate distinct visitors through X-Forwarded-For, as the Next.js proxy does.
+      TRUST_PROXY: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies
+        working-directory: backend
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        working-directory: backend
+        run: npm run typecheck
+      - name: Unit tests
+        working-directory: backend
+        run: npm test
+      - name: Build
+        working-directory: backend
+        run: npm run build
+      - name: Migrate and seed
+        working-directory: backend
+        run: |
+          npm run db:migrate
+          npm run db:migrate
+          npm run db:seed
+          npm run db:seed
+      - name: Real PostgreSQL API smoke test
+        working-directory: backend
+        run: |
+          node dist/index.js >/tmp/kasra-backend.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:4000/health/ready >/dev/null; then break; fi
+            sleep 1
+          done
+          node tests/smoke.mjs
+          node --test tests/integration/*.mjs
+      - name: API log on failure
+        if: failure()
+        run: tail -n 200 /tmp/kasra-backend.log

@@ -1,0 +1,33 @@
+{
+  "name": "@kasra/backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts src/db/migrate.ts src/db/seed.ts --format esm --platform node --target node22 --out-dir dist --clean",
+    "start": "node dist/index.js",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.6.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.16.0",
+    "ioredis": "^5.8.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.15.0",
+    "tsx": "^4.20.0",
+    "tsup": "^8.5.0",
+    "typescript": "~5.9.3"
+  }
+}

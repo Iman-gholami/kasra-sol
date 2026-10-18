@@ -13,7 +13,7 @@ export type Fields = Record<Field, string>;
 export type CheckoutDraft = { fields: Fields; shipping: ShippingMethodId; payment: PaymentMethodId; code: string };
 export type DemoOrder = {
   id: string; items: CartItem[]; fields: Fields; shipping: ShippingMethodId; payment: PaymentMethodId;
-  code: string; totals: OrderTotals;
+  code: string; totals: OrderTotals; status?: 'pending_payment' | 'confirmed_cod';
 };
 
 export const emptyFields: Fields = { name: '', mobile: '', province: '', city: '', address: '', postal: '', notes: '' };

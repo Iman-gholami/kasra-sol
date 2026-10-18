@@ -135,3 +135,23 @@ See [Visual Refinement Audit](docs/DESIGN-REFINEMENT.md). CI now uploads 390px a
 7. CDN cache correctness, real-user Core Web Vitals, realistic campaign-load tests and origin protection.
 
 This repository intentionally avoids fictional production features.
+
+## PostgreSQL + Fastify backend
+
+The same TypeScript monorepo now contains a [Fastify API](backend/README.md) backed by PostgreSQL,
+Drizzle ORM and optional Redis caching. Docker Compose starts PostgreSQL, Redis, Fastify and Next.js.
+Catalog, product pages, search suggestions and checkout use the API in Compose. Plain
+`npm run dev` keeps the existing demo storefront without a configured backend.
+
+```sh
+cp .env.example .env
+# Replace every placeholder secret (e.g. `openssl rand -hex 32`); the API refuses the examples.
+docker compose up --build -d
+curl -f http://127.0.0.1:4000/health/ready
+curl -f 'http://127.0.0.1:4000/v1/products?limit=12'
+```
+
+Backend checkout prices and stock are authoritative, COD inventory decrement is transactional,
+and online orders are stored as **unpaid** (no stock reservation) until a real PSP is integrated.
+Products, policies, photos and checkout UX still include demo content: this foundation is
+**not approved for live commerce**. Follow the API README before enabling public ordering.

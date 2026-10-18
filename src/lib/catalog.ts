@@ -4,6 +4,7 @@ import { rankProduct } from '@/lib/search';
 import { categories } from '@/data/products';
 import { variantMatchesColorFamily } from '@/lib/shop-by-color';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
+import { visitorHeaders } from '@/lib/backend-products';
 
 export const PAGE_SIZE = 12;
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -35,6 +36,23 @@ export const parseFilters = (params: SearchParams, category?: CategorySlug): Cat
 
 /** A server-side adapter boundary. Replace this implementation with a paginated API. */
 export async function queryProducts(filters: CatalogFilters): Promise<{ items: Product[]; total: number; page: number; pages: number }> {
+  if (process.env.BACKEND_INTERNAL_URL) {
+    const params = new URLSearchParams();
+    if (filters.category) params.set('category', filters.category);
+    if (filters.q) params.set('q', filters.q);
+    if (filters.size) params.set('size', filters.size);
+    if (filters.color) params.set('color', filters.color);
+    if (filters.min !== undefined) params.set('min', String(filters.min));
+    if (filters.max !== undefined) params.set('max', String(filters.max));
+    if (filters.inStock) params.set('stock', '1');
+    if (filters.discounted) params.set('sale', '1');
+    if (filters.sort) params.set('sort', filters.sort);
+    params.set('page', String(filters.page ?? 1));
+    const response = await fetch(process.env.BACKEND_INTERNAL_URL + '/v1/products?' + params,
+      { cache: 'no-store', headers: await visitorHeaders() });
+    if (!response.ok) throw new Error('Catalog API unavailable: ' + response.status);
+    return response.json() as Promise<{ items: Product[]; total: number; page: number; pages: number }>;
+  }
   let result = products.filter((product) => {
     if (filters.category && product.category !== filters.category) return false;
     if (filters.q && rankProduct(product, filters.q) === null) return false;
