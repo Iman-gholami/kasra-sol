@@ -110,9 +110,12 @@
 
 /* Zoom */
 .zoom-dialog.sheet-center { inline-size: min(100% - 32px, 720px); max-block-size: 96dvh; }
+/* The zoom dialog opens directly: its fade temporarily blended hint text into the backdrop,
+   triggering real axe contrast failures. Avoid reduced-contrast transition frames. */
+.zoom-dialog.sheet-center[open] { transition: none; opacity: 1; }
 .zoom-inner { padding: var(--space-2) var(--space-3) var(--space-3); }
 .zoom-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.zoom-hint { margin: 0; color: var(--color-text-subtle); font-size: var(--text-xs); }
+.zoom-hint { margin: 0; color: var(--color-text); font-size: var(--text-sm); }
 .zoom-image {
   position: relative; inline-size: min(100%, calc((96dvh - 140px) * 0.75)); aspect-ratio: 3 / 4; margin-inline: auto;
   overflow: hidden; background: var(--color-surface-sunken); cursor: zoom-in; touch-action: pinch-zoom; user-select: none;
