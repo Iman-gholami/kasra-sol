@@ -4,15 +4,19 @@ import { z } from 'zod';
 import { pool } from '../db/connection';
 import { hashPassword, verifyPassword, dummyPasswordHash } from './password';
 import { productAdminRoutes } from './product-routes';
+import { orderAdminRoutes } from './order-routes';
 import { mediaRoutes } from './media';
 import { reportRoutes } from './reports';
-import { PERMISSIONS, assignable, effectivePermissions, may, type Role, type Permission } from './permissions';
+import { trafficRoutes } from './traffic';
+import { recordAudit } from './audit';
+import type { Identity } from './identity';
+import { PERMISSIONS, assignable, effectivePermissions, may, type Permission } from './permissions';
 
-type AdminRow = {
-  id: string; username: string; display_name: string; password_hash: string;
-  role: Role; grants: Permission[]; revokes: Permission[]; active: boolean;
-};
-type Identity = Omit<AdminRow, 'password_hash'>;
+type AdminRow = Identity & { password_hash: string; locked_until: Date | null };
+const SESSION_HOURS = 8;
+// Per-account throttle on top of the per-address rate limit, against password guessing spread over many IPs.
+const LOCK_AFTER_FAILURES = 10;
+const LOCK_MINUTES = 15;
 const username = z.string().regex(/^[a-z0-9][a-z0-9_.-]{2,63}$/);
 const password = z.string().min(12).max(256);
 const roleSchema = z.enum(['manager', 'staff']);
@@ -22,10 +26,11 @@ const tokenFrom = (req: FastifyRequest) => {
   const match = /^Bearer ([a-f0-9]{64})$/i.exec(req.headers.authorization ?? '');
   return match?.[1]?.toLowerCase();
 };
-const publicUser = (user: Identity) => ({
+const publicUser = (user: Identity & { locked_until?: Date | null }) => ({
   id: user.id, username: user.username, displayName: user.display_name, role: user.role,
   active: user.active, grants: user.grants, revokes: user.revokes,
-  permissions: effectivePermissions(user.role, user.grants, user.revokes)
+  permissions: effectivePermissions(user.role, user.grants, user.revokes),
+  lockedUntil: user.locked_until && new Date(user.locked_until) > new Date() ? user.locked_until : null
 });
 async function currentUser(req: FastifyRequest): Promise<Identity | null> {
   const token = tokenFrom(req);
@@ -45,23 +50,32 @@ export async function requirePermission(req: FastifyRequest, reply: FastifyReply
   }
   return user;
 }
-async function recordAudit(actor: string, action: string, target: string, details: object = {}) {
-  await pool.query('INSERT INTO admin_audit_log(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-    [actor, action, target, JSON.stringify(details)]);
-}
 export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalog?: () => Promise<void> }) {
   app.post('/v1/admin/auth/login', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const input = z.object({ username, password }).safeParse(req.body);
     if (!input.success) return reply.code(400).send({ error: 'invalid_credentials' });
-    const match = await pool.query('SELECT * FROM admin_users WHERE username=$1 LIMIT 1',
-      [input.data.username.toLowerCase()]);
+    const name = input.data.username.toLowerCase();
+    const match = await pool.query('SELECT * FROM admin_users WHERE username=$1 LIMIT 1', [name]);
     const user = match.rows[0] as AdminRow | undefined;
-    const valid = await verifyPassword(input.data.password, user?.password_hash ?? dummyPasswordHash);
-    if (!user || !user.active || !valid) return reply.code(401).send({ error: 'invalid_credentials' });
+    const locked = Boolean(user?.locked_until && new Date(user.locked_until) > new Date());
+    // scrypt always runs, so timing does not reveal whether the account exists, is disabled or is locked.
+    const valid = await verifyPassword(input.data.password, user && !locked ? user.password_hash : dummyPasswordHash);
+    if (!user || !user.active || locked || !valid) {
+      if (user && !locked && !valid) await pool.query(
+        'UPDATE admin_users SET failed_logins=failed_logins+1, locked_until=CASE WHEN failed_logins+1 >= $2 ' +
+        'THEN now() + make_interval(mins => $3) ELSE locked_until END WHERE id=$1',
+        [user.id, LOCK_AFTER_FAILURES, LOCK_MINUTES]);
+      await recordAudit(pool, user?.id ?? null, locked ? 'auth.login_locked' : 'auth.login_failed', name, { ip: req.ip });
+      // Same answer for every failure: no hint whether the username exists or is temporarily locked.
+      return reply.code(401).send({ error: 'invalid_credentials' });
+    }
     const token = randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + SESSION_HOURS * 60 * 60 * 1000);
+    await pool.query('UPDATE admin_users SET failed_logins=0, locked_until=NULL WHERE id=$1', [user.id]);
+    await pool.query('DELETE FROM admin_sessions WHERE expires_at <= now()');
     await pool.query('INSERT INTO admin_sessions(token_hash,user_id,expires_at) VALUES($1,$2,$3)',
       [sha256(token), user.id, expiresAt]);
+    await recordAudit(pool, user.id, 'auth.login', user.id, { ip: req.ip });
     return reply.header('Cache-Control', 'no-store').send({ token, expiresAt: expiresAt.toISOString(), user: publicUser(user) });
   });
 
@@ -73,124 +87,41 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
 
   app.post('/v1/admin/auth/logout', async (req, reply) => {
     const token = tokenFrom(req);
-    if (token) await pool.query('DELETE FROM admin_sessions WHERE token_hash=$1', [sha256(token)]);
+    if (token) {
+      const ended = await pool.query<{ user_id: string }>('DELETE FROM admin_sessions WHERE token_hash=$1 RETURNING user_id', [sha256(token)]);
+      if (ended.rows[0]) await recordAudit(pool, ended.rows[0].user_id, 'auth.logout', ended.rows[0].user_id);
+    }
     return reply.header('Cache-Control', 'no-store').send({ ok: true });
   });
 
-  app.get('/v1/admin/products', async (req, reply) => {
-    if (!await requirePermission(req, reply, 'products:read')) return;
-    const found = await pool.query(
-      'SELECT p.id,p.slug,p.name,p.price,p.compare_at,p.category,p.images,' +
-      'p.active,COALESCE(SUM(v.stock),0)::integer AS stock ' +
-      'FROM products p LEFT JOIN product_variants v ON v.product_id=p.id ' +
-      'GROUP BY p.id ORDER BY p.created_at DESC,p.id LIMIT 100');
-    return reply.header('Cache-Control', 'no-store').send({ items: found.rows });
-  });
-
-  app.patch('/v1/admin/products/:id/price', async (req, reply) => {
-    const actor = await requirePermission(req, reply, 'products:price');
-    if (!actor) return;
-    const id = z.string().min(1).max(80).safeParse((req.params as { id: string }).id);
-    const input = z.object({ price: z.number().int().min(0).max(1_000_000_000) }).strict().safeParse(req.body);
-    if (!id.success || !input.success) return reply.code(400).send({ error: 'invalid_payload' });
+  // Every account (the owner included) can rotate its own password; other sessions of the account end.
+  app.post('/v1/admin/auth/password', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const user = await currentUser(req);
+    if (!user) return reply.code(401).send({ error: 'unauthorized' });
+    const input = z.object({ currentPassword: z.string().min(1).max(256), newPassword: password }).strict().safeParse(req.body);
+    if (!input.success) return reply.code(400).send({ error: 'invalid_payload' });
+    if (input.data.currentPassword === input.data.newPassword) return reply.code(400).send({ error: 'password_unchanged' });
+    const stored = await pool.query<{ password_hash: string }>('SELECT password_hash FROM admin_users WHERE id=$1', [user.id]);
+    if (!await verifyPassword(input.data.currentPassword, stored.rows[0]?.password_hash ?? dummyPasswordHash)) {
+      await recordAudit(pool, user.id, 'auth.password_change_failed', user.id);
+      return reply.code(400).send({ error: 'invalid_current_password' });
+    }
+    const hashed = await hashPassword(input.data.newPassword);
     const client = await pool.connect();
-    let updated: { price: number } | undefined;
     try {
       await client.query('BEGIN');
-      const r = await client.query('UPDATE products SET price=$1 WHERE id=$2 RETURNING price',
-        [input.data.price, id.data]);
-      updated = r.rows[0] as { price: number } | undefined;
-      if (updated) await client.query(
-        'INSERT INTO admin_audit_log(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-        [actor.id, 'products.price', id.data, JSON.stringify({ price: input.data.price })]);
+      await client.query('UPDATE admin_users SET password_hash=$1,password_changed_at=now(),updated_at=now() WHERE id=$2', [hashed, user.id]);
+      await client.query('DELETE FROM admin_sessions WHERE user_id=$1 AND token_hash<>$2', [user.id, sha256(tokenFrom(req)!)]);
+      await recordAudit(client, user.id, 'auth.password_changed', user.id);
       await client.query('COMMIT');
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
-    if (!updated) return reply.code(404).send({ error: 'not_found' });
-    await opts.invalidateCatalog?.();
-    return reply.header('Cache-Control', 'no-store').send({ ok: true, price: updated.price });
-  });
-
-  app.patch('/v1/admin/variants/:id/stock', async (req, reply) => {
-    const actor = await requirePermission(req, reply, 'inventory:write');
-    if (!actor) return;
-    const id = z.string().uuid().safeParse((req.params as { id: string }).id);
-    const input = z.object({ stock: z.number().int().min(0).max(1_000_000) }).strict().safeParse(req.body);
-    if (!id.success || !input.success) return reply.code(400).send({ error: 'invalid_payload' });
-    const client = await pool.connect();
-    let updated: { stock: number } | undefined;
-    try {
-      await client.query('BEGIN');
-      const r = await client.query('UPDATE product_variants SET stock=$1 WHERE id=$2 RETURNING stock',
-        [input.data.stock, id.data]);
-      updated = r.rows[0] as { stock: number } | undefined;
-      if (updated) await client.query(
-        'INSERT INTO admin_audit_log(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-        [actor.id, 'inventory.stock', id.data, JSON.stringify({ stock: input.data.stock })]);
-      await client.query('COMMIT');
-    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
-    if (!updated) return reply.code(404).send({ error: 'not_found' });
-    await opts.invalidateCatalog?.();
-    return reply.header('Cache-Control', 'no-store').send({ ok: true, stock: updated.stock });
-  });
-
-  app.get('/v1/admin/products/:id/variants', async (req, reply) => {
-    if (!await requirePermission(req, reply, 'inventory:read')) return;
-    const id = z.string().min(1).max(80).safeParse((req.params as { id: string }).id);
-    if (!id.success) return reply.code(400).send({ error: 'invalid_id' });
-    const rows = await pool.query(
-      'SELECT id,product_id,color_id,size,stock FROM product_variants WHERE product_id=$1 ORDER BY color_id,size',
-      [id.data]);
-    return reply.header('Cache-Control', 'no-store').send({ items: rows.rows });
-  });
-
-  app.get('/v1/admin/orders', async (req, reply) => {
-    if (!await requirePermission(req, reply, 'orders:read')) return;
-    const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).safeParse(req.query);
-    if (!query.success) return reply.code(400).send({ error: 'invalid_query' });
-    const result = await pool.query(
-      'SELECT id,status,payment,shipping,total,created_at,address FROM orders ORDER BY created_at DESC LIMIT $1',
-      [query.data.limit]);
-    return reply.header('Cache-Control', 'no-store').send({ items: result.rows });
-  });
-
-
-  // Fulfillment only for COD orders. Never make a pending online order look paid.
-  app.patch('/v1/admin/orders/:id/status', async (req, reply) => {
-    const actor = await requirePermission(req, reply, 'orders:fulfill');
-    if (!actor) return;
-    const id = z.string().uuid().safeParse((req.params as { id: string }).id);
-    const input = z.object({ status: z.enum(['preparing', 'shipped', 'delivered']) }).strict().safeParse(req.body);
-    if (!id.success || !input.success) return reply.code(400).send({ error: 'invalid_payload' });
-    const transitions: Record<string, string> = {
-      confirmed_cod: 'preparing', preparing: 'shipped', shipped: 'delivered'
-    };
-    const client = await pool.connect();
-    let status = '';
-    try {
-      await client.query('BEGIN');
-      const found = await client.query('SELECT status FROM orders WHERE id=$1 FOR UPDATE', [id.data]);
-      if (!found.rowCount) {
-        await client.query('ROLLBACK');
-        return reply.code(404).send({ error: 'not_found' });
-      }
-      const previous = found.rows[0].status as string;
-      if (transitions[previous] !== input.data.status) {
-        await client.query('ROLLBACK');
-        return reply.code(409).send({ error: 'invalid_order_transition' });
-      }
-      await client.query('UPDATE orders SET status=$1 WHERE id=$2', [input.data.status, id.data]);
-      await client.query('INSERT INTO admin_audit_log(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-        [actor.id, 'orders.status', id.data, JSON.stringify({ from: previous, to: input.data.status })]);
-      await client.query('COMMIT');
-      status = input.data.status;
-    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
-    return reply.header('Cache-Control', 'no-store').send({ ok: true, status });
+    return reply.header('Cache-Control', 'no-store').send({ ok: true });
   });
 
   app.get('/v1/admin/staff', async (req, reply) => {
     if (!await requirePermission(req, reply, 'staff:manage')) return;
     const result = await pool.query(
-      'SELECT id,username,display_name,role,grants,revokes,active,created_at FROM admin_users ORDER BY created_at');
+      'SELECT id,username,display_name,role,grants,revokes,active,locked_until,created_at FROM admin_users ORDER BY created_at');
     return reply.header('Cache-Control', 'no-store').send({
       items: (result.rows as Identity[]).map(publicUser)
     });
@@ -217,7 +148,8 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
       throw error;
     }
     const user = result.rows[0] as Identity;
-    await recordAudit(actor.id, 'staff.created', user.id, { role: user.role });
+    await recordAudit(pool, actor.id, 'staff.created', user.id, { username: user.username, role: user.role,
+      grants: input.data.grants, revokes: input.data.revokes });
     return reply.code(201).header('Cache-Control', 'no-store').send({ user: publicUser(user) });
   });
 
@@ -227,7 +159,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     const id = z.string().uuid().safeParse((req.params as { id: string }).id);
     const input = z.object({
       role: roleSchema.optional(), grants: permissions.optional(), revokes: permissions.optional(),
-      active: z.boolean().optional()
+      active: z.boolean().optional(), displayName: z.string().trim().min(2).max(100).optional()
     }).strict().refine(v => Object.keys(v).length > 0).safeParse(req.body);
     if (!id.success || !input.success) return reply.code(400).send({ error: 'invalid_payload' });
     if (actor.id === id.data) return reply.code(403).send({ error: 'cannot_modify_self' });
@@ -246,28 +178,60 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
       }
       const updated = await client.query(
         'UPDATE admin_users SET role=COALESCE($1,role),grants=COALESCE($2::jsonb,grants),' +
-        'revokes=COALESCE($3::jsonb,revokes),active=COALESCE($4,active),updated_at=now() ' +
-        'WHERE id=$5 RETURNING id,username,display_name,role,grants,revokes,active',
+        'revokes=COALESCE($3::jsonb,revokes),active=COALESCE($4,active),display_name=COALESCE($6,display_name),' +
+        'updated_at=now() WHERE id=$5 RETURNING id,username,display_name,role,grants,revokes,active,locked_until',
         [input.data.role ?? null, input.data.grants ? JSON.stringify(input.data.grants) : null,
-          input.data.revokes ? JSON.stringify(input.data.revokes) : null, input.data.active ?? null, id.data]);
+          input.data.revokes ? JSON.stringify(input.data.revokes) : null, input.data.active ?? null, id.data,
+          input.data.displayName ?? null]);
       user = updated.rows[0] as Identity;
+      // Any change of access (or deactivation) ends the employee's sessions immediately.
       await client.query('DELETE FROM admin_sessions WHERE user_id=$1', [id.data]);
-      await client.query('INSERT INTO admin_audit_log(actor_id,action,target,details) VALUES($1,$2,$3,$4::jsonb)',
-        [actor.id, 'staff.updated', id.data, JSON.stringify(input.data)]);
+      await recordAudit(client, actor.id, 'staff.updated', id.data, input.data);
       await client.query('COMMIT');
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
     return reply.header('Cache-Control', 'no-store').send({ user: publicUser(user!) });
   });
 
+  // The owner sets a new password for an employee who forgot theirs; it ends their sessions and unlocks them.
+  app.put('/v1/admin/staff/:id/password', async (req, reply) => {
+    const actor = await requirePermission(req, reply, 'staff:manage');
+    if (!actor) return;
+    const id = z.string().uuid().safeParse((req.params as { id: string }).id);
+    const input = z.object({ password }).strict().safeParse(req.body);
+    if (!id.success || !input.success) return reply.code(400).send({ error: 'invalid_payload' });
+    if (actor.id === id.data) return reply.code(403).send({ error: 'use_own_password_change' });
+    const hashed = await hashPassword(input.data.password);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query<{ role: string }>('SELECT role FROM admin_users WHERE id=$1 FOR UPDATE', [id.data]);
+      if (!existing.rows[0] || existing.rows[0].role === 'owner') {
+        await client.query('ROLLBACK');
+        return reply.code(existing.rows[0] ? 403 : 404).send({ error: existing.rows[0] ? 'cannot_modify_owner' : 'not_found' });
+      }
+      await client.query('UPDATE admin_users SET password_hash=$1,password_changed_at=now(),failed_logins=0,' +
+        'locked_until=NULL,updated_at=now() WHERE id=$2', [hashed, id.data]);
+      await client.query('DELETE FROM admin_sessions WHERE user_id=$1', [id.data]);
+      await recordAudit(client, actor.id, 'staff.password_reset', id.data);
+      await client.query('COMMIT');
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+    return reply.header('Cache-Control', 'no-store').send({ ok: true });
+  });
+
   await productAdminRoutes(app, requirePermission, opts);
+  await orderAdminRoutes(app, requirePermission, opts);
   await mediaRoutes(app, requirePermission);
   await reportRoutes(app, requirePermission);
+  await trafficRoutes(app, requirePermission);
 
   app.get('/v1/admin/audit', async (req, reply) => {
     if (!await requirePermission(req, reply, 'staff:manage')) return;
+    const query = z.object({ before: z.coerce.number().int().positive().optional() }).safeParse(req.query);
+    if (!query.success) return reply.code(400).send({ error: 'invalid_query' });
     const result = await pool.query(
-      'SELECT l.id,l.action,l.target,l.details,l.created_at,u.username AS actor ' +
-      'FROM admin_audit_log l LEFT JOIN admin_users u ON u.id=l.actor_id ORDER BY l.id DESC LIMIT 100');
+      'SELECT l.id,l.action,l.target,l.details,l.created_at,u.username AS actor,u.display_name AS "actorName" ' +
+      'FROM admin_audit_log l LEFT JOIN admin_users u ON u.id=l.actor_id ' +
+      'WHERE ($1::bigint IS NULL OR l.id < $1) ORDER BY l.id DESC LIMIT 100', [query.data.before ?? null]);
     return reply.header('Cache-Control', 'no-store').send({ items: result.rows });
   });
 }

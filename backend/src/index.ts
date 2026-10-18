@@ -2,29 +2,36 @@ import Fastify from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import Redis from 'ioredis';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { pool, db } from './db/connection';
-import { products, variants } from './db/schema';
+import { variants } from './db/schema';
 import { filters, getProduct, getProductsByIds, listProducts } from './catalog';
 import { orderRoutes } from './orders';
 import { adminRoutes } from './admin/routes';
+import { analyticsRoutes } from './analytics';
 import { DomainError } from './pricing';
 import { normalizeSearch } from './search';
+import { assertProductionDatabaseUrl, isUsableSecret, requireSecret, trustProxySetting } from './config';
 import { categories } from '../../src/data/facets';
 
-if (process.env.NODE_ENV === 'production' && (!process.env.ORDER_TOKEN_SECRET || process.env.ORDER_TOKEN_SECRET.length < 32))
-  throw new Error('Set ORDER_TOKEN_SECRET to a random secret of at least 32 characters');
+// Receipt tokens are HMACs of this secret; refuse to start rather than fail (or sign with a public value) later.
+requireSecret('ORDER_TOKEN_SECRET', process.env.ORDER_TOKEN_SECRET);
+if (process.env.NODE_ENV === 'production') assertProductionDatabaseUrl(process.env.DATABASE_URL);
 
+// Every visitor reaches the API through the Next.js server. Without trusting that proxy, all visitors share
+// one rate-limit bucket (the frontend's address), so a handful of requests would lock out the whole store.
 const app = Fastify({
-  logger: true, bodyLimit: 32768, trustProxy: process.env.TRUST_PROXY === 'true'
+  logger: true, bodyLimit: 32768, trustProxy: trustProxySetting(process.env.TRUST_PROXY)
 });
-await app.register(rateLimit, { max: 120, timeWindow: '1 minute', errorResponseBuilder: () => ({
-  error: 'rate_limited', message: 'Too many requests'
+await app.register(rateLimit, { max: 120, timeWindow: '1 minute', errorResponseBuilder: (_req, context) => ({
+  statusCode: context.statusCode, error: 'rate_limited', message: 'Too many requests'
 }) });
 
 const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL, {
-  lazyConnect: true, enableOfflineQueue: false, maxRetriesPerRequest: 1, retryStrategy: () => null
+  lazyConnect: true, enableOfflineQueue: false, maxRetriesPerRequest: 1,
+  // Keep reconnecting with a capped backoff; requests are served uncached until Redis is back.
+  retryStrategy: times => Math.min(times * 500, 10_000)
 }) : null;
 if (redis) {
   redis.on('error', error => app.log.warn({ error: error.message }, 'Redis unavailable; serving uncached'));
@@ -50,6 +57,7 @@ async function cached<T>(key: string, loader: () => Promise<T>): Promise<T> {
 app.setErrorHandler((error, _req, reply) => {
   if (error instanceof DomainError) return reply.code(error.status).send({ error: 'business_rule', message: error.message });
   const known = error as { statusCode?: number; message?: string };
+  if (known.statusCode === 429) return reply.code(429).send({ error: 'rate_limited', message: 'Too many requests' });
   if (typeof known.statusCode === 'number' && known.statusCode >= 400 && known.statusCode < 500)
     return reply.code(known.statusCode).send({ error: 'bad_request', message: known.message ?? 'Bad request' });
   app.log.error(error);
@@ -89,7 +97,7 @@ app.get('/v1/search/suggestions', async (req, reply) => {
   if (!query.success) return reply.code(400).send({ error: 'invalid_query' });
   const q = normalizeSearch(query.data.q);
   if (!q) return { products: [], categories: [], count: 0 };
-  const matches = await listProducts({ q, page: 1, limit: 48, sort: 'featured' });
+  const matches = await listProducts({ q, page: 1, limit: 4, sort: 'featured' });
   const matchingCategories = categories.filter(c => normalizeSearch(c.title).includes(q) || q.includes(normalizeSearch(c.title)));
   return {
     products: matches.items.slice(0, 4).map(p => ({
@@ -103,7 +111,7 @@ app.get('/v1/search/suggestions', async (req, reply) => {
 
 function isAdmin(value: string | undefined) {
   const secret = process.env.ADMIN_API_KEY;
-  if (!value || !secret || secret.length < 32) return false;
+  if (!value || !isUsableSecret(secret)) return false;
   const a = createHash('sha256').update(value).digest();
   const b = createHash('sha256').update(secret).digest();
   return timingSafeEqual(a,b);
@@ -127,6 +135,7 @@ await app.register(orderRoutes, {
     if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
   }
 });
+await app.register(analyticsRoutes);
 await app.register(adminRoutes, {
   invalidateCatalog: async () => {
     if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});

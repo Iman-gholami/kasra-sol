@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { byId } from '@/data/products';
+import { forwardedFor } from '@/lib/backend-proxy';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   }) }, { headers: { 'Cache-Control': 'no-store' } });
   try {
     const response = await fetch(internal + '/v1/products/lookup?ids=' + encodeURIComponent(ids.join(',')), {
-      cache: 'no-store', signal: AbortSignal.timeout(10000)
+      cache: 'no-store', signal: AbortSignal.timeout(10000), headers: forwardedFor(request.headers)
     });
     return new NextResponse(await response.text(), {
       status: response.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }

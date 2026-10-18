@@ -41,6 +41,8 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-kasra}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-kasra}
       REDIS_URL: redis://redis:6379
       ORDER_TOKEN_SECRET: ${ORDER_TOKEN_SECRET:?Set ORDER_TOKEN_SECRET}
+      # The API port is bound to loopback and the Compose network; only the Next.js server forwards visitors.
+      TRUST_PROXY: "true"
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
       MEDIA_DIR: /app/backend/uploads

@@ -39,7 +39,7 @@ export function ShopByColor({ options }: { options: ShopByColorResult[] }) {
 
     <div className="shop-color-result-summary" role="status" aria-live="polite" aria-atomic="true">
       <span>رنگ انتخاب‌شده: <strong>{active.color.name}</strong></span>
-      <span>{formatNumber(active.count)} محصول در کاتالوگ نمایشی</span>
+      <span>{formatNumber(active.count)} محصول در {process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true' ? 'کاتالوگ' : 'کاتالوگ نمایشی'}</span>
     </div>
 
     {active.products.length

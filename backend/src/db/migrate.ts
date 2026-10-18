@@ -8,7 +8,9 @@ async function main() {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(490202601)');
     await client.query('CREATE TABLE IF NOT EXISTS schema_migrations (version varchar(64) PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
-    for (const version of ['001_init', '002_admin', '003_product_visibility']) {
+    // Applied in list order, each exactly once; versions are names, so never rename an applied file.
+    for (const version of ['001_init', '002_admin', '003_product_visibility', '004_order_integrity',
+      '005_admin_operations', '006_traffic']) {
       const applied = await client.query('SELECT 1 FROM schema_migrations WHERE version=$1', [version]);
       if (!applied.rowCount) {
         await client.query(readFileSync(resolve(process.cwd(), 'sql/' + version + '.sql'), 'utf8'));

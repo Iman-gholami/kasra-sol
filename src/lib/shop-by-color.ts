@@ -50,11 +50,11 @@ function previewProduct(product: Product): ProductCardData {
 /** Server-only mock catalog adapter. Returns at most four small product summaries per color.
  * Replace this one function with a batched backend facet+preview query later.
  */
-export function getShopByColorResults(): ShopByColorResult[] {
+export function getShopByColorResults(catalog: Product[] = products): ShopByColorResult[] {
   const encountered = new Map<string, { color: ColorFamily; products: Product[] }>();
   const configuredOrder = new Map(palette.map((c, index) => [c.id, index]));
 
-  for (const product of products) {
+  for (const product of catalog) {
     const families = new Set<string>();
     for (const color of product.colors) {
       const slug = colorFamilyId(color);
