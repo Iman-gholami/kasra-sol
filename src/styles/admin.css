@@ -377,7 +377,7 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 .tr-live i { width: 9px; height: 9px; border-radius: 50%; background: #0ca30c; box-shadow: 0 0 0 0 #0ca30c66; animation: tr-pulse 2s infinite; }
 @keyframes tr-pulse { 70% { box-shadow: 0 0 0 8px #0ca30c00; } 100% { box-shadow: 0 0 0 0 #0ca30c00; } }
 @media (prefers-reduced-motion: reduce) { .tr-live i { animation: none; } }
-.tr-chart { position: relative; border-radius: 10px; }
+.tr-chart { position: relative; min-height: 240px; border-radius: 10px; }
 .tr-chart:focus-visible { outline: 3px solid #1d6fd6; outline-offset: 4px; }
 .tr-chart svg { display: block; overflow: visible; }
 .tr-grid { stroke: var(--tr-grid); stroke-width: 1; }

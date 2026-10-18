@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { ArrowDownLeft, ArrowUpLeft, Eye, MonitorSmartphone, RefreshCw, ShieldCheck, ShoppingBag, Table2, Users } from 'lucide-react';
 import { adminApi, errorMessage } from '@/components/admin/admin-api';
 import { formatNumber } from '@/components/admin/labels';
@@ -42,11 +42,13 @@ function ticks(max: number) {
   const step = [1, 2, 5, 10].map(n => n * power).find(n => n >= raw)!;
   return Array.from({ length: Math.ceil(max / step) + 1 }, (_, i) => i * step);
 }
+/** The element's width, measured before the first paint so a chart is never drawn wider than a phone screen. */
 function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
-  const [width, setWidth] = useState(640);
-  useEffect(() => {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
     if (!ref.current) return;
+    setWidth(Math.round(ref.current.getBoundingClientRect().width));
     const observer = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
     observer.observe(ref.current);
     return () => observer.disconnect();
@@ -117,7 +119,7 @@ function DailyChart({ daily }: { daily: Day[] }) {
   return <div className="tr-chart" ref={ref} tabIndex={0} role="group" onKeyDown={keys}
     aria-label="نمودار بازدید روزانه؛ با کلیدهای جهت روزها را مرور کنید"
     onPointerMove={pick} onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)}>
-    <svg width={width} height={height} aria-hidden="true" direction="ltr">
+    {width > 0 && <svg width={width} height={height} aria-hidden="true" direction="ltr">
       {axis.map(tick => <g key={tick}>
         <line className="tr-grid" x1={pad.left} x2={pad.left + plotW} y1={y(tick)} y2={y(tick)}/>
         <text className="tr-axis" x={pad.left + plotW + 8} y={y(tick) + 4} textAnchor="start">{formatNumber(tick)}</text>
@@ -136,7 +138,7 @@ function DailyChart({ daily }: { daily: Day[] }) {
         <text className="tr-end" x={x(last) - 8} y={y(daily[last].views) + 4} textAnchor="end">{formatNumber(daily[last].views)}</text>
         <text className="tr-end" x={x(last) - 8} y={y(daily[last].visitors) + 4} textAnchor="end">{formatNumber(daily[last].visitors)}</text>
       </>}
-    </svg>
+    </svg>}
     {point && <div className="tr-tooltip" role="status" style={x(active!) > width / 2
       ? { right: width - x(active!) + 12 } : { left: x(active!) + 12 }}>
       <strong>{dayLong.format(asDate(point.date))}</strong>
