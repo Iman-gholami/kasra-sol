@@ -177,7 +177,7 @@ export function SearchExperience({ inputRef, onClose, active }: { inputRef: RefO
             <span className="skeleton"/><span className="skeleton"/></span>)}
         </div>
         {status === 'ready' && entries.length === 0 && <p className="search-message">
-          پیشنهادی برای «<span dir="auto">{query.trim()}</span>» پیدا نشد. جستجوی کامل یا دسته‌بندی‌ها را امتحان کن.
+          <span>پیشنهادی برای «<span dir="auto">{query.trim()}</span>» پیدا نشد. جستجوی کامل یا دسته‌بندی‌ها را امتحان کن.</span>
         </p>}
         {status === 'error' && <p className="search-message search-message-error">
           اتصال برای پیشنهادها برقرار نشد. جستجوی کامل همچنان کار می‌کند.
@@ -187,7 +187,8 @@ export function SearchExperience({ inputRef, onClose, active }: { inputRef: RefO
         </p>}
         <Link className="text-link search-all-link" href={resultsHref} aria-label={'نمایش نتایج «' + query.trim() + '»'}
           onClick={() => { rememberSearch(query); onClose(); }}>
-          نمایش نتایج «<span dir="auto">{query.trim()}</span>» <ArrowLeft size={18} aria-hidden="true"/>
+          {/* One flex item for the label, so the link's gap only separates it from the arrow, not the quotes. */}
+          <span>نمایش نتایج «<span dir="auto">{query.trim()}</span>»</span><ArrowLeft size={18} aria-hidden="true"/>
         </Link>
       </div>}
     </div>
