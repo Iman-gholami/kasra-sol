@@ -157,8 +157,10 @@
   .detail-layout { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-4); padding-block-start: var(--space-2); }
   .pdp-gallery-column { margin-inline: calc(var(--gutter) * -1); }
   .gallery-thumbs { display: none; }
-  .pdp-slide { aspect-ratio: 0.88; }
-  .pdp-slide img { object-fit: contain; object-position: center; }
+  /* Edge to edge instead of a letterboxed 0.88 frame with pale side bands. 4:5 trims only a sliver of the 3:4
+     photos (mostly floor, via the shared center 18% position), and the cap keeps the compact gallery under
+     520px so the title and price stay in reach on short and wide phones alike. */
+  .pdp-slide { aspect-ratio: 4 / 5; max-block-size: min(62svh, 500px); }
   .pdp-gallery-arrow { opacity: 0.92; }
   .pdp-gallery-counter { display: none; }
   .gallery-dots { position: absolute; z-index: 2; inset-block-end: var(--space-3); inset-inline: 0; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
@@ -206,7 +208,7 @@
   .pdp-sticky-confirm a { display: inline-flex; align-items: center; min-block-size: 36px; margin-inline-start: auto; color: var(--color-text); font-weight: var(--font-weight-bold); text-decoration: underline; text-underline-offset: 4px; }
 
   .detail-loading { display: flex; flex-direction: column; padding-block-start: var(--space-2); }
-  .detail-loading-photo { max-block-size: none; aspect-ratio: 0.88; }
+  .detail-loading-photo { aspect-ratio: 4 / 5; max-block-size: min(62svh, 500px); margin-inline: calc(var(--gutter) * -1); border-radius: 0; }
 }
 @media (max-width: 360px) {
   .pdp-sticky-inner .btn { padding-inline: 12px; font-size: var(--text-xs); }
