@@ -40,7 +40,7 @@ test('cart: free-shipping progress, savings, stock notes and save for later with
   await expect(line).toContainText('همه موجودی این رنگ و سایز در سبد توست');
   await expect(summary).toContainText('رایگان با پست پیشتاز');
 
-  await page.getByRole('button', { name: 'ذخیره برای بعد، مانتو کوتاه ژیوا' }).click();
+  await page.getByRole('button', { name: 'انتقال به علاقه‌مندی‌ها، مانتو کوتاه ژیوا' }).click();
   await expect(page.locator('.cart-removed')).toContainText('به علاقه‌مندی‌ها منتقل شد');
   await expect(page.getByRole('link', { name: 'علاقه‌مندی‌ها، ۱ مورد' })).toBeVisible();
   const undo = page.getByRole('button', { name: 'بازگرداندن' });

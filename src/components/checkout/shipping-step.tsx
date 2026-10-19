@@ -19,11 +19,13 @@ export function ShippingStep({ draft, update, subtotal, headingRef, onContinue }
   const { fields } = draft;
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
-  const [formError, setFormError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const [methodNotice, setMethodNotice] = useState('');
   const [notesOpen, setNotesOpen] = useState(Boolean(fields.notes));
   const formRef = useRef<HTMLFormElement>(null);
   const notesRef = useRef<HTMLDivElement>(null);
+  // Derive feedback from the current field errors, not the last submit attempt.
+  const errorCount = addressOrder.filter(field => errors[field]).length;
 
   /** Switch away from a method the (new) address cannot use, and say so. Returns true when it switched. */
   function fitShipping(next: Fields): boolean {
@@ -61,11 +63,11 @@ export function ShippingStep({ draft, update, subtotal, headingRef, onContinue }
     setTouched(Object.fromEntries(addressOrder.map(field => [field, true])));
     const invalid = addressOrder.filter(field => next[field]);
     if (invalid.length) {
-      setFormError(formatNumber(invalid.length) + ' مورد نیاز به اصلاح دارد؛ لطفاً خطاهای مشخص‌شده را اصلاح کن.');
+      setSubmitted(true);
       requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
       return;
     }
-    setFormError('');
+    setSubmitted(false);
     if (fitShipping(fields)) return;
     onContinue();
   }
@@ -74,7 +76,7 @@ export function ShippingStep({ draft, update, subtotal, headingRef, onContinue }
     <div className="checkout-card-head">
       <h2 id="checkout-step-title" ref={headingRef} tabIndex={-1}>نشانی و روش ارسال</h2>
       <button type="button" className="btn btn-tertiary btn-sm" onClick={() => {
-        update({ fields: sampleFields }); setErrors({}); setFormError(''); setMethodNotice('');
+        update({ fields: sampleFields }); setErrors({}); setSubmitted(false); setMethodNotice('');
       }}><Sparkles size={16} aria-hidden="true"/> پر کردن با اطلاعات نمونه</button>
     </div>
     <p className="checkout-card-intro">{process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true'
@@ -82,6 +84,7 @@ export function ShippingStep({ draft, update, subtotal, headingRef, onContinue }
       : 'اطلاعاتت فقط در همین تب مرورگر نگه داشته می‌شود و به هیچ سروری ارسال نمی‌شود.'}</p>
 
     <h3 className="checkout-section-title">نشانی تحویل</h3>
+    <p className="field-hint">همهٔ اطلاعات نشانی الزامی است؛ توضیح برای مأمور ارسال اختیاری است.</p>
     <div className="form-grid">
       <TextField label="نام و نام خانوادگی تحویل‌گیرنده" value={fields.name} error={errors.name} onChange={v => set('name', v)} onBlur={() => blur('name')}
         autoComplete="name" enterKeyHint="next"/>
@@ -120,7 +123,9 @@ export function ShippingStep({ draft, update, subtotal, headingRef, onContinue }
       })}
     </fieldset>
 
-    {formError && <p className="status-message error checkout-form-error" role="alert"><AlertCircle size={18} aria-hidden="true"/>{formError}</p>}
+    {submitted && errorCount > 0 && <p className="status-message error checkout-form-error" role="alert"><AlertCircle size={18} aria-hidden="true"/>
+      {formatNumber(errorCount)} مورد نیاز به اصلاح دارد؛ لطفاً خطاهای مشخص‌شده را اصلاح کن.
+    </p>}
     <div className="checkout-submit-bar">
       <button className="btn btn-primary btn-lg btn-block form-submit" type="submit">
         ادامه و انتخاب روش پرداخت <ArrowLeft size={18} aria-hidden="true"/>
