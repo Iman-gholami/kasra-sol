@@ -19,7 +19,8 @@
 .cart-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: clamp(24px, 4.5vw, 64px); align-items: start; }
 .cart-lines > ul { margin: 0; padding: 0; list-style: none; border-block-start: 1px solid var(--color-border); }
 .cart-item { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--space-3) var(--space-4); padding-block: var(--space-4); border-block-end: 1px solid var(--color-border); }
-.cart-img { position: relative; display: block; inline-size: 120px; aspect-ratio: 3 / 4; overflow: hidden; border-radius: var(--radius-xs); background: var(--color-surface-sunken); }
+/* The photo spans both rows, so quantity and actions sit beside it, level with its bottom edge, not under it. */
+.cart-img { position: relative; display: block; grid-row: span 2; inline-size: 120px; aspect-ratio: 3 / 4; overflow: hidden; border-radius: var(--radius-xs); background: var(--color-surface-sunken); }
 .cart-img img { object-fit: cover; object-position: center 20%; }
 .cart-item-main { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-inline-size: 0; }
 .cart-item-title { margin: 0; font-size: var(--text-md); }
@@ -29,7 +30,7 @@
 .cart-unit del { color: var(--color-text-subtle); font-size: var(--text-xs); }
 .cart-unit strong { color: var(--color-text); }
 .cart-stock-note { margin: 0; color: var(--color-warning); font-size: var(--text-xs); }
-.cart-item-controls { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.cart-item-controls { grid-column: 2; align-self: end; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
 .cart-qty-label, .cart-line-total { color: var(--color-text-muted); font-size: var(--text-sm); }
 .cart-line-total strong { color: var(--color-text); }
 .cart-item .qty-stepper { gap: var(--space-1); border: 0; background: transparent; }
@@ -327,7 +328,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
 }
 @media (max-width: 600px) {
   .cart-item { grid-template-columns: 80px minmax(0, 1fr); gap: var(--space-3); }
-  .cart-img { inline-size: 80px; }
+  .cart-img { grid-row: auto; inline-size: 80px; }
   .cart-item-controls { grid-column: 1 / -1; }
   .cart-line-actions { margin-inline-end: calc(var(--space-2) * -1); }
   .order-done { margin-block: var(--space-5); }

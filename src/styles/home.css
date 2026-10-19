@@ -72,7 +72,8 @@
 /* Editorial band */
 .editorial-band { display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); min-block-size: 420px; margin-block: var(--space-4); background: var(--color-surface-muted); overflow: hidden; }
 .editorial-art { position: relative; min-block-size: 420px; background: var(--color-surface-sunken); }
-.editorial-art img { object-fit: cover; object-position: center 18%; }
+/* Anchored to the top: the wide, short frame otherwise cut across the model's eyes. */
+.editorial-art img { object-fit: cover; object-position: center top; }
 .editorial-copy { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: var(--space-7) clamp(28px, 6vw, 96px); }
 .editorial-copy::after { content: "K"; position: absolute; inset-block-start: 12px; inset-inline-end: 28px; z-index: -1; color: rgb(121 95 76 / 0.06); font: 300px/0.9 var(--font-wordmark); }
 .editorial-super { margin: 0 0 var(--space-4); color: var(--color-text-subtle); font: 600 12px/1.5 Arial, sans-serif; letter-spacing: 0.24em; }
