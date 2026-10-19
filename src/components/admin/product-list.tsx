@@ -2,9 +2,9 @@
 
 import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import Image from 'next/image';
-import { Archive, ChevronDown, ChevronUp, ImageIcon, PackageSearch, Pencil, Plus, Search, Send } from 'lucide-react';
+import { Archive, ChevronDown, ChevronUp, Copy, ImageIcon, PackageSearch, Pencil, Plus, Search, Send } from 'lucide-react';
 import { adminApi, AdminApiError, errorMessage } from '@/components/admin/admin-api';
-import { CATEGORY, formatNumber, formatToman, PRODUCT_STATUS } from '@/components/admin/labels';
+import { CATEGORY, digitsOnly, formatNumber, formatToman, PRODUCT_STATUS } from '@/components/admin/labels';
 import { Badge, Loading, Notice, Pager } from '@/components/admin/ui';
 
 export type ProductRow = {
@@ -15,8 +15,8 @@ export type ProductRow = {
 type ProductPage = { items: ProductRow[]; total: number; page: number; pages: number };
 type Variant = { id: string; color_id: string; color_name: string; size: string; stock: number };
 
-function Row({ product, permissions, changed, edit }: {
-  product: ProductRow; permissions: string[]; changed: () => void; edit: (id: string) => void;
+function Row({ product, permissions, changed, edit, duplicate }: {
+  product: ProductRow; permissions: string[]; changed: () => void; edit: (id: string) => void; duplicate?: (id: string) => void;
 }) {
   const [price, setPrice] = useState(String(product.price));
   const [savedPrice, setSavedPrice] = useState(product.price);
@@ -98,9 +98,9 @@ function Row({ product, permissions, changed, edit }: {
             product.lowVariants > 0 && formatNumber(product.lowVariants) + ' ترکیب کم‌موجود'].filter(Boolean).join(' · ')}</span>}</td>
       <td data-label="قیمت">
         {can('products:price') ? <form className="admin-price-form" onSubmit={savePrice}>
-          <input type="number" inputMode="numeric" min="0" max="1000000000" required dir="ltr" value={price}
-            aria-label={'قیمت فروش ' + product.name + ' به تومان'} onChange={event => setPrice(event.target.value)}/>
-          <button className="admin-btn admin-btn-primary admin-btn-small" disabled={busy || Number(price) === product.price}
+          <input type="text" inputMode="numeric" maxLength={10} required dir="ltr" value={price}
+            aria-label={'قیمت فروش ' + product.name + ' به تومان'} onChange={event => setPrice(digitsOnly(event.target.value))}/>
+          <button className="admin-btn admin-btn-primary admin-btn-small" disabled={busy || price === '' || Number(price) === product.price}
             type="submit">ثبت</button>
         </form> : <span className="admin-nowrap">{formatToman(product.price)}</span>}
         {product.compareAt ? <span className="admin-sub">قبل از تخفیف: {formatToman(product.compareAt)}</span> : null}
@@ -109,6 +109,8 @@ function Row({ product, permissions, changed, edit }: {
         <div className="admin-table-actions">
           {can('products:write') && <button className="admin-btn admin-btn-outline admin-btn-small" onClick={() => edit(product.id)}
             type="button" aria-label={'ویرایش ' + product.name}><Pencil size={13} aria-hidden="true"/> ویرایش</button>}
+          {duplicate && <button className="admin-btn admin-btn-outline admin-btn-small" onClick={() => duplicate(product.id)}
+            type="button" aria-label={'کپی ' + product.name + ' به‌عنوان محصول جدید'}><Copy size={13} aria-hidden="true"/> کپی</button>}
           {can('inventory:read') && <button type="button" disabled={busy}
             aria-expanded={expanded} aria-label={'موجودی رنگ و سایز ' + product.name}
             className="admin-btn admin-btn-outline admin-btn-small" onClick={toggleVariants}>
@@ -131,9 +133,9 @@ function Row({ product, permissions, changed, edit }: {
             <span>{variant.color_name} / <bdi>{variant.size}</bdi>
               <small className="admin-sub">موجودی فعلی: {formatNumber(variant.stock)}</small></span>
             {can('inventory:write') && <div className="admin-inline">
-              <input type="number" inputMode="numeric" min="0" max="1000000" dir="ltr"
+              <input type="text" inputMode="numeric" maxLength={7} dir="ltr"
                 aria-label={'موجودی جدید ' + variant.color_name + ' سایز ' + variant.size}
-                value={stocks[variant.id] ?? ''} onChange={event => setStocks(s => ({ ...s, [variant.id]: event.target.value }))}/>
+                value={stocks[variant.id] ?? ''} onChange={event => setStocks(s => ({ ...s, [variant.id]: digitsOnly(event.target.value) }))}/>
               <button type="button" disabled={busy || stocks[variant.id] === '' || Number(stocks[variant.id]) === variant.stock}
                 className="admin-btn admin-btn-primary admin-btn-small" onClick={() => void saveStock(variant)}>ثبت</button>
             </div>}
@@ -145,11 +147,11 @@ function Row({ product, permissions, changed, edit }: {
   </Fragment>;
 }
 
-export function ProductList({ permissions, edit, create }: {
-  permissions: string[]; edit: (id: string) => void; create: () => void;
+export function ProductList({ permissions, edit, create, duplicate, initialQuery = '' }: {
+  permissions: string[]; edit: (id: string) => void; create: () => void; duplicate: (id: string) => void; initialQuery?: string;
 }) {
-  const [query, setQuery] = useState('');
-  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState(initialQuery);
+  const [search, setSearch] = useState(initialQuery.trim());
   const [status, setStatus] = useState('all');
   const [stock, setStock] = useState('all');
   const [page, setPage] = useState(1);
@@ -223,7 +225,7 @@ export function ProductList({ permissions, edit, create }: {
               </tr></thead>
               <tbody>
                 {data.items.map(product => <Row key={product.id} product={product}
-                  permissions={permissions} changed={reload} edit={edit}/>)}
+                  permissions={permissions} changed={reload} edit={edit} duplicate={canCreate ? duplicate : undefined}/>)}
               </tbody>
             </table>
           </div>

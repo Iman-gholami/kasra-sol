@@ -8,7 +8,7 @@ const UUID = '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
 // Only these admin endpoints are reachable from the browser; the API checks the session's permissions on each.
 const ROUTES: Record<string, RegExp> = {
   GET: new RegExp('^(auth/me|reports/overview|reports/traffic|products|products/' + PRODUCT + '|products/' + PRODUCT + '/variants|' +
-    'orders|orders/' + UUID + '|staff|audit)$'),
+    'orders|orders/export|orders/' + UUID + '|staff|audit)$'),
   POST: /^(auth\/logout|auth\/password|staff|products)$/,
   PATCH: new RegExp('^(staff/' + UUID + '|products/' + PRODUCT + '/(price|visibility)|variants/' + UUID + '/stock|' +
     'orders/' + UUID + '/status)$'),
@@ -16,7 +16,8 @@ const ROUTES: Record<string, RegExp> = {
 };
 // List endpoints accept these query parameters; anything else is dropped rather than forwarded.
 const QUERY: Record<string, string[]> = {
-  products: ['q', 'status', 'stock', 'page', 'limit'], orders: ['q', 'status', 'page', 'limit'], audit: ['before'],
+  products: ['q', 'status', 'stock', 'page', 'limit'], orders: ['q', 'status', 'period', 'page', 'limit'],
+  'orders/export': ['q', 'status', 'period'], audit: ['before', 'group', 'actor'],
   'reports/traffic': ['days']
 };
 
@@ -48,8 +49,15 @@ async function handle(request: NextRequest, context: Ctx) {
       },
       cache: 'no-store', signal: AbortSignal.timeout(10000)
     });
-    const response = new NextResponse(await backend.text(), {
-      status: backend.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+    // Only the order export answers with a file; everything else is JSON, whatever the backend claims.
+    const csv = path === 'orders/export' && backend.ok;
+    // Raw bytes for the file: text() would drop the byte-order mark Excel needs to read Persian as UTF-8.
+    const response = new NextResponse(csv ? await backend.arrayBuffer() : await backend.text(), {
+      status: backend.status, headers: {
+        'Content-Type': csv ? 'text/csv; charset=utf-8' : 'application/json', 'Cache-Control': 'no-store',
+        ...(csv ? { 'Content-Disposition': backend.headers.get('content-disposition') ?? 'attachment; filename="orders.csv"',
+          'X-Content-Type-Options': 'nosniff' } : {})
+      }
     });
     if (path === 'auth/logout' || backend.status === 401)
       response.cookies.set('kasra_admin', '', { httpOnly: true, sameSite: 'strict', path: '/', maxAge: 0 });

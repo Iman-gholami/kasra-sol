@@ -30,7 +30,8 @@ function Metric({ title, value, hint, icon: Icon, testId, tone = 'neutral' }: {
   </article>;
 }
 
-export function SalesOverview() {
+/** `openProduct` (when the account may see products) jumps from a low-stock row to that product in the product list. */
+export function SalesOverview({ openProduct }: { openProduct?: (id: string) => void }) {
   const [report, setReport] = useState<Report | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
@@ -141,6 +142,9 @@ export function SalesOverview() {
                 <span className="admin-rank-name"><strong>{item.name}</strong><span>رنگ {item.colorName} · سایز <bdi>{item.size}</bdi></span></span>
                 <span className={item.stock === 0 ? 'admin-stock-none' : 'admin-stock-low'}>
                   {item.stock === 0 ? 'ناموجود' : formatNumber(item.stock) + ' عدد'}</span>
+                {openProduct && <button type="button" className="admin-btn admin-btn-outline admin-btn-small"
+                  onClick={() => openProduct(item.id)} aria-label={'نمایش ' + item.name + ' در فهرست محصولات'}>
+                  نمایش</button>}
               </li>)}</ul>}
           </div>
         </section>

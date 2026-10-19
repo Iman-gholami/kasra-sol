@@ -28,3 +28,9 @@ test('password hashing uses random salts and rejects incorrect passwords', async
   assert.equal(await verifyPassword('anything', 'malformed'), false);
   await assert.rejects(hashPassword('short'));
 });
+test('bulk order export is a manager default and a staff opt-in', () => {
+  assert.equal(may('manager', [], [], 'orders:export'), true);
+  assert.equal(may('staff', [], [], 'orders:export'), false);
+  assert.equal(may('staff', ['orders:export'], [], 'orders:export'), true);
+  assert.equal(assignable(['orders:export']), true);
+});

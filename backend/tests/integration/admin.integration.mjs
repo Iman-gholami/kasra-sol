@@ -253,6 +253,29 @@ describe('inventory and pricing integrity', () => {
     assert.deepEqual(audit.rows[0].details, { from: 900_000, to: 950_000 });
     await api('/v1/admin/products/' + PRODUCT + '/price', { method: 'PATCH', token: owner.token, body: { price: 900_000 } });
   });
+
+  it('keeps a published product sellable: it never loses its last photo or becomes free', async () => {
+    const { etag, item } = await revision();
+    const current = editable(item);
+    assert.deepEqual((await put(owner.token, { ...current, images: [] }, etag)).data, { error: 'image_required_to_publish' });
+    assert.deepEqual((await put(owner.token, { ...current, price: 0, compareAt: null }, etag)).data,
+      { error: 'price_required_to_publish' });
+    const free = await api('/v1/admin/products/' + PRODUCT + '/price', { method: 'PATCH', token: owner.token, body: { price: 0 } });
+    assert.deepEqual([free.status, free.data.error], [409, 'price_required_to_publish']);
+    assert.equal((await revision()).etag, etag, 'refused edits change nothing');
+    // A draft may be saved incomplete, but cannot be published until it has a photo and a price.
+    const id = 'it-unpriced-' + run;
+    assert.equal((await api('/v1/admin/products', { method: 'POST', token: owner.token,
+      body: productBody({ id, slug: id, images: [], price: 0, compareAt: null }) })).status, 201);
+    const publish = () => api('/v1/admin/products/' + id + '/visibility', { method: 'PATCH', token: owner.token, body: { active: true } });
+    assert.equal((await publish()).data.error, 'image_required_to_publish');
+    const draft = await api('/v1/admin/products/' + id, { token: owner.token });
+    assert.equal((await api('/v1/admin/products/' + id, { method: 'PUT', token: owner.token,
+      body: { ...editable(draft.data.item), images: [image] }, headers: { 'If-Match': '"' + draft.data.revision + '"' } })).status, 200);
+    assert.equal((await publish()).data.error, 'price_required_to_publish');
+    assert.equal((await api('/v1/admin/products/' + id + '/price', { method: 'PATCH', token: owner.token, body: { price: 450_000 } })).status, 200);
+    assert.equal((await publish()).data.status, 'active');
+  });
 });
 
 describe('order lifecycle', () => {
@@ -341,6 +364,64 @@ describe('order lifecycle', () => {
     assert.equal(found.data.items.length, 2);
     assert.ok(found.data.total >= 2);
     assert.equal(found.data.items[0].mobile, undefined, 'the list does not expose mobile numbers');
+  });
+});
+
+describe('order export and history filters', () => {
+  const download = (query, token) => fetch(base + '/v1/admin/orders/export?' + query,
+    { headers: { Authorization: 'Bearer ' + token, 'X-Forwarded-For': nextIp() } });
+
+  it('exports the filtered orders as an audited, formula-safe CSV only with orders:export', async () => {
+    const name = '=HYPERLINK("http://evil.example","x") ' + run;
+    const placed = await api('/v1/orders', { method: 'POST', headers: { 'Idempotency-Key': randomUUID() }, body: {
+      items: [{ productId: PRODUCT, colorId: 'black', size: 'M', quantity: 1 }], fields: { ...fields, name },
+      shipping: 'courier', payment: 'cod', code: '' } });
+    assert.equal(placed.status, 201);
+    const response = await download('status=all&period=today&q=' + encodeURIComponent(run), manager.token);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /^text\/csv/);
+    assert.match(response.headers.get('content-disposition'), /^attachment; filename="kasra-orders-\d{4}-\d{2}-\d{2}\.csv"$/);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf], 'BOM for Excel');
+    const lines = bytes.toString('utf8').slice(1).trimEnd().split('\r\n');
+    assert.equal(lines.length, 2, 'header and the one matching order');
+    assert.ok(lines[1].includes(placed.data.id));
+    assert.ok(lines[1].includes(`"'=HYPERLINK(""http://evil.example"",""x"") ${run}"`), 'formula neutralised');
+    assert.ok(lines[1].includes('="09121112233"'));
+    const audit = await pool.query("SELECT details FROM admin_audit_log WHERE action='orders.exported' ORDER BY id DESC LIMIT 1");
+    assert.deepEqual(audit.rows[0].details, { count: 1, status: 'all', period: 'today', search: true });
+    assert.equal((await download('status=all', staff.token)).status, 403, 'default staff cannot bulk-export customers');
+    const granted = await account('staff', { grants: ['orders:export'] });
+    assert.equal((await download('status=all&period=today', granted.token)).status, 200);
+    assert.equal((await download('period=year', manager.token)).status, 400);
+  });
+
+  it('filters orders by Tehran period without hiding older ones from «all»', async () => {
+    const order = await placeOrder(PRODUCT);
+    const list = query => api('/v1/admin/orders?status=all&q=' + order.id.slice(0, 8) + '&' + query, { token: staff.token });
+    assert.equal((await list('period=today')).data.total, 1);
+    await pool.query("UPDATE orders SET created_at=now() - interval '40 days' WHERE id=$1", [order.id]);
+    assert.equal((await list('period=30d')).data.total, 0);
+    assert.equal((await list('period=7d')).data.total, 0);
+    assert.equal((await list('period=all')).data.total, 1);
+    assert.equal((await list('')).data.total, 1);
+  });
+
+  it('filters the activity history by event group and by account, and names what each entry is about', async () => {
+    const byGroup = await api('/v1/admin/audit?group=orders', { token: owner.token });
+    assert.equal(byGroup.status, 200);
+    assert.ok(byGroup.data.items.length > 0);
+    assert.ok(byGroup.data.items.every(item => item.action.startsWith('orders.')));
+    const byActor = await api('/v1/admin/audit?actor=' + manager.id, { token: owner.token });
+    assert.ok(byActor.data.items.length > 0);
+    assert.ok(byActor.data.items.every(item => item.actor === manager.username));
+    const price = byActor.data.items.find(item => item.action === 'products.price');
+    assert.equal(price.targetName, (await revision()).item.name);
+    const login = (await api('/v1/admin/audit?group=auth&actor=' + manager.id, { token: owner.token })).data.items
+      .find(item => item.action === 'auth.login');
+    assert.equal(login.targetName, 'تست manager');
+    assert.equal((await api('/v1/admin/audit?group=secrets', { token: owner.token })).status, 400);
+    assert.equal((await api('/v1/admin/audit?group=orders', { token: manager.token })).status, 403);
   });
 });
 

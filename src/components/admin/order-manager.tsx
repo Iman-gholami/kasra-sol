@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { ArrowRight, ClipboardList, Phone, RefreshCw, Search } from 'lucide-react';
-import { adminApi, AdminApiError, errorMessage } from '@/components/admin/admin-api';
+import { ArrowRight, ClipboardList, Download, Phone, Printer, RefreshCw, Search } from 'lucide-react';
+import { adminApi, AdminApiError, adminDownload, errorMessage } from '@/components/admin/admin-api';
 import {
   formatDateTime, formatNumber, formatToman, ORDER_STATUS, PAYMENT_METHOD, paymentState, SHIPPING_METHOD,
   statusLabel, statusTone, TRANSITION_ACTIONS
@@ -25,6 +25,9 @@ type OrderDetail = {
 };
 const FILTERS = [['open', 'سفارش‌های باز'], ['all', 'همه سفارش‌ها'],
   ...Object.entries(ORDER_STATUS).map(([value, { label }]) => [value, label])] as const;
+// Tehran calendar days; «ماه جاری» is the current Solar Hijri month, as on the dashboard.
+const PERIODS = [['all', 'همه زمان‌ها'], ['today', 'امروز'], ['7d', '۷ روز اخیر'], ['30d', '۳۰ روز اخیر'],
+  ['month', 'ماه جاری']] as const;
 const shortId = (id: string) => id.slice(0, 8).toUpperCase();
 
 function confirmText(order: { payment: string }, next: string) {
@@ -76,8 +79,12 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
   </div>;
   const payment = paymentState(order.payment, order.status);
   return <div className="admin-stack" data-testid="order-detail">
-    <button type="button" className="admin-btn admin-btn-outline admin-btn-small admin-back" onClick={onBack}>
-      <ArrowRight size={15} aria-hidden="true"/> بازگشت به سفارش‌ها</button>
+    <div className="admin-actions admin-no-print">
+      <button type="button" className="admin-btn admin-btn-outline admin-btn-small" onClick={onBack}>
+        <ArrowRight size={15} aria-hidden="true"/> بازگشت به سفارش‌ها</button>
+      <button type="button" className="admin-btn admin-btn-outline admin-btn-small" onClick={() => window.print()}>
+        <Printer size={15} aria-hidden="true"/> چاپ برگه سفارش</button>
+    </div>
     <section className="admin-panel" aria-labelledby="order-title">
       <div className="admin-panel-head">
         <div>
@@ -90,13 +97,13 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
         </div>
       </div>
       <div className="admin-panel-body admin-stack">
-        {order.payment === 'online' && order.status === 'pending_payment' && <Notice tone="warning">
+        {order.payment === 'online' && order.status === 'pending_payment' && <Notice tone="warning" className="admin-no-print">
           این سفارش اینترنتی هنوز پرداخت نشده است. تا اتصال درگاه و تأیید واقعی پرداخت، نباید آماده یا ارسال شود؛
           فقط می‌توانید آن را لغو کنید. برای این سفارش موجودی رزرو نشده است.</Notice>}
-        {order.payment === 'cod' && order.status === 'delivered' && <Notice tone="info">
+        {order.payment === 'cod' && order.status === 'delivered' && <Notice tone="info" className="admin-no-print">
           تحویل ثبت شده است، اما دریافت وجه در سامانه ثبت و تأیید نمی‌شود و این مبلغ درآمد قطعی نیست.</Notice>}
-        {error && <Notice tone="error">{error}</Notice>}
-        {notice && <Notice tone="success">{notice}</Notice>}
+        {error && <Notice tone="error" className="admin-no-print">{error}</Notice>}
+        {notice && <Notice tone="success" className="admin-no-print">{notice}</Notice>}
         <div className="admin-detail-grid">
           <section aria-labelledby="customer-title" className="admin-subcard">
             <h3 id="customer-title">مشتری و نشانی تحویل</h3>
@@ -141,7 +148,7 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
             </table>
           </div>
         </section>
-        <section aria-labelledby="history-title">
+        <section aria-labelledby="history-title" className="admin-no-print">
           <h3 id="history-title" className="admin-section-title">تاریخچه وضعیت</h3>
           <ol className="admin-timeline">
             {order.history.map((entry, index) => <li key={index}>
@@ -151,7 +158,7 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
             </li>)}
           </ol>
         </section>
-        {canFulfill && order.nextStatuses.length > 0 && <section aria-labelledby="actions-title" className="admin-subcard">
+        {canFulfill && order.nextStatuses.length > 0 && <section aria-labelledby="actions-title" className="admin-subcard admin-no-print">
           <h3 id="actions-title">اقدام بعدی</h3>
           <label className="admin-field">یادداشت داخلی (اختیاری، مثلاً دلیل لغو یا کد رهگیری)
             <input value={note} maxLength={300} onChange={event => setNote(event.target.value)}/>
@@ -167,8 +174,10 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
   </div>;
 }
 
-export function OrderManager({ canFulfill }: { canFulfill: boolean }) {
+export function OrderManager({ canFulfill, canExport }: { canFulfill: boolean; canExport: boolean }) {
   const [status, setStatus] = useState('open');
+  const [period, setPeriod] = useState('all');
+  const [exporting, setExporting] = useState(false);
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -180,19 +189,27 @@ export function OrderManager({ canFulfill }: { canFulfill: boolean }) {
   useEffect(() => {
     if (selected) return;
     const controller = new AbortController();
-    const params = new URLSearchParams({ status, page: String(page), limit: '20', ...(search ? { q: search } : {}) });
+    const params = new URLSearchParams({ status, period, page: String(page), limit: '20', ...(search ? { q: search } : {}) });
     adminApi<OrderList>('orders?' + params, { signal: controller.signal })
       .then(result => { setData(result); setError(''); })
       .catch(cause => { if (!controller.signal.aborted) setError(errorMessage(cause)); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [status, search, page, selected, version]);
+  }, [status, period, search, page, selected, version]);
 
   if (selected) return <OrderDetailView id={selected} canFulfill={canFulfill}
     onBack={() => { setSelected(null); setLoading(true); }}/>;
   function submit(event: FormEvent) {
     event.preventDefault();
     setLoading(true); setPage(1); setSearch(query.trim());
+  }
+  /** The filtered list (every page) as a CSV file for Excel or Google Sheets. */
+  async function exportCsv() {
+    setExporting(true); setError('');
+    try {
+      await adminDownload('orders/export?' + new URLSearchParams({ status, period, ...(search ? { q: search } : {}) }), 'kasra-orders.csv');
+    } catch (cause) { setError(errorMessage(cause)); }
+    finally { setExporting(false); }
   }
   return <div className="admin-stack">
     <Notice tone="info">سفارش اینترنتی «در انتظار پرداخت» پرداخت‌نشده است و تا اتصال درگاه واقعی قابل تأیید یا ارسال نیست.
@@ -214,8 +231,16 @@ export function OrderManager({ canFulfill }: { canFulfill: boolean }) {
               {FILTERS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
+          <label className="admin-inline-field"><span className="sr-only">بازه زمانی ثبت سفارش</span>
+            <select value={period} onChange={event => { setLoading(true); setPage(1); setPeriod(event.target.value); }}>
+              {PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
           <button type="button" className="admin-btn admin-btn-outline" onClick={() => { setLoading(true); setVersion(v => v + 1); }}>
             <RefreshCw size={15} aria-hidden="true"/> تازه‌سازی</button>
+          {canExport && <button type="button" className="admin-btn admin-btn-outline" disabled={exporting || !data?.total}
+            onClick={() => void exportCsv()} title="همه صفحه‌های همین فهرست، برای Excel">
+            <Download size={15} aria-hidden="true"/> {exporting ? 'در حال آماده‌سازی…' : 'خروجی Excel (CSV)'}</button>}
         </div>
       </div>
       {error && <div className="admin-panel-body"><Notice tone="error">{error}</Notice></div>}
@@ -245,7 +270,7 @@ export function OrderManager({ canFulfill }: { canFulfill: boolean }) {
           <Pager page={data.page} pages={data.pages} total={data.total} unit="سفارش"
             onPage={next => { setLoading(true); setPage(next); }}/>
         </> : <div className="admin-empty"><ClipboardList size={30} aria-hidden="true"/>
-          <p>{search || status !== 'all' ? 'سفارشی با این فیلتر پیدا نشد.' : 'هنوز سفارشی ثبت نشده است.'}</p></div>}
+          <p>{search || status !== 'all' || period !== 'all' ? 'سفارشی با این فیلتر پیدا نشد.' : 'هنوز سفارشی ثبت نشده است.'}</p></div>}
     </section>
   </div>;
 }
