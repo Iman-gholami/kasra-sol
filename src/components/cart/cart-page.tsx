@@ -80,7 +80,7 @@ export function CartPage() {
                 <p className="cart-unit">
                   <span>قیمت واحد:</span>
                   {row.product.compareAt && row.product.compareAt > row.product.price && <del className="price">
-                    <span className="sr-only">قیمت پیشین: </span>{toman(row.product.compareAt)}
+                    <span className="sr-only">قیمت پیشین: </span>{formatNumber(row.product.compareAt)}<span className="sr-only"> تومان</span>
                   </del>}
                   <strong className="price">{toman(row.product.price)}</strong>
                 </p>
