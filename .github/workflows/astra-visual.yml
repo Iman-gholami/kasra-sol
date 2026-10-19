@@ -1,0 +1,58 @@
+name: ASTRA isolated visual review
+on:
+  push:
+    branches: [astra/storefront-ux-refinement]
+    paths: ['src/**', 'scripts/astra-review.cjs', '.github/workflows/astra-visual.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [before, after]
+    env:
+      NEXT_PUBLIC_BACKEND_ENABLED: 'false'
+      BACKEND_INTERNAL_URL: ''
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: tooling
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.version == 'before' && '54a7af4c5fb6bca65b55d2e2169538833123ea63' || github.sha }}
+          path: app
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install and build demo only
+        working-directory: app
+        run: |
+          npm install --no-audit --no-fund
+          npm run lint
+          npm run typecheck
+          npm run build
+          npx playwright install --with-deps chromium
+          cp ../tooling/scripts/astra-review.cjs scripts/astra-review.cjs
+      - name: Capture responsive pages and exercise shopping
+        working-directory: app
+        env:
+          REVIEW_VERSION: ${{ matrix.version }}
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/astra-next.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3000/api/health; then break; fi
+            sleep 2
+          done
+          node scripts/astra-review.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-${{ matrix.version }}
+          path: app/artifacts/astra
