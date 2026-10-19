@@ -161,6 +161,9 @@ select.control {
   content: ""; display: block; inline-size: 40px; block-size: 4px; margin-inline: auto;
   border-radius: var(--radius-pill); background: var(--color-border-strong);
 }
+/* A bottom sheet's handle takes its own row, so it never squeezes the title beside the close button. */
+.sheet-bottom .sheet-header:has(> .sheet-handle) { flex-wrap: wrap; row-gap: 0; padding-block-start: 0; }
+.sheet-bottom .sheet-header > .sheet-handle { flex: 0 0 100%; }
 
 .sheet-center {
   inset: 0; margin: auto; inline-size: min(100% - 32px, 620px); max-block-size: min(88dvh, 820px);
