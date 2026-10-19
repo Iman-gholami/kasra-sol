@@ -114,9 +114,10 @@
 .footer-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); gap: var(--space-6); padding-block-end: var(--space-7); }
 .footer-intro p { margin: 0 0 var(--space-3); max-inline-size: 38ch; color: var(--color-text-muted); font-size: var(--text-sm); }
 .footer-intro .footer-demo { font-size: var(--text-xs); color: var(--color-text-subtle); }
-.footer-wordmark { display: inline-flex; flex-direction: column; align-items: flex-start; margin-block-end: var(--space-4); direction: ltr; }
-.footer-wordmark span { font: 28px/1 var(--font-wordmark); letter-spacing: 0.19em; }
-.footer-wordmark small { font: 600 10px/1 Arial, sans-serif; letter-spacing: 0.42em; padding-block-start: 10px; color: var(--color-text-muted); }
+/* Same lockup as the header: BOUTIQUE centred under KASRA, trailing letter-spacing balanced on the left. */
+.footer-wordmark { display: inline-flex; flex-direction: column; align-items: center; margin-block-end: var(--space-4); direction: ltr; }
+.footer-wordmark span { font: 28px/1 var(--font-wordmark); letter-spacing: 0.19em; padding-inline-start: 0.19em; }
+.footer-wordmark small { font: 600 10px/1 Arial, sans-serif; letter-spacing: 0.42em; padding-block-start: 10px; padding-inline-start: 0.42em; color: var(--color-text-muted); }
 .footer h2 { margin: 0 0 var(--space-2); font-size: var(--text-sm); font-weight: var(--font-weight-heavy); }
 .footer ul { margin: 0; padding: 0; list-style: none; }
 .footer nav a {
@@ -132,7 +133,7 @@
 
 @media (max-width: 1080px) {
   .search-trigger { min-inline-size: 0; inline-size: var(--touch); block-size: var(--touch); padding: 0; justify-content: center; border: 0; background: transparent; }
-  .search-trigger:hover { background: var(--color-surface-muted); }
+  @media (hover: hover) { .search-trigger:hover { background: var(--color-surface-muted); } }
   .search-trigger-label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .search-trigger kbd { display: none; }
   .nav-panel-inner { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }

@@ -32,6 +32,9 @@ a { color: inherit; text-decoration: none; }
 img { display: block; }
 h1, h2, h3, h4 { line-height: var(--leading-heading); font-weight: var(--font-weight-bold); }
 h1, h2, h3, h4, p { overflow-wrap: break-word; }
+/* No one-word last lines: headings share their words across lines, paragraphs avoid orphans. */
+h1, h2, h3, h4 { text-wrap: balance; }
+p { text-wrap: pretty; }
 ::selection { background: var(--color-accent-wash); color: var(--color-text); }
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; border-radius: var(--radius-xs); }
 [hidden] { display: none !important; }
@@ -40,7 +43,9 @@ bdi { unicode-bidi: isolate; }
 /* Layout helpers */
 .site-shell { min-block-size: 100svh; display: flex; flex-direction: column; }
 #main-content { flex: 1; min-inline-size: 0; }
-.container { inline-size: min(100% - 2 * var(--gutter), var(--container-page)); margin-inline: auto; }
+/* max-inline-size cancels Tailwind's `container` utility, whose 1280px step otherwise caps the 1440px page
+   width between 1280 and 1535px viewports and pulls the header and sections out of line with the editorial rows. */
+.container { inline-size: min(100% - 2 * var(--gutter), var(--container-page)); max-inline-size: none; margin-inline: auto; }
 .container.wide-editorial { inline-size: min(100% - 2 * var(--gutter), var(--container-editorial)); max-inline-size: none; }
 .section-block { padding-block: var(--section-gap); }
 

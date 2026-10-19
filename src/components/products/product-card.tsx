@@ -33,7 +33,7 @@ export function ProductCard({ product, loading = 'lazy', sizes = SIZES }: { prod
     </div>
     <div className="product-info">
       <p className="product-category">{category}</p>
-      <h3 className="product-title"><Link href={href} className="product-link">{product.name}</Link></h3>
+      <h3 className="product-title"><Link href={href} className="product-link"><span>{product.name}</span></Link></h3>
       <Price price={product.price} compareAt={product.compareAt}/>
       <div className="color-dots" aria-hidden="true">
         {product.colors.map(color => <span key={color.id} style={{ backgroundColor: color.hex }}/>)}
