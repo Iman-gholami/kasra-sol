@@ -20,6 +20,13 @@ const stable = (value: unknown): string => JSON.stringify(value, (_key, inner) =
     ? Object.fromEntries(Object.entries(inner).sort(([a], [b]) => a.localeCompare(b))) : inner);
 const statusOf = (row: { active: boolean; archived_at: Date | null }) =>
   row.active ? 'active' : row.archived_at ? 'archived' : 'draft';
+/** A product on sale must show a photo (storefront cards cannot render without one) and must not be free.
+ * Drafts may stay incomplete; the rule applies when publishing and to every later edit of a published product. */
+function saleBlocker(product: { images: unknown[]; price: number }) {
+  if (!product.images.length) return 'image_required_to_publish';
+  if (product.price <= 0) return 'price_required_to_publish';
+  return null;
+}
 const CONTENT_FIELDS = [
   ['slug', 'slug'], ['name', 'name'], ['category', 'category'], ['description', 'description'],
   ['images', 'images'], ['colors', 'colors'], ['sizes', 'sizes'], ['material', 'material'],
@@ -204,6 +211,8 @@ export async function productAdminRoutes(app: FastifyInstance, check: Guard,
       if (missing) {
         await client.query('ROLLBACK'); return reply.code(403).send({ error: 'forbidden', permission: missing });
       }
+      const blocked = stored.active ? saleBlocker(item) : null;
+      if (blocked) { await client.query('ROLLBACK'); return reply.code(409).send({ error: blocked }); }
       const removed = stock.filter(change => change.to === null);
       if (removed.length) {
         // Pending COD units may still be returned by cancellation. Deleting their SKU would
@@ -251,10 +260,13 @@ export async function productAdminRoutes(app: FastifyInstance, check: Guard,
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const found = await client.query<{ price: number; compare_at: number | null }>(
-        'SELECT price,compare_at FROM products WHERE id=$1 FOR UPDATE', [id.data]);
+      const found = await client.query<{ price: number; compare_at: number | null; active: boolean }>(
+        'SELECT price,compare_at,active FROM products WHERE id=$1 FOR UPDATE', [id.data]);
       const previous = found.rows[0];
       if (!previous) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'not_found' }); }
+      if (previous.active && input.data.price <= 0) {
+        await client.query('ROLLBACK'); return reply.code(409).send({ error: 'price_required_to_publish' });
+      }
       // A sale price above the struck-through original would show customers a negative discount.
       if (previous.compare_at !== null && input.data.price > previous.compare_at) {
         await client.query('ROLLBACK'); return reply.code(409).send({ error: 'price_above_original' });
@@ -307,11 +319,10 @@ export async function productAdminRoutes(app: FastifyInstance, check: Guard,
     let status = '';
     try {
       await client.query('BEGIN');
-      const found = await client.query('SELECT images,active FROM products WHERE id=$1 FOR UPDATE', [id.data]);
+      const found = await client.query('SELECT images,price,active FROM products WHERE id=$1 FOR UPDATE', [id.data]);
       if (!found.rowCount) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'not_found' }); }
-      if (parsed.data.active && !(found.rows[0].images as unknown[]).length) {
-        await client.query('ROLLBACK'); return reply.code(409).send({ error: 'image_required_to_publish' });
-      }
+      const blocked = parsed.data.active ? saleBlocker(found.rows[0]) : null;
+      if (blocked) { await client.query('ROLLBACK'); return reply.code(409).send({ error: blocked }); }
       // Taking a published product off sale archives it; an unpublished draft stays a draft.
       const updated = await client.query<{ active: boolean; archived_at: Date | null }>(
         'UPDATE products SET archived_at=CASE WHEN $1 THEN NULL WHEN active THEN now() ELSE archived_at END,' +

@@ -45,6 +45,8 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 .admin-navigation button[aria-current="page"] { background: #e5f5ef; color: #0f5248; box-shadow: 0 3px 16px #0000000d; }
 .admin-navigation button[aria-current="page"] svg { color: var(--admin-green); }
 .admin-navigation button:focus-visible { outline-color: var(--admin-gold); }
+.admin-nav-badge { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-inline-start: auto; padding: 0 7px;
+  border-radius: 999px; background: var(--admin-gold); color: #173e3b; font-size: 12px; font-weight: 800; line-height: 1; }
 .admin-side-spacer { flex: 1; min-height: 24px; }
 .admin-side-note { border: 1px solid #ffffff26; background: #ffffff0d; border-radius: 14px; padding: 15px; color: #dcebe7; font-size: 12px; }
 .admin-side-note strong { display: block; color: #fff; margin-bottom: 4px; font-size: 13px; }
@@ -251,6 +253,7 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 .admin-permissions legend { margin-bottom: 8px; font-weight: 700; font-size: 13px; }
 .admin-chip-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
 .admin-chip-list li { padding: 3px 10px; border-radius: 999px; background: #e9f3f1; color: #1d4c45; font-size: 12px; }
+.admin-audit-target { display: block; font-weight: 600; }
 
 /* Dashboard */
 .admin-metrics { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -329,6 +332,8 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .admin-search-field { min-width: 0; }
   .admin-toolbar-controls { width: 100%; }
   .admin-inline-field { flex: 1; }
+  /* Filter selects pair up, half a row each; buttons wrap onto the next row instead of squeezing them. */
+  .admin-toolbar-controls > .admin-inline-field { flex: 1 1 calc(50% - 4px); }
   .admin-app .admin-inline-field select { width: 100%; min-width: 0; }
   .admin-color-row { grid-template-columns: 1fr; }
   .admin-member .admin-inline-field { flex-basis: 100%; }
@@ -441,4 +446,18 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .tr-ranked li { grid-template-columns: minmax(0, 1fr) auto; }
   .tr-ranked-bar { grid-column: 1 / -1; grid-row: 2; }
   .tr-hours { height: 120px; gap: 2px; }
+}
+
+/* Order slip: the order detail prints as one sheet of customer, address, items and amounts, without the panel chrome,
+   the status history or the action buttons. Placed last so it overrides the narrow-screen layouts above. */
+@media print {
+  .admin-app { display: block; background: #fff; }
+  .admin-app .admin-sidebar, .admin-topbar, .admin-no-print, .admin-app .skip-link { display: none !important; }
+  .admin-main { padding: 0; max-width: none; }
+  .admin-panel { border: 0; box-shadow: none; }
+  .admin-panel-head, .admin-panel-body { padding: 8px 0; }
+  .admin-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-dl div { grid-template-columns: 110px 1fr; gap: 8px; }
+  .admin-table th { background: none; }
+  .admin-subcard, .admin-table tr { break-inside: avoid; }
 }

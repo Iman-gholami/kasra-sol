@@ -18,7 +18,8 @@ const MESSAGES: Record<string, string> = {
   restock_variant_missing: 'رنگ یا سایز یکی از اقلام سفارش حذف شده است. لغو انجام نشد؛ ابتدا همان رنگ و سایز را در محصول بازگردانید.',
   product_changed_reload_required: 'مشخصات یا موجودی این محصول از زمان باز کردن فرم تغییر کرده است (مثلاً سفارش تازه). آخرین نسخه را بارگذاری کنید و تغییرات را دوباره اعمال کنید.',
   precondition_required: 'نسخه محصول مشخص نیست؛ فرم را دوباره باز کنید.',
-  image_required_to_publish: 'برای انتشار محصول دست‌کم یک تصویر لازم است.',
+  image_required_to_publish: 'محصول منتشرشده باید دست‌کم یک تصویر داشته باشد؛ برای حذف همه تصاویر، ابتدا آن را آرشیو کنید.',
+  price_required_to_publish: 'محصول منتشرشده باید قیمت فروش بیشتر از صفر داشته باشد.',
   price_above_original: 'قیمت فروش نمی‌تواند از «قیمت قبل از تخفیف» بیشتر باشد.',
   stock_changed: 'موجودی این ترکیب در این فاصله تغییر کرده است (احتمالاً سفارش تازه). مقدار جدید نمایش داده شد؛ بررسی و دوباره ثبت کنید.',
   invalid_order_transition: 'وضعیت این سفارش در این فاصله تغییر کرده یا این تغییر مجاز نیست؛ اطلاعات تازه شد.',
@@ -31,7 +32,8 @@ const MESSAGES: Record<string, string> = {
   invalid_image: 'فایل یک تصویر واقعی JPG، PNG یا WebP نیست.',
   invalid_image_type: 'فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود.',
   unsupported_media_type: 'فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود.',
-  image_too_large: 'حجم هر تصویر باید حداکثر ۲ مگابایت باشد.'
+  image_too_large: 'حجم هر تصویر باید حداکثر ۲ مگابایت باشد.',
+  export_too_large: 'تعداد سفارش‌ها برای یک فایل بیش از ۵۰۰۰ است؛ بازه زمانی یا وضعیت را محدودتر کنید.'
 };
 
 export class AdminApiError extends Error {
@@ -45,10 +47,9 @@ export class AdminApiError extends Error {
 /** Message for any thrown value, for showing in an alert. */
 export const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'خطای ناشناخته رخ داد.';
 
-/** Calls the same-origin admin proxy (`/api/admin/*`), which attaches the HttpOnly session cookie. */
-export async function adminApi<T>(path: string, init: {
+async function request(path: string, init: {
   method?: string; body?: unknown; headers?: Record<string, string>; signal?: AbortSignal;
-} = {}): Promise<T> {
+}) {
   let response: Response;
   try {
     response = await fetch('/api/admin/' + path, {
@@ -60,11 +61,31 @@ export async function adminApi<T>(path: string, init: {
     if (init.signal?.aborted) throw error;
     throw new AdminApiError(0, 'backend_unavailable', {});
   }
-  const data = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok) {
+    const data = await response.json().catch(() => ({})) as Record<string, unknown>;
     if (response.status === 401 && typeof window !== 'undefined')
       window.dispatchEvent(new CustomEvent('kasra-admin-unauthorized'));
     throw new AdminApiError(response.status, typeof data.error === 'string' ? data.error : '', data);
   }
-  return data as T;
+  return response;
+}
+
+/** Calls the same-origin admin proxy (`/api/admin/*`), which attaches the HttpOnly session cookie. */
+export async function adminApi<T>(path: string, init: {
+  method?: string; body?: unknown; headers?: Record<string, string>; signal?: AbortSignal;
+} = {}): Promise<T> {
+  const response = await request(path, init);
+  return await response.json().catch(() => ({})) as T;
+}
+
+/** Saves a file answered by the admin proxy (e.g. the orders CSV) under the name the server suggests. */
+export async function adminDownload(path: string, fallbackName: string) {
+  const response = await request(path, {});
+  const name = /filename="([^"]+)"/.exec(response.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await response.blob());
+  const link = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }

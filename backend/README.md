@@ -112,9 +112,12 @@ restores it only for short migrations (without per-user attribution).
 
 Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/password`,
 `/products` (`?q&status&stock&page&limit`), `/products/:id`, `/products/:id/price`, `/products/:id/variants`,
-`/products/:id/visibility`, `/variants/:id/stock`, `/orders` (`?status&q&page&limit`), `/orders/:id`,
-`/orders/:id/status`, `/staff`, `/staff/:id`, `/staff/:id/password`, `/media`, `/reports/overview`,
-`/audit` (`?before`).
+`/products/:id/visibility`, `/variants/:id/stock`, `/orders` (`?status&q&period&page&limit`), `/orders/export`
+(`?status&q&period`, CSV), `/orders/:id`, `/orders/:id/status`, `/staff`, `/staff/:id`, `/staff/:id/password`, `/media`,
+`/reports/overview`, `/audit` (`?before&group&actor`).
+
+`/audit` filters by event group (`auth`, `staff`, `products`, `inventory`, `orders`, `media`: the part of the action
+before the dot) and by acting account id, and adds `targetName` (the account or product an entry is about).
 
 Accounts and sessions:
 - 10 consecutive failed logins lock the account for 15 minutes; the answer stays the generic
@@ -140,7 +143,10 @@ Endpoints: `POST /v1/admin/products` (creates an **unpublished draft**);
 `PATCH /v1/admin/products/:id/visibility` (`active:boolean`),
 and `POST /v1/admin/media` (authenticated raw JPEG/PNG/WebP, 2 MiB per file).
 The public `GET /v1/media/:file` is served through Next.js `/api/media/:file`.
-The first image is the product's display image; products with no images cannot be published.
+The first image is the product's display image. A product on sale must keep at least one image and a price above
+zero: publishing, a full edit of a published product and a quick price change refuse otherwise
+(`409 image_required_to_publish` / `price_required_to_publish`), because storefront cards cannot render without an
+image and a free product could be ordered. Drafts may stay incomplete.
 There is **no hard delete**. Archived products disappear from catalog and cannot be
 purchased, but order snapshots and database records remain intact.
 Color/size/stock editing is atomic; product writes invalidate the public Redis cache.
@@ -170,6 +176,15 @@ COD `confirmed_cod → preparing → shipped → delivered`, and `confirmed_cod|
 returns the units to stock in the same transaction. An unpaid online order (`pending_payment`) can only be
 `cancelled` (it never reserved stock); the API and the database constraints refuse every fulfilment state
 for it. Concurrent clicks record exactly one transition (row lock + 409).
+
+`period` (`all`, `today`, `7d`, `30d`, `month`) limits both the list and the export by order date in Tehran days;
+`month` is the current Solar Hijri month. `GET /orders/export` returns the filtered orders (all pages, at most 5000,
+else `422 export_too_large`) as UTF-8 CSV with a byte-order mark for Excel: Persian headers and labels, Solar Hijri
+Tehran dates, customer name, mobile, address, postal code, items and amounts. It needs `orders:export`, a manager
+default that staff only get by explicit grant, because it is a bulk copy of customer contact data. Every download is
+audited (`orders.exported`: row count and filters, never the search text). Text cells that a spreadsheet would run as
+a formula (`= + - @`) are prefixed with an apostrophe; mobile numbers and postal codes are written as `="0912…"` so
+they keep their leading zero.
 
 ## Store analytics overview (development branch)
 

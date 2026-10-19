@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { accounts, overflowing, PNG, SCREENSHOTS, signIn, visitorAddress, watchConsole } from './helpers';
 
@@ -106,6 +107,8 @@ test('a COD order placed on the storefront is fulfilled step by step with histor
   await customerOrder(browser, 'cod');
   page.on('dialog', dialog => void dialog.accept());
   await signIn(page, accounts().manager);
+  await expect(page.getByRole('navigation', { name: 'بخش‌های مدیریت' }).getByRole('button', { name: /سفارش‌ها/ }))
+    .toContainText('۱ سفارش جدید در انتظار رسیدگی');
   await openTab(page, 'سفارش‌ها');
   await page.getByRole('button', { name: /جزئیات سفارش/ }).first().click();
   const detail = page.getByTestId('order-detail');
@@ -157,7 +160,7 @@ test('staff: least privilege in the menu and on every API call', async ({ page }
   const nav = page.getByRole('navigation', { name: 'بخش‌های مدیریت' });
   await expect(nav.getByRole('button')).toHaveText(['محصولات و موجودی', 'سفارش‌ها', 'حساب من']);
   await expect(page.getByRole('heading', { name: /فهرست محصولات/ })).toBeVisible();
-  await expect(page.getByRole('spinbutton', { name: /قیمت فروش/ })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: /قیمت فروش/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^ویرایش / })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^(انتشار|آرشیو) / })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'افزودن محصول' })).toHaveCount(0);
@@ -170,10 +173,14 @@ test('staff: least privilege in the menu and on every API call', async ({ page }
       await call('staff'), await call('audit'), await call('reports/overview'),
       await call('products/manto-01/price', 'PATCH', { price: 1 }),
       await call('products/manto-01/visibility', 'PATCH', { active: false }),
-      await call('staff', 'POST', { username: 'sneaky_e2e', displayName: 'نفوذی', password: 'p'.repeat(16), role: 'manager' })
+      await call('staff', 'POST', { username: 'sneaky_e2e', displayName: 'نفوذی', password: 'p'.repeat(16), role: 'manager' }),
+      await call('orders/export')
     ];
   });
-  expect(statuses).toEqual([403, 403, 403, 403, 403, 403]);
+  expect(statuses).toEqual([403, 403, 403, 403, 403, 403, 403]);
+  await openTab(page, 'سفارش‌ها');
+  await expect(page.getByRole('heading', { name: 'فهرست سفارش‌ها' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /خروجی Excel/ })).toHaveCount(0);
   await page.goto('/admin?tab=staff');
   await expect(page.getByRole('heading', { level: 1, name: 'محصولات و موجودی' })).toBeVisible();
 });
@@ -185,11 +192,93 @@ test('manager: runs the store but cannot administer staff', async ({ page }) => 
   await openTab(page, 'محصولات و موجودی');
   await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
-  const price = page.getByRole('spinbutton', { name: 'قیمت فروش ' + PRODUCT_NAME + ' به تومان' });
-  await price.fill('1200000');
+  // Typed on a Persian keyboard: a number input would silently drop these digits.
+  const price = page.getByRole('textbox', { name: 'قیمت فروش ' + PRODUCT_NAME + ' به تومان' });
+  await price.fill('۱۲۰۰۰۰۰');
+  await expect(price).toHaveValue('1200000');
   await page.getByRole('row', { name: new RegExp(PRODUCT_NAME) }).getByRole('button', { name: 'ثبت', exact: true }).click();
   await expect(page.getByText('قیمت ذخیره شد.')).toBeVisible();
   expect(await page.evaluate(async () => (await fetch('/api/admin/staff')).status)).toBe(403);
+});
+
+test('product editor: unsaved changes are guarded, Back moves between screens, a copy starts as an empty draft', async ({ page }) => {
+  const problems = watchConsole(page);
+  await signIn(page, accounts().owner);
+  // From a dashboard low-stock row straight to that product in the list.
+  await page.getByRole('button', { name: /^نمایش .+ در فهرست محصولات$/ }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'محصولات و موجودی' })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'جست‌وجوی محصول' })).not.toHaveValue('');
+  await expect(page).toHaveURL(/tab=products&q=/);
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'داشبورد فروشگاه' })).toBeVisible();
+
+  await openTab(page, 'محصولات و موجودی');
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME }).click();
+  await expect(page.getByRole('heading', { name: /ویرایش محصول/ })).toBeFocused();
+  await expect(page).toHaveURL(/edit=e2e-linen-manto/);
+  await page.getByLabel('نام محصول').fill('نام ذخیره‌نشده');
+  let asked = 0;
+  page.on('dialog', dialog => { asked++; void dialog.dismiss(); });
+  await openTab(page, 'داشبورد');
+  await page.getByRole('button', { name: 'انصراف' }).click();
+  expect(asked).toBe(2);
+  await expect(page.getByLabel('نام محصول')).toHaveValue('نام ذخیره‌نشده');
+  page.removeAllListeners('dialog');
+  page.on('dialog', dialog => void dialog.accept());
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: /فهرست محصولات/ })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByLabel('نام محصول')).toHaveValue(PRODUCT_NAME);
+  await page.getByRole('button', { name: 'بازگشت به فهرست' }).click();
+
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'کپی ' + PRODUCT_NAME + ' به‌عنوان محصول جدید' }).click();
+  await expect(page.getByRole('heading', { name: 'کپی محصول' })).toBeFocused();
+  await expect(page.getByLabel('شناسه ثابت (لاتین)')).toHaveValue(PRODUCT + '-copy');
+  await expect(page.getByLabel('نام محصول')).toHaveValue(PRODUCT_NAME + ' (کپی)');
+  await expect(page.getByLabel('مشکی / M')).toHaveValue('0');
+  await page.getByLabel('مشکی / M').fill('۷');
+  // Renaming a color keeps the stock entered for it.
+  await page.getByLabel('شناسه لاتین').fill('jet-black');
+  await expect(page.getByLabel('مشکی / M')).toHaveValue('7');
+  await page.getByRole('button', { name: 'ایجاد پیش‌نویس محصول' }).click();
+  await expect(page.getByText('محصول ذخیره شد.')).toBeVisible();
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT + '-copy');
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  const copy = page.getByRole('row', { name: new RegExp(PRODUCT_NAME + ' \\(کپی\\)') });
+  await expect(copy.getByText('پیش‌نویس')).toBeVisible();
+  await expect(copy).toContainText('۷ عدد');
+  expect(problems).toEqual([]);
+});
+
+test('orders: period filter, Excel export of the filtered list, and a printable order slip', async ({ page }) => {
+  await signIn(page, accounts().owner);
+  await openTab(page, 'سفارش‌ها');
+  await page.getByLabel('فیلتر وضعیت سفارش').selectOption('all');
+  await page.getByLabel('بازه زمانی ثبت سفارش').selectOption('today');
+  await expect(page.getByRole('row').filter({ hasText: 'مهمان نمایشی' }).first()).toBeVisible();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /خروجی Excel/ }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^kasra-orders-\d{4}-\d{2}-\d{2}\.csv$/);
+  const file = readFileSync(await download.path());
+  expect([...file.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  const csv = file.toString('utf8');
+  expect(csv).toContain('شماره سفارش,شناسه کامل,تاریخ ثبت (تهران)');
+  expect(csv).toContain('مهمان نمایشی');
+  expect(csv).toContain(PRODUCT_NAME);
+
+  await page.getByRole('button', { name: /جزئیات سفارش/ }).first().click();
+  const detail = page.getByTestId('order-detail');
+  await expect(detail.getByRole('button', { name: 'چاپ برگه سفارش' })).toBeVisible();
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('.admin-sidebar')).toBeHidden();
+  await expect(detail.getByRole('heading', { name: 'تاریخچه وضعیت' })).toBeHidden();
+  await expect(detail.getByRole('button', { name: 'چاپ برگه سفارش' })).toBeHidden();
+  await expect(detail.getByRole('heading', { name: 'اقلام سفارش' })).toBeVisible();
+  await expect(detail).toContainText('کد پستی');
+  await page.emulateMedia({ media: 'screen' });
 });
 
 test('traffic statistics: real storefront visits appear in the owner dashboard, bots do not', async ({ page, browser }) => {
@@ -273,6 +362,14 @@ test('owner manages an employee: new account, own password change, permission gr
   await openTab(page, 'تاریخچه فعالیت‌ها');
   await expect(page.getByRole('cell', { name: 'تغییر نقش یا دسترسی کارمند' }).first()).toBeVisible();
   await expect(page.getByRole('cell', { name: 'تغییر رمز عبور' }).first()).toBeVisible();
+  // Details read as Persian sentences and name the employee, and the history narrows to one kind of event.
+  await page.getByLabel('نوع رویداد').selectOption('staff');
+  const rows = page.locator('.admin-table tbody tr');
+  await expect(rows.first()).toContainText('همکار موقت');
+  await expect(rows.filter({ hasText: 'دسترسی افزوده: تغییر قیمت' }).first()).toBeVisible();
+  await expect(rows.filter({ hasText: 'غیرفعال شد' }).first()).toBeVisible();
+  for (const event of await rows.locator('td[data-label="رویداد"]').allTextContents())
+    expect(['ایجاد حساب کارمند', 'تغییر نقش یا دسترسی کارمند', 'تعیین رمز جدید برای کارمند']).toContain(event);
 });
 
 test('login: generic error, password reveal, logout and private routes', async ({ page }) => {

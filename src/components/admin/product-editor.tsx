@@ -4,8 +4,8 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, ImagePlus, Star, Trash2 } from 'lucide-react';
 import { adminApi, AdminApiError, errorMessage } from '@/components/admin/admin-api';
-import { formatNumber } from '@/components/admin/labels';
-import { Loading, Notice } from '@/components/admin/ui';
+import { digitsOnly, formatNumber, PRODUCT_STATUS } from '@/components/admin/labels';
+import { Badge, Loading, Notice } from '@/components/admin/ui';
 
 type Color = { id: string; name: string; hex: string; familyId?: string };
 type Variant = { colorId: string; size: string; stock: number };
@@ -15,8 +15,11 @@ type CatalogProduct = {
   colors: Color[]; sizes: string[]; variants: Variant[];
   material: string; fit: string; care: string; featured: boolean;
 };
+type Status = 'active' | 'draft' | 'archived';
+type Loaded = { item: CatalogProduct & { status: Status }; revision: string };
 const MAX_IMAGES = 8;
 const IDENT = /^[a-z0-9][a-z0-9-]{1,78}$/;
+export const UNSAVED_CHANGES = 'تغییرات ذخیره‌نشده فرم محصول از بین می‌رود. ادامه می‌دهید؟';
 const empty = (): CatalogProduct => ({
   id: '', slug: '', name: '', category: 'shomiz', description: '',
   price: 0, compareAt: null, images: [], colors: [{ id: 'black', name: 'مشکی', hex: '#000000' }],
@@ -28,52 +31,84 @@ const FIELD_NAMES: Record<string, string> = {
   price: 'قیمت فروش', compareAt: 'قیمت قبل از تخفیف (باید از قیمت فروش کمتر نباشد)', images: 'تصاویر',
   colors: 'رنگ‌ها', sizes: 'سایزها', variants: 'موجودی رنگ و سایز', material: 'جنس', fit: 'فرم', care: 'نگهداری'
 };
-const toLatinDigits = (value: string) => value.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-  .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
 const parseSizes = (text: string) => [...new Set(text.split(/[,،]/).map(x => x.trim()).filter(Boolean))];
+/** What the API receives: one stock row per color × size, in form order. Also the basis of the unsaved-changes check. */
+function payloadOf(item: CatalogProduct, sizeText: string): CatalogProduct {
+  const sizes = parseSizes(sizeText);
+  return {
+    id: item.id, slug: item.slug, name: item.name, category: item.category, description: item.description,
+    price: item.price, compareAt: item.compareAt, images: item.images, sizes,
+    variants: item.colors.flatMap(c => sizes.map(size => ({
+      colorId: c.id, size, stock: item.variants.find(v => v.colorId === c.id && v.size === size)?.stock ?? 0
+    }))),
+    colors: item.colors.map(({ id, name, hex, familyId }) => ({ id: id.trim(), name: name.trim(), hex, ...(familyId ? { familyId } : {}) })),
+    material: item.material, fit: item.fit, care: item.care, featured: item.featured
+  };
+}
+const fingerprint = (item: CatalogProduct, sizeText: string) => JSON.stringify(payloadOf(item, sizeText));
 
 function Field({ title, hint, children, wide }: { title: string; hint?: string; children: ReactNode; wide?: boolean }) {
   return <label className={'admin-field' + (wide ? ' admin-field-wide' : '')}><span>{title}</span>{children}
     {hint && <small>{hint}</small>}</label>;
 }
 
-export function ProductEditor({ productId, permissions, done }: {
-  productId?: string; permissions: string[]; done: (saved: boolean) => void;
+/** Edits `productId`, creates a new draft, or (with `copyOf`) a new draft prefilled from another product. */
+export function ProductEditor({ productId, copyOf, permissions, done, onDirty }: {
+  productId?: string; copyOf?: string; permissions: string[]; done: (saved: boolean) => void;
+  onDirty?: (dirty: boolean) => void;
 }) {
   const canPrice = permissions.includes('products:price');
   const canStock = permissions.includes('inventory:write');
+  const source = productId ?? copyOf;
   const [item, setItem] = useState<CatalogProduct>(empty);
   const [sizeText, setSizeText] = useState('M');
+  const [baseline, setBaseline] = useState(() => fingerprint(empty(), 'M'));
+  const [status, setStatus] = useState<Status>('draft');
   const [revision, setRevision] = useState('');
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(Boolean(productId));
+  const [loading, setLoading] = useState(Boolean(source));
   const [error, setError] = useState('');
   const [stale, setStale] = useState(false);
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
 
-  const fetchProduct = useCallback(() =>
-    adminApi<{ item: CatalogProduct; revision: string }>('products/' + productId), [productId]);
-  const apply = (data: { item: CatalogProduct; revision: string }) => {
-    setItem({ ...empty(), ...data.item });
-    setSizeText(data.item.sizes.join(', '));
-    setRevision(data.revision);
-  };
+  const fetchProduct = useCallback(() => adminApi<Loaded>('products/' + source), [source]);
+  const apply = useCallback((data: Loaded) => {
+    const { status: loaded, ...product } = data.item;
+    // A copy is a new product: it gets its own address, starts as a draft, and holds no stock until counted.
+    const next: CatalogProduct = copyOf ? {
+      ...empty(), ...product, id: (product.id + '-copy').slice(0, 79), slug: (product.slug + '-copy').slice(0, 100),
+      name: product.name + ' (کپی)', variants: product.variants.map(v => ({ ...v, stock: 0 }))
+    } : { ...empty(), ...product };
+    const text = next.sizes.join(', ');
+    setItem(next); setSizeText(text); setBaseline(fingerprint(next, text));
+    setStatus(copyOf ? 'draft' : loaded);
+    setRevision(copyOf ? '' : data.revision);
+  }, [copyOf]);
   useEffect(() => {
-    if (!productId) return;
+    if (!source) return;
     let cancelled = false;
     fetchProduct().then(data => { if (!cancelled) apply(data); })
       .catch(cause => { if (!cancelled) setError(errorMessage(cause)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [productId, fetchProduct]);
+  }, [source, fetchProduct, apply]);
   useEffect(() => { if (!loading) heading.current?.focus(); }, [loading]);
 
-  const sizes = useMemo(() => parseSizes(sizeText), [sizeText]);
-  const combination = useMemo(() => item.colors.flatMap(c => sizes.map(size => ({
-    colorId: c.id, size, stock: item.variants.find(v => v.colorId === c.id && v.size === size)?.stock ?? 0
-  }))), [item.colors, item.variants, sizes]);
+  const payload = useMemo(() => payloadOf(item, sizeText), [item, sizeText]);
+  const dirty = !loading && JSON.stringify(payload) !== baseline;
+  // The dashboard asks before switching sections; the browser asks before closing or reloading the tab.
+  useEffect(() => { onDirty?.(dirty); }, [dirty, onDirty]);
+  useEffect(() => () => onDirty?.(false), [onDirty]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+  const leave = () => { if (!dirty || window.confirm(UNSAVED_CHANGES)) done(false); };
+
   const edit = <K extends keyof CatalogProduct>(key: K, value: CatalogProduct[K]) =>
     setItem(prev => ({ ...prev, [key]: value }));
   const moveImage = (from: number, to: number) => setItem(prev => {
@@ -81,6 +116,24 @@ export function ProductEditor({ productId, permissions, done }: {
     const [moved] = images.splice(from, 1);
     images.splice(to, 0, moved);
     return { ...prev, images };
+  });
+  const editColor = (index: number, patch: Partial<Color>) =>
+    setItem(prev => ({ ...prev, colors: prev.colors.map((c, j) => j === index ? { ...c, ...patch } : c) }));
+  // Stock is stored per color id, so it moves with a renamed color, unless another color shares either id
+  // (then it is unclear whose stock it is, and it stays where it was).
+  const renameColor = (index: number, id: string) => setItem(prev => {
+    const old = prev.colors[index].id;
+    if (old === id) return prev;
+    const others = prev.colors.filter((_, j) => j !== index).map(c => c.id);
+    const carry = !others.includes(old) && !others.includes(id);
+    return { ...prev, colors: prev.colors.map((c, j) => j === index ? { ...c, id } : c),
+      variants: carry ? prev.variants.filter(v => v.colorId !== id).map(v => v.colorId === old ? { ...v, colorId: id } : v) : prev.variants };
+  });
+  const removeColor = (index: number) => setItem(prev => {
+    const id = prev.colors[index].id;
+    const shared = prev.colors.some((c, j) => j !== index && c.id === id);
+    return { ...prev, colors: prev.colors.filter((_, j) => j !== index),
+      variants: shared ? prev.variants : prev.variants.filter(v => v.colorId !== id) };
   });
 
   async function upload(files: FileList) {
@@ -108,10 +161,13 @@ export function ProductEditor({ productId, permissions, done }: {
   function validate(): string | null {
     if (!IDENT.test(item.id)) return 'شناسه باید لاتین کوچک، عدد یا خط تیره و حداقل دو نویسه باشد.';
     if (!/^[a-z0-9][a-z0-9-]{1,99}$/.test(item.slug)) return 'آدرس محصول (slug) باید لاتین کوچک، عدد یا خط تیره باشد.';
-    if (!sizes.length) return 'حداقل یک سایز لازم است.';
+    if (!payload.sizes.length) return 'حداقل یک سایز لازم است.';
     if (!item.colors.length || item.colors.some(c => !IDENT.test(c.id) || !c.name.trim())) return 'شناسه هر رنگ باید لاتین (مثل navy-blue) و نام آن پر باشد.';
     if (new Set(item.colors.map(c => c.id)).size !== item.colors.length) return 'شناسه رنگ‌ها نباید تکراری باشد.';
     if (item.compareAt !== null && item.compareAt < item.price) return 'قیمت قبل از تخفیف نباید از قیمت فروش کمتر باشد.';
+    if (status === 'active' && !item.images.length)
+      return 'این محصول منتشرشده است و باید دست‌کم یک تصویر داشته باشد؛ برای حذف همه تصاویر، ابتدا آن را از فهرست آرشیو کنید.';
+    if (status === 'active' && item.price <= 0) return 'قیمت فروش محصول منتشرشده باید بیشتر از صفر باشد.';
     return null;
   }
 
@@ -120,12 +176,6 @@ export function ProductEditor({ productId, permissions, done }: {
     setError(''); setMessage(''); setStale(false);
     const invalid = validate();
     if (invalid) { setError(invalid); return; }
-    const payload: CatalogProduct = {
-      id: item.id, slug: item.slug, name: item.name, category: item.category, description: item.description,
-      price: item.price, compareAt: item.compareAt, images: item.images, sizes, variants: combination,
-      colors: item.colors.map(({ id, name, hex, familyId }) => ({ id: id.trim(), name: name.trim(), hex, ...(familyId ? { familyId } : {}) })),
-      material: item.material, fit: item.fit, care: item.care, featured: item.featured
-    };
     setBusy(true);
     try {
       await adminApi('products' + (productId ? '/' + productId : ''), {
@@ -155,10 +205,15 @@ export function ProductEditor({ productId, permissions, done }: {
   return <section className="admin-panel" aria-labelledby="editor-title">
     <div className="admin-panel-head">
       <div>
-        <h2 id="editor-title" ref={heading} tabIndex={-1}>{productId ? 'ویرایش محصول' : 'افزودن محصول جدید'}</h2>
-        <p>{productId ? <bdi dir="ltr">{productId}</bdi> : 'محصول جدید به‌صورت پیش‌نویس ذخیره می‌شود و بعد از افزودن تصویر قابل انتشار است.'} · مبالغ به تومان</p>
+        <h2 id="editor-title" ref={heading} tabIndex={-1}>
+          {productId ? 'ویرایش محصول' : copyOf ? 'کپی محصول' : 'افزودن محصول جدید'}
+          {productId && <Badge tone={PRODUCT_STATUS[status].tone}>{PRODUCT_STATUS[status].label}</Badge>}
+        </h2>
+        <p>{productId ? <bdi dir="ltr">{productId}</bdi> : copyOf
+          ? <>از روی <bdi dir="ltr">{copyOf}</bdi>؛ موجودی‌ها صفر شده‌اند و نسخه تازه پیش‌نویس ذخیره می‌شود</>
+          : 'محصول جدید به‌صورت پیش‌نویس ذخیره می‌شود و بعد از افزودن تصویر قابل انتشار است.'} · مبالغ به تومان</p>
       </div>
-      <button type="button" className="admin-btn admin-btn-outline" onClick={() => done(false)}>
+      <button type="button" className="admin-btn admin-btn-outline" onClick={leave}>
         <ArrowRight size={15} aria-hidden="true"/> بازگشت به فهرست</button>
     </div>
     <form onSubmit={submit} className="admin-panel-body admin-form" noValidate={false}>
@@ -181,14 +236,14 @@ export function ProductEditor({ productId, permissions, done }: {
               <option value="shomiz">شومیز</option><option value="manto">مانتو</option><option value="tshirt">تیشرت</option>
             </select>
           </Field>
-          <Field title="قیمت فروش (تومان)" hint={priceLock}>
+          <Field title="قیمت فروش (تومان)" hint={priceLock ?? (status === 'active' ? undefined : 'برای انتشار، قیمت باید بیشتر از صفر باشد.')}>
             <input type="text" inputMode="numeric" dir="ltr" required disabled={!canPrice} value={String(item.price)}
-              onChange={event => edit('price', Number(toLatinDigits(event.target.value).replace(/\D/g, '')) || 0)}/>
+              onChange={event => edit('price', Number(digitsOnly(event.target.value)) || 0)}/>
           </Field>
           <Field title="قیمت قبل از تخفیف (اختیاری)" hint={priceLock ?? 'اگر پر شود، روی کارت محصول خط می‌خورد.'}>
             <input type="text" inputMode="numeric" dir="ltr" disabled={!canPrice} value={item.compareAt ?? ''}
               onChange={event => {
-                const digits = toLatinDigits(event.target.value).replace(/\D/g, '');
+                const digits = digitsOnly(event.target.value);
                 edit('compareAt', digits === '' ? null : Number(digits));
               }}/>
           </Field>
@@ -234,7 +289,9 @@ export function ProductEditor({ productId, permissions, done }: {
                 aria-label={'حذف تصویر ' + formatNumber(idx + 1) + ' از محصول'}><Trash2 size={15} aria-hidden="true"/></button>
             </div>
           </li>)}
-        </ol> : <Notice tone="warning">این محصول هنوز تصویری ندارد؛ ذخیره پیش‌نویس ممکن است، اما انتشار بدون تصویر مجاز نیست.</Notice>}
+        </ol> : <Notice tone="warning">{status === 'active'
+          ? 'این محصول منتشرشده است و بدون تصویر ذخیره نمی‌شود؛ دست‌کم یک تصویر اضافه کنید.'
+          : 'این محصول هنوز تصویری ندارد؛ ذخیره پیش‌نویس ممکن است، اما انتشار بدون تصویر مجاز نیست.'}</Notice>}
       </fieldset>
 
       <fieldset className="admin-fieldset" disabled={!canStock}>
@@ -244,19 +301,17 @@ export function ProductEditor({ productId, permissions, done }: {
         <div className="admin-stack-sm">
           {item.colors.map((color, idx) => <div key={idx} className="admin-color-row">
             <Field title="نام رنگ">
-              <input required value={color.name}
-                onChange={event => edit('colors', item.colors.map((c, j) => j === idx ? { ...c, name: event.target.value } : c))}/>
+              <input required value={color.name} onChange={event => editColor(idx, { name: event.target.value })}/>
             </Field>
             <Field title="شناسه لاتین">
               <input dir="ltr" required value={color.id} pattern="[a-z0-9][a-z0-9\-]{1,78}"
-                onChange={event => edit('colors', item.colors.map((c, j) => j === idx ? { ...c, id: event.target.value.toLowerCase() } : c))}/>
+                onChange={event => renameColor(idx, event.target.value.toLowerCase())}/>
             </Field>
             <Field title="رنگ نمونه">
-              <input type="color" value={color.hex}
-                onChange={event => edit('colors', item.colors.map((c, j) => j === idx ? { ...c, hex: event.target.value } : c))}/>
+              <input type="color" value={color.hex} onChange={event => editColor(idx, { hex: event.target.value })}/>
             </Field>
             <button type="button" className="admin-btn admin-btn-danger admin-btn-small" disabled={item.colors.length === 1}
-              onClick={() => edit('colors', item.colors.filter((_, j) => j !== idx))}
+              onClick={() => removeColor(idx)}
               aria-label={'حذف رنگ ' + (color.name || formatNumber(idx + 1))}>حذف رنگ</button>
           </div>)}
           <button className="admin-btn admin-btn-outline admin-btn-small admin-self-start" type="button"
@@ -272,11 +327,11 @@ export function ProductEditor({ productId, permissions, done }: {
       <fieldset className="admin-fieldset" disabled={!canStock}>
         <legend>موجودی هر رنگ و سایز</legend>
         <div className="admin-stock-grid">
-          {combination.map(variant => <label key={variant.colorId + '-' + variant.size} className="admin-stock-cell">
+          {payload.variants.map(variant => <label key={variant.colorId + '-' + variant.size} className="admin-stock-cell">
             <span>{item.colors.find(c => c.id === variant.colorId)?.name || variant.colorId} / <bdi>{variant.size}</bdi></span>
-            <input type="number" inputMode="numeric" min="0" max="1000000" required dir="ltr"
-              value={variant.stock} onChange={event => {
-                const stock = Math.max(0, Number(event.target.value) || 0);
+            <input type="text" inputMode="numeric" maxLength={7} required dir="ltr"
+              value={String(variant.stock)} onChange={event => {
+                const stock = Math.min(1_000_000, Number(digitsOnly(event.target.value)) || 0);
                 setItem(prev => ({ ...prev, variants: [
                   ...prev.variants.filter(v => !(v.colorId === variant.colorId && v.size === variant.size)),
                   { colorId: variant.colorId, size: variant.size, stock }
@@ -294,7 +349,8 @@ export function ProductEditor({ productId, permissions, done }: {
         <button type="submit" disabled={busy || uploading} className="admin-btn admin-btn-primary">
           {busy ? 'در حال ذخیره…' : productId ? 'ذخیره تغییرات محصول' : 'ایجاد پیش‌نویس محصول'}
         </button>
-        <button type="button" onClick={() => done(false)} className="admin-btn admin-btn-outline">انصراف</button>
+        <button type="button" onClick={leave} className="admin-btn admin-btn-outline">انصراف</button>
+        {dirty && <span className="admin-sub">تغییرات ذخیره‌نشده دارید.</span>}
       </div>
     </form>
   </section>;

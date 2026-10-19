@@ -2,7 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { pool } from '../db/connection';
 import { recordAudit } from './audit';
+import { persianMonthStart, tehranDate } from './calendar';
 import type { Guard } from './identity';
+import { EXPORT_LIMIT, ordersCsv, type ExportRow } from './order-export';
 
 export const ORDER_STATUSES = ['pending_payment', 'confirmed_cod', 'preparing', 'shipped', 'delivered', 'cancelled'] as const;
 type Payment = 'cod' | 'online';
@@ -15,14 +17,42 @@ const TRANSITIONS: Record<Payment, Partial<Record<string, readonly string[]>>> =
 export const nextStatuses = (payment: string, status: string): readonly string[] =>
   (payment === 'cod' || payment === 'online') ? TRANSITIONS[payment][status] ?? [] : [];
 
-const listQuery = z.object({
+const filterQuery = z.object({
   status: z.enum(['all', 'open', ...ORDER_STATUSES]).default('all'),
   q: z.string().trim().max(80).optional(),
+  period: z.enum(['all', 'today', '7d', '30d', 'month']).default('all')
+});
+const listQuery = filterQuery.extend({
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25)
 });
 const toLatin = (value: string) => value.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
   .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+const PERIOD_DAYS = { today: 0, '7d': 6, '30d': 29 } as const;
+
+/** WHERE clause shared by the order list and its export. Periods are Tehran calendar days counted back from today;
+ * `month` is the current Solar Hijri month, as on the dashboard. */
+function orderFilter(query: z.infer<typeof filterQuery>) {
+  const { status, period } = query;
+  const q = query.q ? toLatin(query.q) : '';
+  const where: string[] = [];
+  const values: unknown[] = [];
+  if (status === 'open') where.push("o.status IN ('pending_payment','confirmed_cod','preparing','shipped')");
+  else if (status !== 'all') { values.push(status); where.push('o.status=$' + values.length); }
+  if (q) {
+    values.push(q.replace(/[%_\\]/g, '\\$&') + '%');
+    const prefix = '$' + values.length;
+    values.push('%' + q.replace(/[%_\\]/g, '\\$&') + '%');
+    const anywhere = '$' + values.length;
+    where.push('(o.id::text ILIKE ' + prefix + " OR o.address->>'mobile' LIKE " + anywhere +
+      " OR o.address->>'name' ILIKE " + anywhere + ')');
+  }
+  if (period !== 'all') {
+    values.push(period === 'month' ? persianMonthStart().start : tehranDate(new Date(Date.now() - PERIOD_DAYS[period] * 86_400_000)));
+    where.push("o.created_at >= ($" + values.length + "::date::timestamp AT TIME ZONE 'Asia/Tehran')");
+  }
+  return { where: where.length ? 'WHERE ' + where.join(' AND ') : '', values };
+}
 
 export async function orderAdminRoutes(app: FastifyInstance, check: Guard,
   opts: { invalidateCatalog?: () => Promise<void> }) {
@@ -32,21 +62,8 @@ export async function orderAdminRoutes(app: FastifyInstance, check: Guard,
     if (!await check(req, reply, 'orders:read')) return;
     const query = listQuery.safeParse(req.query);
     if (!query.success) return reply.code(400).send({ error: 'invalid_query' });
-    const { status, page, limit } = query.data;
-    const q = query.data.q ? toLatin(query.data.q) : '';
-    const where: string[] = [];
-    const values: unknown[] = [];
-    if (status === 'open') where.push("o.status IN ('pending_payment','confirmed_cod','preparing','shipped')");
-    else if (status !== 'all') { values.push(status); where.push('o.status=$' + values.length); }
-    if (q) {
-      values.push(q.replace(/[%_\\]/g, '\\$&') + '%');
-      const prefix = '$' + values.length;
-      values.push('%' + q.replace(/[%_\\]/g, '\\$&') + '%');
-      const anywhere = '$' + values.length;
-      where.push('(o.id::text ILIKE ' + prefix + " OR o.address->>'mobile' LIKE " + anywhere +
-        " OR o.address->>'name' ILIKE " + anywhere + ')');
-    }
-    const filter = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const { page, limit } = query.data;
+    const { where: filter, values } = orderFilter(query.data);
     const counted = await pool.query<{ total: number }>('SELECT COUNT(*)::int AS total FROM orders o ' + filter, values);
     const total = counted.rows[0]?.total ?? 0;
     const pages = Math.max(1, Math.ceil(total / limit));
@@ -61,6 +78,29 @@ export async function orderAdminRoutes(app: FastifyInstance, check: Guard,
       items: result.rows.map(row => ({ ...row, nextStatuses: nextStatuses(row.payment, row.status) })),
       total, page: current, pages, limit
     });
+  });
+
+  // The same filters as the list, as a spreadsheet. The search text is not audited: it is often a phone number.
+  app.get('/v1/admin/orders/export', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const actor = await check(req, reply, 'orders:export');
+    if (!actor) return;
+    const query = filterQuery.safeParse(req.query);
+    if (!query.success) return reply.code(400).send({ error: 'invalid_query' });
+    const { where, values } = orderFilter(query.data);
+    const result = await pool.query<ExportRow>(
+      'SELECT o.id,o.status,o.payment,o.shipping,o.code,o.subtotal,o.discount,o.shipping_cost AS "shippingCost",o.total,' +
+      'o.address,o.created_at AS "createdAt",' +
+      "(SELECT COALESCE(string_agg(i.name || ' — ' || COALESCE(i.color_name,i.color_id) || ' / ' || i.size || ' × ' || i.quantity," +
+      "' | ' ORDER BY i.name,i.size),'') FROM order_items i WHERE i.order_id=o.id) AS items," +
+      '(SELECT COALESCE(SUM(i.quantity),0)::int FROM order_items i WHERE i.order_id=o.id) AS units ' +
+      'FROM orders o ' + where + ' ORDER BY o.created_at DESC,o.id LIMIT ' + (EXPORT_LIMIT + 1), values);
+    if (result.rows.length > EXPORT_LIMIT) return reply.code(422).send({ error: 'export_too_large', limit: EXPORT_LIMIT });
+    await recordAudit(pool, actor.id, 'orders.exported', 'orders', {
+      count: result.rows.length, status: query.data.status, period: query.data.period, search: Boolean(query.data.q) });
+    const day = tehranDate(new Date());
+    return reply.header('Cache-Control', 'no-store').header('Content-Type', 'text/csv; charset=utf-8')
+      .header('Content-Disposition', 'attachment; filename="kasra-orders-' + day + '.csv"')
+      .header('X-Content-Type-Options', 'nosniff').send(ordersCsv(result.rows));
   });
 
   app.get('/v1/admin/orders/:id', async (req, reply) => {

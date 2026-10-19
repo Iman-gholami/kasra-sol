@@ -21,6 +21,7 @@ const username = z.string().regex(/^[a-z0-9][a-z0-9_.-]{2,63}$/);
 const password = z.string().min(12).max(256);
 const roleSchema = z.enum(['manager', 'staff']);
 const permissions = z.array(z.enum(PERMISSIONS)).max(PERMISSIONS.length).refine(assignable, 'Owner-only permissions cannot be delegated');
+const AUDIT_GROUPS = ['auth', 'staff', 'products', 'inventory', 'orders', 'media'] as const;
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const tokenFrom = (req: FastifyRequest) => {
   const match = /^Bearer ([a-f0-9]{64})$/i.exec(req.headers.authorization ?? '');
@@ -224,14 +225,25 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
   await reportRoutes(app, requirePermission);
   await trafficRoutes(app, requirePermission);
 
+  // Newest first, 100 per page. `group` is the part of the action before the dot; `actor` is an account id.
+  // `targetName` names the account or product an entry is about, so the owner does not have to read ids.
   app.get('/v1/admin/audit', async (req, reply) => {
     if (!await requirePermission(req, reply, 'staff:manage')) return;
-    const query = z.object({ before: z.coerce.number().int().positive().optional() }).safeParse(req.query);
+    const query = z.object({
+      before: z.coerce.number().int().positive().optional(),
+      group: z.enum(AUDIT_GROUPS).optional(),
+      actor: z.string().uuid().optional()
+    }).safeParse(req.query);
     if (!query.success) return reply.code(400).send({ error: 'invalid_query' });
     const result = await pool.query(
-      'SELECT l.id,l.action,l.target,l.details,l.created_at,u.username AS actor,u.display_name AS "actorName" ' +
+      'SELECT l.id,l.action,l.target,l.details,l.created_at,u.username AS actor,u.display_name AS "actorName",' +
+      'COALESCE(t.display_name,p.name) AS "targetName" ' +
       'FROM admin_audit_log l LEFT JOIN admin_users u ON u.id=l.actor_id ' +
-      'WHERE ($1::bigint IS NULL OR l.id < $1) ORDER BY l.id DESC LIMIT 100', [query.data.before ?? null]);
+      'LEFT JOIN admin_users t ON t.id::text=l.target ' +
+      "LEFT JOIN products p ON p.id=COALESCE(l.details->>'productId',l.target) " +
+      "WHERE ($1::bigint IS NULL OR l.id < $1) AND ($2::text IS NULL OR l.action LIKE $2 || '.%') " +
+      'AND ($3::uuid IS NULL OR l.actor_id=$3) ORDER BY l.id DESC LIMIT 100',
+      [query.data.before ?? null, query.data.group ?? null, query.data.actor ?? null]);
     return reply.header('Cache-Control', 'no-store').send({ items: result.rows });
   });
 }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Activity, ClipboardList, ExternalLink, LayoutDashboard, LogOut, Package, ScrollText, UserCog, UsersRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/components/admin/admin-api';
-import { ROLE } from '@/components/admin/labels';
-import { ProductEditor } from '@/components/admin/product-editor';
+import { formatNumber, ROLE } from '@/components/admin/labels';
+import { ProductEditor, UNSAVED_CHANGES } from '@/components/admin/product-editor';
 import { ProductList } from '@/components/admin/product-list';
 import { SalesOverview } from '@/components/admin/sales-overview';
 import { TrafficOverview } from '@/components/admin/traffic-overview';
@@ -14,6 +14,7 @@ import { OrderManager } from '@/components/admin/order-manager';
 import { StaffManager } from '@/components/admin/staff-manager';
 import { AuditLog } from '@/components/admin/audit-log';
 import { AccountSettings } from '@/components/admin/account-settings';
+import { Notice } from '@/components/admin/ui';
 
 export type AdminUser = {
   id: string; username: string; displayName: string; role: 'owner' | 'manager' | 'staff';
@@ -31,33 +32,113 @@ const SECTIONS: { id: Section; label: string; title: string; permission: string 
   { id: 'account', label: 'حساب من', title: 'حساب من', permission: null, icon: UserCog }
 ];
 
-export function AdminDashboard({ user, initialSection }: { user: AdminUser; initialSection?: string }) {
+/** What the address bar holds: `?tab=`, and on the products tab an open editor (`edit=`: `new`, `copy:<id>` or an id)
+ * or a list search (`q=`), so Back, Forward, reload and shared links all land on the same screen. */
+type View = { section: Section; editor: string | null; q: string };
+export type ViewParams = { tab?: string | null; edit?: string | null; q?: string | null };
+const EDITOR = /^(new|(copy:)?[a-z0-9][a-z0-9-]{1,78})$/;
+function resolveView(params: ViewParams, permissions: string[]): View {
+  const allowed = SECTIONS.filter(item => !item.permission || permissions.includes(item.permission));
+  const section = allowed.find(item => item.id === params.tab)?.id ?? allowed[0].id;
+  const editor = section === 'products' && permissions.includes('products:write') && params.edit && EDITOR.test(params.edit)
+    ? params.edit : null;
+  return { section, editor, q: section === 'products' && !editor ? (params.q ?? '').slice(0, 100) : '' };
+}
+const addressOf = (view: View) => '/admin?' + new URLSearchParams({
+  tab: view.section, ...(view.editor ? { edit: view.editor } : {}), ...(view.q ? { q: view.q } : {}) });
+
+export function AdminDashboard({ user, initial }: { user: AdminUser; initial: ViewParams }) {
   const router = useRouter();
   const allowed = SECTIONS.filter(item => !item.permission || user.permissions.includes(item.permission));
-  const [section, setSection] = useState<Section>(() =>
-    allowed.find(item => item.id === initialSection)?.id ?? allowed[0].id);
-  const [productEditor, setProductEditor] = useState<string | 'new' | null>(null);
+  const [view, setView] = useState<View>(() => resolveView(initial, user.permissions));
   const [listVersion, setListVersion] = useState(0);
+  const [saved, setSaved] = useState(false);
+  const [newOrders, setNewOrders] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
+  const current = useRef(view);
+  // Set by the product editor while its form differs from what is stored.
+  const dirty = useRef(false);
+  const setDirty = useCallback((value: boolean) => { dirty.current = value; }, []);
+  // Saving steps back through history to the list; the «saved» notice is carried across that step.
+  const savedOnBack = useRef(false);
   const can = (permission: string) => user.permissions.includes(permission);
+  const readsOrders = can('orders:read');
+  const onOrders = view.section === 'orders';
 
+  useEffect(() => { current.current = view; }, [view]);
   useEffect(() => {
     const expired = () => router.replace('/admin/login?expired=1');
     window.addEventListener('kasra-admin-unauthorized', expired);
     return () => window.removeEventListener('kasra-admin-unauthorized', expired);
   }, [router]);
+  useEffect(() => {
+    const back = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (dirty.current && !window.confirm(UNSAVED_CHANGES)) {
+        window.history.pushState(null, '', addressOf(current.current));
+        return;
+      }
+      dirty.current = false;
+      setSaved(savedOnBack.current);
+      savedOnBack.current = false;
+      setView(resolveView({ tab: params.get('tab'), edit: params.get('edit'), q: params.get('q') }, user.permissions));
+    };
+    window.addEventListener('popstate', back);
+    return () => window.removeEventListener('popstate', back);
+  }, [user.permissions]);
+  // New COD orders waiting to be processed, shown next to «سفارش‌ها». Refreshed every minute while the tab is
+  // visible and whenever the orders section is left, where they are usually processed.
+  useEffect(() => {
+    if (!readsOrders) return;
+    let stopped = false;
+    const check = () => {
+      if (document.visibilityState === 'hidden') return;
+      adminApi<{ total: number }>('orders?status=confirmed_cod&limit=1')
+        .then(result => { if (!stopped) setNewOrders(result.total); }).catch(() => { /* the badge is optional */ });
+    };
+    check();
+    const timer = window.setInterval(check, 60_000);
+    document.addEventListener('visibilitychange', check);
+    return () => { stopped = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', check); };
+  }, [readsOrders, onOrders]);
 
-  function go(next: Section) {
-    setSection(next); setProductEditor(null);
-    window.history.replaceState(null, '', '/admin?tab=' + next);
+  function show(next: View, entry: 'push' | 'replace' = 'push', state: Record<string, unknown> | null = null) {
+    dirty.current = false;
+    setView(next);
+    if (entry === 'push') window.history.pushState(state, '', addressOf(next));
+    else window.history.replaceState(state, '', addressOf(next));
+  }
+  function go(next: Section, q = '') {
+    if (dirty.current && !window.confirm(UNSAVED_CHANGES)) return;
+    setSaved(false);
+    show({ section: next, editor: null, q });
     // Screen readers and keyboard users land on the new section's heading instead of staying in the menu.
     requestAnimationFrame(() => heading.current?.focus());
   }
+  function openEditor(editor: string) {
+    setSaved(false);
+    show({ ...view, editor, q: '' }, 'push', { fromList: true });
+  }
+  function closeEditor(changed: boolean) {
+    dirty.current = false;
+    if (changed) setListVersion(v => v + 1);
+    // Opened from the list: step back to that history entry, so Back afterwards does not reopen the editor.
+    if ((window.history.state as { fromList?: boolean } | null)?.fromList) {
+      savedOnBack.current = changed;
+      window.history.back();
+    } else {
+      setSaved(changed);
+      show({ section: 'products', editor: null, q: '' }, 'replace');
+    }
+  }
   async function signOut() {
+    if (dirty.current && !window.confirm(UNSAVED_CHANGES)) return;
+    dirty.current = false;
     try { await adminApi('auth/logout', { method: 'POST' }); } catch { /* the cookie is cleared regardless */ }
     router.replace('/admin/login'); router.refresh();
   }
-  const current = SECTIONS.find(item => item.id === section)!;
+  const section = SECTIONS.find(item => item.id === view.section)!;
+  const editor = view.editor;
   return <div className="admin-app" data-testid="admin-app">
     <a className="skip-link" href="#admin-content">رفتن به محتوای اصلی</a>
     <aside className="admin-sidebar" aria-label="منوی پنل مدیریت">
@@ -67,8 +148,10 @@ export function AdminDashboard({ user, initialSection }: { user: AdminUser; init
       </div>
       <p className="admin-nav-head" aria-hidden="true">منوی اصلی</p>
       <nav className="admin-navigation" aria-label="بخش‌های مدیریت">
-        {allowed.map(item => <button type="button" key={item.id} aria-current={section === item.id ? 'page' : undefined}
-          onClick={() => go(item.id)}><item.icon size={19} aria-hidden="true"/>{item.label}</button>)}
+        {allowed.map(item => <button type="button" key={item.id} aria-current={view.section === item.id ? 'page' : undefined}
+          onClick={() => go(item.id)}><item.icon size={19} aria-hidden="true"/>{item.label}
+          {item.id === 'orders' && newOrders > 0 && <span className="admin-nav-badge">{formatNumber(newOrders)}
+            <span className="sr-only"> سفارش جدید در انتظار رسیدگی</span></span>}</button>)}
       </nav>
       <div className="admin-side-spacer"/>
       <div className="admin-side-note">
@@ -82,7 +165,7 @@ export function AdminDashboard({ user, initialSection }: { user: AdminUser; init
     </aside>
     <div className="admin-workspace">
       <header className="admin-topbar">
-        <div><h1 className="admin-page-title" ref={heading} tabIndex={-1}>{current.title}</h1>
+        <div><h1 className="admin-page-title" ref={heading} tabIndex={-1}>{section.title}</h1>
           <p className="admin-page-subtitle">کسری بوتیک / پنل مدیریت</p>
         </div>
         <div className="admin-account">
@@ -94,17 +177,22 @@ export function AdminDashboard({ user, initialSection }: { user: AdminUser; init
         </div>
       </header>
       <div className="admin-main" id="admin-content" tabIndex={-1}>
-        {section === 'overview' && <SalesOverview/>}
-        {section === 'traffic' && <TrafficOverview/>}
-        {section === 'products' && (productEditor !== null
-          ? <ProductEditor productId={productEditor === 'new' ? undefined : productEditor} permissions={user.permissions}
-            done={saved => { setProductEditor(null); if (saved) setListVersion(v => v + 1); }}/>
-          : <ProductList key={listVersion} permissions={user.permissions}
-            edit={setProductEditor} create={() => setProductEditor('new')}/>)}
-        {section === 'orders' && <OrderManager canFulfill={can('orders:fulfill')}/>}
-        {section === 'staff' && <StaffManager/>}
-        {section === 'audit' && <AuditLog/>}
-        {section === 'account' && <AccountSettings user={user}/>}
+        {view.section === 'overview' && <SalesOverview
+          openProduct={can('products:read') ? id => go('products', id) : undefined}/>}
+        {view.section === 'traffic' && <TrafficOverview/>}
+        {view.section === 'products' && (editor !== null
+          ? <ProductEditor key={editor} permissions={user.permissions} onDirty={setDirty} done={closeEditor}
+            productId={editor === 'new' || editor.startsWith('copy:') ? undefined : editor}
+            copyOf={editor.startsWith('copy:') ? editor.slice(5) : undefined}/>
+          : <div className="admin-stack">
+            {saved && <Notice tone="success">محصول ذخیره شد.</Notice>}
+            <ProductList key={listVersion + ':' + view.q} permissions={user.permissions} initialQuery={view.q}
+              edit={id => openEditor(id)} create={() => openEditor('new')} duplicate={id => openEditor('copy:' + id)}/>
+          </div>)}
+        {view.section === 'orders' && <OrderManager canFulfill={can('orders:fulfill')} canExport={can('orders:export')}/>}
+        {view.section === 'staff' && <StaffManager/>}
+        {view.section === 'audit' && <AuditLog/>}
+        {view.section === 'account' && <AccountSettings user={user}/>}
       </div>
     </div>
   </div>;
