@@ -218,8 +218,8 @@ shaped my versions.
 
 ## 20. Pull request
 
-Draft PR against `main`: see the PR opened from `claude/storefront-uiux-parallel` (link recorded in the PR
-description and the final hand-off). It has not been merged or deployed.
+Draft PR against `main`: [Iman-gholami/kasra-sol#13](https://github.com/Iman-gholami/kasra-sol/pull/13), from
+`claude/storefront-uiux-parallel`. It has not been merged or deployed.
 
 ## 21. Final design quality assessment
 
