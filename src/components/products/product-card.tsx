@@ -15,18 +15,25 @@ const SIZES = '(max-width: 600px) 46vw, (max-width: 1080px) 31vw, (max-width: 14
  * `eager` = above the fold but not competing with the LCP image, `lazy` = below the fold. */
 export type CardImageLoading = 'lcp' | 'eager' | 'lazy';
 
-/** Server-rendered card: one stretched title link (one tab stop) plus the wishlist toggle island. */
+/** Server-rendered card: one stretched title link (one tab stop) plus the wishlist toggle island.
+ * A second photo, when there is one, crossfades in on hover with a fine pointer and is a swipe away on touch
+ * screens (a CSS scroll-snap track with a scroll-driven position bar; no client JavaScript). */
 export function ProductCard({ product, loading = 'lazy', sizes = SIZES }: { product: ProductCardData; loading?: CardImageLoading; sizes?: string }) {
   const discount = discountPercent(product.price, product.compareAt);
   const category = categories.find(item => item.slug === product.category)?.title ?? '';
   const soldOut = product.variants ? !product.variants.some(variant => variant.stock > 0) : false;
   const href = '/product/' + product.slug;
+  const [photo, alternate] = product.images;
   return <article className={'product-card' + (soldOut ? ' is-sold-out' : '')}>
     <div className="product-visual">
       <Link className="product-image-link" href={href} tabIndex={-1} aria-hidden="true">
-        <Image src={product.images[0]} alt="" fill sizes={sizes} preload={loading === 'lcp'}
-          fetchPriority={loading === 'lcp' ? 'high' : undefined} loading={loading === 'eager' ? 'eager' : undefined}/>
+        <span className="product-slide">
+          <Image src={photo} alt="" fill sizes={sizes} preload={loading === 'lcp'}
+            fetchPriority={loading === 'lcp' ? 'high' : undefined} loading={loading === 'eager' ? 'eager' : undefined}/>
+        </span>
+        {alternate && <span className="product-slide"><Image src={alternate} alt="" fill sizes={sizes} fetchPriority="low"/></span>}
       </Link>
+      {alternate && <span className="product-photo-bar" aria-hidden="true"/>}
       {soldOut ? <span className="product-badge">ناموجود</span>
         : discount > 0 && <span className="product-badge discount-tag">{formatPercent(discount)} تخفیف</span>}
       <WishlistButton productId={product.id} productName={product.name}/>

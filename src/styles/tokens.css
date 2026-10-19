@@ -1,22 +1,24 @@
-/* KASRA V9 design tokens — single source for color, space, type, shape, depth, layering and motion.
+/* KASRA design tokens — single source for color, space, type, shape, depth, layering and motion.
+   Direction «مجله کسری» (Kasra Journal): warm paper, near-black ink, one oxblood accent, thin rules;
+   the sand of the photographs is the only other colour. See DESIGN.md.
    Theme tokens are declared through Tailwind 4 `@theme`, so they exist as CSS variables and as
    utilities; component CSS reads them with var(). Breakpoints used in media queries:
    600px (phone) · 820px (tablet) · 1080px (small laptop) · 1440px (wide). */
 
 @theme {
   /* Color roles (contrast ratios measured against surface-muted, the darkest text background) */
-  --color-surface: #faf8f5;          /* page canvas */
+  --color-surface: #f5f0e8;          /* page canvas: warm paper */
   --color-surface-raised: #ffffff;   /* cards, inputs, sheets */
-  --color-surface-muted: #f1ece6;    /* bands, summaries, notices */
-  --color-surface-sunken: #e8dfd4;   /* image placeholders */
-  --color-text: #222222;             /* 13.6:1 */
-  --color-text-muted: #615852;       /* 5.9:1 */
-  --color-text-subtle: #6b6158;      /* 5.1:1 */
-  --color-accent: #7d453f;           /* 6.4:1, links and emphasis */
-  --color-accent-soft: #b8847c;      /* decorative only — never text */
-  --color-accent-wash: #f6e9e6;
-  --color-border: #ded8d1;           /* dividers */
-  --color-border-strong: #8c8178;    /* form controls and chips, 3.8:1 on white */
+  --color-surface-muted: #ece5da;    /* bands, summaries, notices */
+  --color-surface-sunken: #ddd0bf;   /* image placeholders, close to the photos' studio sand */
+  --color-text: #1b1714;             /* ink, 14.2:1 */
+  --color-text-muted: #5e554d;       /* 5.8:1 */
+  --color-text-subtle: #675d54;      /* 5.1:1 */
+  --color-accent: #6b2a22;           /* oxblood, 8.5:1, links and emphasis */
+  --color-accent-soft: #b07a70;      /* decorative only — never text */
+  --color-accent-wash: #f2e4df;
+  --color-border: #ddd4c8;           /* hairline dividers */
+  --color-border-strong: #8c8178;    /* form controls and chips, 3.0:1 on surface-muted, 3.8:1 on white */
   --color-success: #2e6b4c;
   --color-success-wash: #e8f1ec;
   --color-warning: #865a0f;
@@ -29,6 +31,8 @@
 
   /* Type */
   --font-sans: var(--font-estedad), Tahoma, "Segoe UI", sans-serif;
+  /* Amiri carries large editorial headings only (28px and up); everything readable at body size stays Estedad. */
+  --font-display: var(--font-amiri), var(--font-estedad), Tahoma, serif;
   --font-wordmark: Georgia, "Times New Roman", serif;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
@@ -44,9 +48,14 @@
   --text-2xl: clamp(1.5rem, 1.28rem + 0.95vw, 2rem);
   --text-3xl: clamp(1.75rem, 1.38rem + 1.55vw, 2.625rem);
   --text-display: clamp(2.25rem, 1.5rem + 3.1vw, 4.25rem);
+  /* Amiri cover lines, sized so that even the wider fallback face fits each line unwrapped (no reflow on swap):
+     about 6.3vw beside the photos, 12vw when the hero stacks on narrow screens. */
+  --text-hero: clamp(3rem, 6.3vw, 6.4rem);
+  --text-hero-stacked: clamp(2.5rem, 0.2rem + 12vw, 4.4rem);
   --leading-body: 1.85;
   --leading-snug: 1.55;
   --leading-heading: 1.4;
+  --leading-display: 1.38;  /* Amiri's tall ascenders and deep descenders need the room */
 
   /* Shape and depth */
   --radius-xs: 2px;
@@ -61,10 +70,14 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
   --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);  /* long, soft landing: reveals, zooms, underlines */
+  --ease-wipe: cubic-bezier(0.65, 0, 0.35, 1);      /* symmetric: image unmasking */
 }
 
 :root {
   color-scheme: light;
+  /* The canvas as channels, for translucent bars that must match it exactly. */
+  --color-surface-rgb: 245 240 232;
 
   /* Spacing scale */
   --space-1: 4px;
@@ -103,6 +116,7 @@
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-slow: 320ms;
+  --duration-reveal: 1100ms;  /* headline lines and image wipes */
 }
 
 @media (max-width: 600px) {

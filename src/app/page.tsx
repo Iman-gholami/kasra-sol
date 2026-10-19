@@ -4,8 +4,11 @@ import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
 import { categories } from '@/data/products';
 import { getCatalogProducts } from '@/lib/backend-products';
 import { ProductGrid } from '@/components/products/product-grid';
+import { Price } from '@/components/products/price';
 import { ShopByColor } from '@/components/home/shop-by-color';
 import { getShopByColorResults } from '@/lib/shop-by-color';
+import { editorialNumber } from '@/lib/format';
+import type { Product } from '@/types/store';
 
 const categoryPhotos = [
   '/images/lookbook/shomiz-rose.avif',
@@ -19,11 +22,27 @@ const categorySizes = [
   '(max-width: 600px) 100vw, (max-width: 1520px) 30vw, 460px'
 ];
 
+// Hero plates: the main one is the page's LCP image (preloaded, high priority); the smaller second plate is fetched
+// at low priority so it never competes with it (its wipe starts 380ms later anyway).
+const plateSizes = [
+  '(max-width: 820px) 66vw, (max-width: 1520px) 31vw, 470px',
+  '(max-width: 820px) 44vw, (max-width: 1520px) 19vw, 290px'
+];
+/** The cover looks: the newest product, then the newest one from another collection with a different photo. */
+function coverLooks(newest: Product[]) {
+  const [first] = newest;
+  if (!first) return [];
+  const second = newest.find(item => item.category !== first.category && item.images[0] !== first.images[0]);
+  return second ? [first, second] : [first];
+}
+
 export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   // With the API enabled every section reflects published products only: archived ones disappear and new ones appear.
   const products = await getCatalogProducts();
-  const arrivals = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
+  const newest = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const arrivals = newest.slice(0, 4);
+  const looks = coverLooks(newest);
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
   const colors = getShopByColorResults(products);
 
@@ -31,20 +50,35 @@ export default async function HomePage() {
     <section className="hero container wide-editorial" aria-labelledby="hero-title">
       <div className="hero-copy">
         <p className="hero-pretitle"><span className="overline-rule" aria-hidden="true"/>انتخاب‌های تازه، هر روز</p>
-        <h1 id="hero-title">استایل هر روزت، <em>به سبک خودت.</em></h1>
+        <h1 id="hero-title"><span className="hero-line"><span>استایل هر روزت،</span></span> <em className="hero-line"><span>به سبک خودت.</span></em></h1>
         <p className="hero-lede">از یک شومیز دوست‌داشتنی تا مانتویی که هر روز سراغش می‌ری؛ انتخاب‌های ساده برای سلیقه تو.</p>
         <div className="hero-actions">
           <Link href="/shop" className="btn btn-primary btn-lg">کالکشن رو ببین <ArrowLeft size={19} aria-hidden="true"/></Link>
           <Link href="/shop?sort=newest" className="text-link">تازه‌ترین‌ها</Link>
         </div>
-        <nav className="hero-category-links" aria-label="میان‌بُر دسته‌بندی‌ها">
-          {categories.map(item => <Link key={item.slug} href={'/category/' + item.slug}>{item.title}<ArrowUpLeft size={16} aria-hidden="true"/></Link>)}
-        </nav>
       </div>
-      <div className="hero-visual">
-        <Image src="/images/lookbook/shomiz-cream.avif" alt="عکس نمایشی مدل با شومیز روشن، ساخته‌شده با هوش مصنوعی" fill preload fetchPriority="high"
-          sizes="(max-width: 600px) 100vw, (max-width: 1520px) 56vw, 860px"/>
-      </div>
+      {looks.length > 0 && <div className="hero-plates">
+        {looks.map((look, i) => <figure key={look.id} className={'hero-plate ' + (i === 0 ? 'hero-plate-main' : 'hero-plate-second')}>
+          {/* Like product cards: the photo repeats the name link, so it stays out of the tab order and the accessibility tree. */}
+          <Link href={'/product/' + look.slug} className={'hero-plate-photo' + (i === 0 ? ' hero-visual' : '')} tabIndex={-1} aria-hidden="true">
+            <span className="hero-plate-wipe"><span className="hero-plate-counter">
+              <Image src={look.images[0]} alt="" fill sizes={plateSizes[i]} preload={i === 0} fetchPriority={i === 0 ? 'high' : 'low'}/>
+            </span></span>
+          </Link>
+          <figcaption>
+            <span className="hero-plate-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
+            <Link href={'/product/' + look.slug} className="hero-plate-name">{look.name}</Link>
+            <Price price={look.price} compareAt={look.compareAt}/>
+          </figcaption>
+        </figure>)}
+      </div>}
+      <nav className="hero-category-links" aria-label="میان‌بُر دسته‌بندی‌ها">
+        {categories.map((item, i) => <Link key={item.slug} href={'/category/' + item.slug}>
+          <span className="hero-index-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
+          <span className="hero-index-name">{item.title}</span>
+          <ArrowUpLeft size={20} aria-hidden="true"/>
+        </Link>)}
+      </nav>
     </section>
 
     <section className="container section-block category-section" aria-labelledby="categories-title">

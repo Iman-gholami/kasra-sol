@@ -21,7 +21,7 @@
    a tapped button (or the one that replaced it under the finger, like the pay button) in its hover shade.
    :active still gives touch feedback. The same guard is used for fills and selected-looking hovers elsewhere. */
 .btn-primary, .btn-dark { --btn-bg: var(--color-text); --btn-fg: var(--color-inverse); }
-@media (hover: hover) { .btn-primary:hover:not(:disabled), .btn-dark:hover:not(:disabled) { --btn-bg: #463d38; } }
+@media (hover: hover) { .btn-primary:hover:not(:disabled), .btn-dark:hover:not(:disabled) { --btn-bg: var(--color-accent); } }
 .btn-primary:active:not(:disabled), .btn-dark:active:not(:disabled) { --btn-bg: #000; }
 .btn-secondary, .btn-outline, .btn-line { --btn-bg: var(--color-surface-raised); --btn-border: var(--color-border-strong); }
 @media (hover: hover) {

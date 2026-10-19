@@ -58,10 +58,11 @@ bdi { unicode-bidi: isolate; }
 .skip-link {
   position: fixed; inset-block-start: var(--space-3); inset-inline-start: var(--space-3); z-index: var(--z-skip);
   padding: var(--space-3) var(--space-4); background: var(--color-surface-raised); color: var(--color-text);
-  font-weight: var(--font-weight-semibold); box-shadow: var(--shadow-2);
+  font-weight: var(--font-weight-semibold);
   transform: translateY(calc(-100% - 24px)); transition: transform var(--duration-base) var(--ease-standard);
 }
-.skip-link:focus-visible { transform: none; }
+/* The shadow only while shown: parked above the viewport it still cast a smudge over the solid header. */
+.skip-link:focus-visible { transform: none; box-shadow: var(--shadow-2); }
 
 /* Shared text roles */
 .muted { color: var(--color-text-muted); }

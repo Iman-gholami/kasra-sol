@@ -28,12 +28,12 @@ test.describe('desktop', () => {
     }
   });
 
-  test('primary buttons still darken on mouse hover', async ({ page }) => {
+  test('primary buttons still take the accent on mouse hover', async ({ page }) => {
     await page.goto('/');
     const cta = page.getByRole('link', { name: 'کالکشن رو ببین' });
-    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(34, 34, 34)');
+    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(27, 23, 20)');
     await cta.hover();
-    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(70, 61, 56)');
+    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(107, 42, 34)');
   });
 
   test('cart line keeps quantity and actions beside the photo', async ({ page }) => {
@@ -60,7 +60,7 @@ test.describe('phone', () => {
     await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
     await expect(page.getByRole('heading', { name: 'بازبینی و پرداخت' })).toBeVisible();
     const pay = page.getByRole('button', { name: /^پرداخت/ });
-    await expect.poll(() => pay.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(34, 34, 34)');
+    await expect.poll(() => pay.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(27, 23, 20)');
   });
 
   test('filter sheet title keeps one line with the drag handle on its own row', async ({ page }) => {

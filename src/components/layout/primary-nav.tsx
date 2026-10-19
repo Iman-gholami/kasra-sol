@@ -15,7 +15,7 @@ const categoryPhotos: Record<string, string> = {
 const OPEN_DELAY = 150;
 const CLOSE_DELAY = 250;
 
-/** Desktop navigation (≥ 821px). "همه محصولات" stays a direct link; the adjacent toggle opens a
+/** Desktop navigation (≥ 1081px). "همه محصولات" stays a direct link; the adjacent toggle opens a
  * disclosure panel (WAI-ARIA disclosure navigation pattern, not a menu role). */
 export function PrimaryNav() {
   const pathname = usePathname();

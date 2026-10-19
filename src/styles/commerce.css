@@ -302,7 +302,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
   }
   .flow-header { display: grid; grid-template-columns: var(--touch) 1fr var(--touch); align-items: center; min-block-size: 56px; margin-inline: calc(var(--space-2) * -1); }
   .flow-logo { grid-column: 2; justify-self: center; display: inline-flex; align-items: center; gap: 10px; min-block-size: var(--touch); direction: ltr; color: var(--color-text); }
-  .flow-logo-mark { display: grid; place-items: center; inline-size: 30px; block-size: 32px; border: 1px solid #292725; font: 20px/0.9 var(--font-wordmark); }
+  .flow-logo-mark { display: grid; place-items: center; inline-size: 30px; block-size: 32px; border: 1px solid var(--color-text); font: 20px/0.9 var(--font-wordmark); }
   .flow-logo [dir="ltr"] { font: 500 20px/1 var(--font-wordmark); letter-spacing: 0.17em; padding-inline-start: 0.17em; }
   .site-shell[data-flow="checkout"] .cart-summary-line { margin-block-start: 0; }
   .site-shell[data-flow="checkout"] .checkout-card { margin-inline: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
@@ -339,7 +339,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
   .choice-card { padding-inline: var(--space-3); }
   .task-bar {
     position: fixed; z-index: var(--z-bottom-bar); inset-inline: 0; inset-block-end: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-    padding: var(--space-2) var(--gutter) calc(var(--space-2) + var(--safe-bottom)); background: rgb(250 248 245 / 0.97);
+    padding: var(--space-2) var(--gutter) calc(var(--space-2) + var(--safe-bottom)); background: rgb(var(--color-surface-rgb) / 0.97);
     border-block-start: 1px solid var(--color-border); box-shadow: var(--shadow-1);
   }
   .task-bar-total { display: flex; flex-direction: column; }

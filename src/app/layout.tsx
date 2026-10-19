@@ -20,6 +20,26 @@ const estedad = localFont({
   preload: true
 });
 
+// Display face for large editorial headings only (Persian subset, see src/fonts/README.md). Not preloaded: a
+// preload from the root layout would fetch it on every route ahead of the LCP image; pages that set display text
+// request it when they render it, and `swap` shows Estedad meanwhile. The layout metrics are overridden to Estedad's
+// (ascent 102.5%, descent 50%), so swapping between the two moves nothing; the taller Amiri glyphs still paint in
+// full. The Arial-based stand-in is off: Arial has no Persian glyphs.
+const amiri = localFont({
+  src: '../fonts/Amiri-Regular-fa.woff2',
+  variable: '--font-amiri',
+  weight: '400',
+  style: 'normal',
+  display: 'swap',
+  preload: false,
+  adjustFontFallback: false,
+  declarations: [
+    { prop: 'ascent-override', value: '102.5%' },
+    { prop: 'descent-override', value: '50%' },
+    { prop: 'line-gap-override', value: '0%' }
+  ]
+});
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
 export const metadata: Metadata = {
@@ -35,15 +55,15 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#faf8f5'
+  themeColor: '#f5f0e8'
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    // The font variable lives on <html> so :root tokens (--font-sans) can resolve it. The data attribute
+    // The font variables live on <html> so :root tokens (--font-sans, --font-display) can resolve them. The data attribute
     // lets Next.js switch off CSS smooth scrolling during route changes (new pages start at the top and
     // Back restores the exact position instead of animating).
-    <html lang="fa" dir="rtl" className={estedad.variable} data-scroll-behavior="smooth">
+    <html lang="fa" dir="rtl" className={estedad.variable + ' ' + amiri.variable} data-scroll-behavior="smooth">
       <body>
         <ShopProvider>
           <ToastProvider>

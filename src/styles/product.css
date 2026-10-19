@@ -31,12 +31,12 @@
 .pdp-slide:focus-visible { outline-offset: -4px; }
 .gallery-demo-label {
   position: absolute; z-index: 2; inset-block-start: var(--space-3); inset-inline-start: var(--space-3);
-  padding: 3px 10px; border-radius: var(--radius-pill); background: rgb(250 248 245 / 0.92); color: var(--color-text); font-size: var(--text-xs); pointer-events: none;
+  padding: 3px 10px; border-radius: var(--radius-pill); background: rgb(var(--color-surface-rgb) / 0.92); color: var(--color-text); font-size: var(--text-xs); pointer-events: none;
 }
 .pdp-gallery-arrow {
   position: absolute; z-index: 3; inset-block-start: 50%; transform: translateY(-50%);
   display: grid; place-items: center; inline-size: var(--touch); block-size: var(--touch); border: 0; border-radius: 50%;
-  background: rgb(250 248 245 / 0.92); color: var(--color-text); box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+  background: rgb(var(--color-surface-rgb) / 0.92); color: var(--color-text); box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
   transition: background-color var(--duration-fast) var(--ease-standard), opacity var(--duration-base) var(--ease-standard);
 }
 .pdp-gallery-arrow:hover { background: #fff; }
@@ -44,7 +44,7 @@
 .pdp-gallery-next { inset-inline-end: var(--space-3); }
 .pdp-gallery-counter {
   position: absolute; z-index: 2; inset-block-end: var(--space-3); inset-inline: 0; inline-size: max-content; margin-inline: auto;
-  padding: 4px 12px; border-radius: var(--radius-pill); background: rgb(250 248 245 / 0.92); direction: ltr; font-size: var(--text-xs); pointer-events: none;
+  padding: 4px 12px; border-radius: var(--radius-pill); background: rgb(var(--color-surface-rgb) / 0.92); direction: ltr; font-size: var(--text-xs); pointer-events: none;
 }
 .gallery-dots { display: none; }
 
@@ -191,7 +191,7 @@
   .pdp-sticky-bar {
     position: fixed; z-index: var(--z-bottom-bar); inset-inline: 0; inset-block-end: 0; display: flex; flex-direction: column;
     padding: var(--space-2) max(var(--gutter), var(--safe-start)) calc(var(--space-2) + var(--safe-bottom)) max(var(--gutter), var(--safe-end));
-    background: rgb(250 248 245 / 0.97); border-block-start: 1px solid var(--color-border); box-shadow: var(--shadow-1);
+    background: rgb(var(--color-surface-rgb) / 0.97); border-block-start: 1px solid var(--color-border); box-shadow: var(--shadow-1);
     /* Reveal without moving the box: the bar's geometry is final the moment it becomes visible. */
     clip-path: inset(100% 0 0 0); visibility: hidden;
     transition: clip-path var(--duration-base) var(--ease-exit), visibility var(--duration-base) allow-discrete;
