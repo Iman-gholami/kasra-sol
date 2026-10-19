@@ -120,7 +120,13 @@ export async function orderAdminRoutes(app: FastifyInstance, check: Guard,
           const back = await client.query(
             'UPDATE product_variants SET stock=stock+$4 WHERE product_id=$1 AND color_id=$2 AND size=$3 RETURNING id',
             [item.product_id, item.color_id, item.size, item.quantity]);
-          if (back.rowCount) restocked += item.quantity;
+          if (!back.rowCount) {
+            // Legacy or externally edited data must not report a successful cancellation
+            // while silently losing inventory. Roll back any earlier restocks as well.
+            await client.query('ROLLBACK');
+            return reply.code(409).send({ error: 'restock_variant_missing' });
+          }
+          restocked += item.quantity;
         }
       }
       await client.query('UPDATE orders SET status=$1 WHERE id=$2', [status, id.data]);

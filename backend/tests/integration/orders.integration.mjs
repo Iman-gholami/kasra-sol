@@ -51,6 +51,31 @@ before(async () => {
 after(() => pool.end());
 
 describe('inventory under concurrency', () => {
+  it('waits for a concurrent archive and refuses the now-inactive product', async () => {
+    await setStock('M', 5);
+    const client = await pool.connect();
+    let pending;
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE products SET active=false WHERE id=$1', [PRODUCT]);
+      pending = order(cod());
+      let waiting = false;
+      for (let attempt = 0; attempt < 100 && !waiting; attempt++) {
+        const result = await pool.query("SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock' AND query ILIKE '%for share%'");
+        waiting = result.rowCount > 0;
+        if (!waiting) await new Promise(resolve => setTimeout(resolve, 30));
+      }
+      assert.ok(waiting, 'checkout must wait for the product writer before reading its state');
+      await client.query('COMMIT');
+      assert.equal((await pending).status, 422);
+      assert.equal(await stockOf('M'), 5);
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+      if (pending) await pending;
+      await pool.query('UPDATE products SET active=true WHERE id=$1', [PRODUCT]);
+    }
+  });
   it('never oversells when many COD orders race for the last units', async () => {
     await setStock('M', 3);
     const results = await Promise.all(Array.from({ length: 12 }, () => order(cod())));
@@ -92,6 +117,35 @@ describe('inventory under concurrency', () => {
 });
 
 describe('server-authoritative totals', () => {
+  it('returns 422 for oversized totals without creating an order or decrementing stock', async () => {
+    await setStock('M', 10);
+    const key = randomUUID();
+    await pool.query('UPDATE products SET price=1000000000 WHERE id=$1', [PRODUCT]);
+    try {
+      const result = await order(cod(3), { key });
+      assert.equal(result.status, 422);
+      assert.equal(await stockOf('M'), 10);
+      assert.equal((await pool.query('SELECT id FROM orders WHERE idempotency_key=$1', [key])).rowCount, 0);
+    } finally {
+      await pool.query('UPDATE products SET price=$1 WHERE id=$2', [PRICE, PRODUCT]);
+    }
+  });
+
+  it('only includes actual price reductions in the sale filter', async () => {
+    try {
+      for (const [compareAt, expected] of [[PRICE, false], [PRICE + 1, true], [null, false]]) {
+        await pool.query('UPDATE products SET compare_at=$1 WHERE id=$2', [compareAt, PRODUCT]);
+        // Distinct query strings avoid the optional catalog cache between fixtures.
+        const response = await fetch(base + '/v1/products?sale=1&q=test&min=' + PRICE + '&max=' + PRICE +
+          '&limit=' + (expected ? 47 : compareAt === null ? 46 : 48),
+          { headers: { 'X-Forwarded-For': nextClient() } });
+        assert.equal(response.status, 200);
+        assert.equal((await response.json()).items.some(item => item.id === PRODUCT), expected);
+      }
+    } finally {
+      await pool.query('UPDATE products SET compare_at=NULL WHERE id=$1', [PRODUCT]);
+    }
+  });
   it('ignores client-supplied prices and totals', async () => {
     await setStock('M', 5);
     const body = cod(2);

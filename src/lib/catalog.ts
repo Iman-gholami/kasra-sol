@@ -23,8 +23,13 @@ export const parseFilters = (params: SearchParams, category?: CategorySlug): Cat
   return {
     category: category ?? (categories.some(c => c.slug === requestedCategory) ? requestedCategory as CategorySlug : undefined),
     q: one(params.q)?.trim().slice(0, 100),
-    size: products.some(p => p.sizes.includes(one(params.size) ?? '')) ? one(params.size) : undefined,
-    color: products.some(p => p.colors.some(c => (c.familyId ?? c.id) === one(params.color))) ? one(params.color) : undefined,
+    // Live catalog values are not restricted to the original demo products.
+    size: process.env.BACKEND_INTERNAL_URL
+      ? (one(params.size)?.trim() && one(params.size)!.length <= 20 ? one(params.size)!.trim() : undefined)
+      : products.some(p => p.sizes.includes(one(params.size) ?? '')) ? one(params.size) : undefined,
+    color: process.env.BACKEND_INTERNAL_URL
+      ? (/^[a-z0-9][a-z0-9-]{1,78}$/.test(one(params.color) ?? '') ? one(params.color) : undefined)
+      : products.some(p => p.colors.some(c => (c.familyId ?? c.id) === one(params.color))) ? one(params.color) : undefined,
     min: numeric(one(params.min)),
     max: numeric(one(params.max)),
     inStock: one(params.stock) === '1',
@@ -58,7 +63,7 @@ export async function queryProducts(filters: CatalogFilters): Promise<{ items: P
     if (filters.q && rankProduct(product, filters.q) === null) return false;
     if (filters.min !== undefined && product.price < filters.min) return false;
     if (filters.max !== undefined && product.price > filters.max) return false;
-    if (filters.discounted && !product.compareAt) return false;
+    if (filters.discounted && !(product.compareAt && product.compareAt > product.price)) return false;
     const variants = product.variants.filter((variant) =>
       (!filters.size || variant.size === filters.size) &&
       (!filters.color || variantMatchesColorFamily(product, variant.colorId, filters.color)));

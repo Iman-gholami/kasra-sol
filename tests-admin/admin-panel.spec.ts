@@ -300,6 +300,39 @@ test('cross-site requests are refused by the storefront proxies', async ({ reque
   expect((await request.post('/api/admin/staff', { headers: { ...evil, Cookie: 'kasra_admin=' + 'a'.repeat(64) }, data: {} })).status()).toBe(403);
 });
 
+test('a committed order with a lost response is retried after reload without duplication', async ({ page }) => {
+  await page.setExtraHTTPHeaders({ 'X-Forwarded-For': visitorAddress() });
+  await page.goto('/product/shomiz-01');
+  await page.getByRole('button', { name: 'رنگ کرم' }).click();
+  await page.getByRole('button', { name: 'سایز M' }).click();
+  await page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'به سبد خرید اضافه شد' })).toBeVisible();
+  await page.goto('/checkout');
+  await page.getByRole('button', { name: 'پر کردن با اطلاعات نمونه' }).click();
+  await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
+  let firstKey: string | undefined;
+  let firstId = '';
+  await page.route('**/api/orders', async route => {
+    firstKey = route.request().headers()['idempotency-key'];
+    const committed = await route.fetch();
+    expect(committed.status()).toBe(201);
+    firstId = (await committed.json()).id;
+    await route.abort('connectionfailed');
+  }, { times: 1 });
+  await page.getByRole('button', { name: 'ثبت سفارش در انتظار پرداخت' }).click();
+  await expect(page.locator('.checkout-outcome[role="alert"]')).toBeVisible();
+  expect(firstId).not.toBe('');
+  await page.reload();
+  const response = page.waitForResponse(r => r.url().endsWith('/api/orders') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'ثبت سفارش در انتظار پرداخت' }).click();
+  const retried = await response;
+  expect(retried.request().headers()['idempotency-key']).toBe(firstKey);
+  expect(retried.status()).toBe(201);
+  expect((await retried.json()).id).toBe(firstId);
+  await expect(page).toHaveURL(/order-confirmation/);
+  expect(await page.evaluate(() => sessionStorage.getItem('kasra-order-attempt-v1'))).toBeNull();
+});
+
 test.describe('phone layout', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
@@ -319,4 +352,19 @@ test.describe('phone layout', () => {
     const firstCell = page.locator('.admin-table-cards tbody tr').first().locator('td').first();
     expect(await firstCell.evaluate(cell => getComputedStyle(cell).display)).toBe('block');
   });
+});
+
+test('audit viewport matrix keeps admin sections within the viewport', async ({ page }) => {
+  test.setTimeout(180_000);
+  await signIn(page, accounts().owner);
+  for (const width of [360, 390, 430, 768, 1280, 1440, 1920]) {
+    await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
+    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'],
+      ['محصولات و موجودی', 'products'], ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff']] as const) {
+      await openTab(page, label);
+      await expect(page.locator('.admin-loading')).toHaveCount(0);
+      expect(await overflowing(page), label + ' at ' + width).toEqual([]);
+      if (width === 390 || width === 768 || width === 1440) await shot(page, name + '-audit-' + width);
+    }
+  }
 });

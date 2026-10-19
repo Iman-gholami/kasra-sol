@@ -2,16 +2,18 @@ import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 test('capture editorial layout on desktop and mobile', async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   const folder = 'artifacts/screenshots';
   mkdirSync(folder, { recursive: true });
-  for (const width of [320, 375, 390, 430, 1024, 1440, 1800]) {
+  for (const width of [320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1800, 1920]) {
     await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
     for (const [name, route] of [
       ['home','/'], ['catalog','/shop'], ['product','/product/shomiz-01']
     ]) {
       await page.goto(route);
       await expect(page.locator('main')).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+        name + ' must not overflow at ' + width).toBe(true);
       await page.evaluate(async () => {
         // decode() never settles for lazy images that have not started loading, so cap the wait.
         const decoded = Promise.all([...document.images].filter(i => i.getBoundingClientRect().width > 0).map(i => i.decode().catch(() => {})));
