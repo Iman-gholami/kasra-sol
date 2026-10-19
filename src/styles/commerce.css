@@ -38,7 +38,7 @@
 .cart-save { color: var(--color-text-muted); }
 .cart-save:hover { color: var(--color-accent); }
 .cart-remove { color: var(--color-danger); }
-.cart-remove:hover { background: var(--color-danger-wash); }
+@media (hover: hover) { .cart-remove:hover { background: var(--color-danger-wash); } }
 .cart-continue { margin-block-start: var(--space-4); }
 .cart-aside { position: sticky; inset-block-start: calc(var(--header-h) + var(--space-4)); display: flex; flex-direction: column; gap: var(--space-3); }
 .cart-aside .summary-card { position: static; }
@@ -190,7 +190,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
   border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-surface-raised); cursor: pointer;
   transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
 }
-.choice-card:hover:not(.is-disabled) { border-color: var(--color-text); }
+@media (hover: hover) { .choice-card:hover:not(.is-disabled) { border-color: var(--color-text); } }
 .choice-card.is-checked { border-color: var(--color-text); box-shadow: inset 0 0 0 1px var(--color-text); }
 .choice-card:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .choice-card input { flex-shrink: 0; inline-size: 20px; block-size: 20px; margin: 3px 0 0; accent-color: var(--color-text); cursor: inherit; }
