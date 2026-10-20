@@ -132,6 +132,8 @@ a.flow-step-body:hover { color: var(--color-accent); }
 .confirmation h1 { margin: 0; font-size: var(--text-heading); font-weight: var(--font-weight-light); }
 .confirmation > p:not(.section-kicker) { margin: 0; max-inline-size: 48ch; color: var(--color-text-muted); }
 .confirmation .search-line { inline-size: 100%; max-inline-size: 460px; }
+/* On the soft card the field is paper, so it still reads as a field; it turns white while typing as elsewhere. */
+.confirmation .search-line:not(:focus-within) { background: var(--color-surface); }
 
 /* ---------- Free-shipping meter ---------- */
 .ship-meter { display: flex; flex-direction: column; gap: var(--space-2); margin-block: 0 var(--space-4); }

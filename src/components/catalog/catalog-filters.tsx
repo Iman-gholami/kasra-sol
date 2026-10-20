@@ -116,7 +116,7 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
 
   return <>
     <div className="catalog-mobile-controls" ref={controls}>
-      <button type="button" className="btn btn-secondary filter-open-button" ref={trigger} onClick={openSheet}
+      <button type="button" className="btn btn-tertiary filter-open-button" ref={trigger} onClick={openSheet}
         aria-expanded={open} aria-controls="catalog-filter-sheet" aria-label="فیلتر محصولات">
         <SlidersHorizontal size={18} aria-hidden="true"/><span>فیلتر</span>
         {activeCount > 0 && <span className="filter-active-count" aria-hidden="true">{formatNumber(activeCount)}</span>}
@@ -260,6 +260,7 @@ export function SortForm({ variant, action, filters, fixedCategory }: { variant:
       aria-label={variant === 'mobile' ? 'مرتب‌سازی محصولات' : undefined}>
       {Object.entries(sortLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
     </select>
-    <button type="submit" className="btn btn-secondary btn-sm" aria-label={variant === 'mobile' ? 'اعمال مرتب‌سازی موبایل' : undefined}>اعمال</button>
+    <button type="submit" className={'btn btn-sm ' + (variant === 'desktop' ? 'btn-secondary' : 'btn-tertiary')}
+      aria-label={variant === 'mobile' ? 'اعمال مرتب‌سازی موبایل' : undefined}>اعمال</button>
   </form>;
 }

@@ -20,9 +20,11 @@ type Props = {
   compactHeading?: boolean;
   /** Plain-text name when `title` contains bidi-isolated user text (isolation adds spaces to computed names). */
   titleLabel?: string;
+  /** Editorial number of a collection (۰۱, ۰۲ …), set beside the title as on the home contents strip. */
+  number?: string;
 };
 
-export function CatalogView({ title, intro, action, filters, data, fixedCategory, compactHeading, titleLabel }: Props) {
+export function CatalogView({ title, intro, action, filters, data, fixedCategory, compactHeading, titleLabel, number }: Props) {
   const makeUrl = (overrides: Record<string, string | null>) => catalogHref(action, filters, fixedCategory, overrides);
   const chips: { key: string; label: string }[] = [];
   if (filters.category && !fixedCategory) chips.push({ key: 'category', label: categories.find(c => c.slug === filters.category)?.title || '' });
@@ -46,7 +48,8 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   return <div className="container catalog-layout">
     <Breadcrumbs items={[{ label: 'خانه', href: '/' }, { label: typeof title === 'string' && !compactHeading ? title : 'جستجو' }]}/>
     <div className="catalog-heading">
-      <div>
+      <div className="catalog-title">
+        {number && <span className="catalog-number" aria-hidden="true">{number}</span>}
         <h1 aria-label={titleLabel}>{title}</h1>
         {intro && <p className="catalog-intro">{intro}</p>}
       </div>

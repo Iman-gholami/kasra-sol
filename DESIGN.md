@@ -70,8 +70,8 @@ Soft, rounded boxes. Pick the radius by role, not by size:
 
 | Token | Value | Role |
 | --- | --- | --- |
-| `--radius-pill` | `999px` | Buttons, chips, size options, steppers, pagination, tags, nav hover states, search field |
-| `--radius-lg` | `24px` | Panels, cards, sheets and dialogs, hero plates, collection boxes, empty states |
+| `--radius-pill` | `999px` | Buttons, chips, size options, steppers, pagination, tags, nav hover states, search field, the catalog toolbar |
+| `--radius-lg` | `24px` | Panels, cards, sheets and dialogs, hero plates, collection boxes, empty states, the filter sidebar |
 | `--radius-md` | `16px` | Product photos, notices, option boxes, toasts, skeletons |
 | `--radius-sm` | `10px` | Form fields, small thumbnails |
 | `--radius-xs` | `4px` | Focus ring, keyboard hints |
@@ -113,8 +113,8 @@ on every open (movement only, full contrast throughout).
 first line extra-light, the second medium in oxblood. Two overlapping rounded plates show the newest product and the
 newest one from another collection. Each has a caption with number, name link and price (`Price`), so the cover is
 shoppable. The main plate is the LCP image: preloaded, high priority and still from the first frame. The second plate
-is fetched at low priority and unmasked by a wipe. Three soft boxes (number, collection, round arrow button) lead into
-the collections. Phones stack copy, plates and boxes.
+is fetched at low priority and unmasked by a wipe. Three soft boxes (`.collection-links`: number, collection, round
+arrow button) lead into the collections. Phones stack copy, plates and boxes.
 
 ### Home sections
 `app/page.tsx`, `styles/home.css`.
@@ -129,7 +129,8 @@ the collections. Phones stack copy, plates and boxes.
 - **Closing call to action:** a last sand room. A model is feathered into the panel at the inline end like the
   collections, with the invitation and an ink pill button beside her; she settles in as the room scrolls into view.
   On phones she stands at the panel's foot and the copy narrows beside her.
-- `.arrow-disc` is the shared round paper arrow button for every soft box; it nudges toward its arrow on hover.
+- `.arrow-disc` (`styles/primitives.css`) is the shared round paper arrow button for every soft link box; it nudges
+  toward its arrow on hover.
 
 ### Product card
 `components/products/product-card.tsx`, `styles/catalog.css`. A rounded 3:4 photo with a paper pill tag for sale or
@@ -142,10 +143,38 @@ photo: category, name (semibold, underline draws in on hover), price, colour dot
 Pill-shaped. Primary buttons are ink and turn oxblood on hover (only where a pointer can hover). Size options,
 quantity steppers, chips and pagination are pills; fields are softly rounded (`--radius-sm`).
 
+Chips are soft pills without an outline: muted on the page, paper on a soft panel (the filter sidebar, empty states,
+the 404 card), ink when current or checked. Set `--chip-bg` / `--chip-bg-hover` for a new context instead of
+restyling the chip. The same rule holds for any control on a soft panel: it turns paper so it still reads as a
+control (the 404 search field does this).
+
+### Collection links
+`.collection-links` in `styles/primitives.css`. Three soft boxes, each a light editorial number, the collection
+name set large and light, and an `.arrow-disc`. Under the home hero and on the empty search page; stacked from 820px.
+
+### Catalog (category, all products, search results)
+`components/catalog/*`, `styles/catalog.css`.
+- **Heading:** the title in light type; on a category page its contents number (`۰۱`, `۰۲` …, `aria-hidden`) sits
+  beside it as on the home strip. The count is a light number plus «مدل», on the baseline of the intro line.
+- **Collections row:** chips; the current one ink. On phones the row scrolls with an edge fade.
+- **Toolbar (desktop):** a soft pill bar with the range on the start side and the sort pill and its apply button at
+  the end (sort keeps its explicit apply button, WCAG 3.2.2).
+- **Filter sidebar (desktop):** a sticky soft panel (`--radius-lg`, 256px, 224px up to 1080px). Size chips and
+  colour choices inside it are paper; the chosen colour's dot is ringed in ink. Price fields stay white with an
+  outline.
+- **Phones:** the filter button, sort select and apply button are soft muted pills (`btn-tertiary`); filters open in
+  the bottom sheet, where chips are muted and the chosen colour sits on a soft ground. The ink floating «فیلترها»
+  pill stays one tap away after scrolling.
+- **Pagination:** soft discs, the current page ink; previous and next are pills that tint on hover.
+- **Empty state:** the shared soft box with a light heading.
+- **Loading:** the route skeleton mirrors the layout (pill toolbar, panel-width sidebar) so streaming in shifts
+  nothing.
+
 ### Search
-`components/search/*`, `styles/catalog.css`. The search field (header panel and the search page) is a soft pill on
-`--color-surface-muted`; while typing it turns white with an ink focus ring. Result thumbnails are rounded
-(`--radius-sm`); result rows are `--radius-md` boxes.
+`components/search/*`, `app/search/page.tsx`, `styles/catalog.css`. The search field (header panel and the search
+page) is a soft pill on `--color-surface-muted`; while typing it turns white with an ink focus ring. Result thumbnails
+are rounded (`--radius-sm`); result rows are `--radius-md` boxes. The search page opens with a light heading and,
+before a query, the collection links; results use the catalog layout above.
 
 ### Sheets, dialogs and toasts
 `components/ui/sheet.tsx`, `styles/primitives.css`. Centre dialogs and the desktop search dropdown take `--radius-lg`;
@@ -173,12 +202,15 @@ median of 3 runs (run-to-run noise is about ±0.4s of LCP):
 | Page | Before: score / LCP / CLS | After: score / LCP / CLS |
 | --- | --- | --- |
 | Home (8 interleaved runs) | 92 / 3.32s / 0 | 91.5 / 3.43s / 0 |
-| Category | 91 / 3.39s / 0 | 91 / 3.39s / 0 |
+| Category (10 interleaved runs, phase 5) | 91.5 / 3.39s / 0 | 91 / 3.39s / 0 |
+| Search results (10 interleaved runs, phase 5) | 91 / 3.39s / 0 | 91 / 3.39s / 0 |
 | Product | 92 / 3.24s / 0 | 93 / 3.17s / 0 |
 
-Accessibility is 100 on all three. Home's distributions overlap (both cluster at 3.31–3.32s; the redesign has more
-runs in a 3.54s mode), so the difference is within the simulator's noise. Home carries +12 KB, mostly the second hero
-plate. Every later phase is held to the same rule: no page gets slower or shifts.
+Accessibility is 100 on every page measured. Home's distributions overlap (both cluster at 3.31–3.32s; the redesign
+has more runs in a 3.54s mode), so the difference is within the simulator's noise. Home carries +12 KB, mostly the
+second hero plate. Catalog LCP is bimodal on both builds (about 2.6–2.9s or 3.39s per run), so four runs can
+mislead; compare at least ten interleaved runs. Every later phase is held to the same rule: no page gets slower or
+shifts.
 
 Lessons kept from the proof: a root-layout font preload competes with every page's LCP image; nineteen simultaneous
 entrance animations cost real main-thread time during hydration even when composited.
@@ -194,6 +226,7 @@ on desktop. Product photography for launch should be at least 1600px on the long
 - [x] Design tokens across all components (colour, type weights, radius roles, outline token)
 - [x] Shared components (search, sheets and dialogs, toasts, desktop nav panel, footer, bottom nav)
 - [x] Home page sections (collections, shop by colour, editorial band, service links, closing call to action)
-- [ ] Category and search pages
+- [x] Category and search pages (heading, collections row, toolbar, filter sidebar and sheet, pagination, empty
+  and loading states, search page)
 - [ ] Product page
 - [ ] Cart and checkout (styling only)

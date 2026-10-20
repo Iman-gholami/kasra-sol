@@ -28,7 +28,7 @@
 .catalog-skeleton-head .skeleton:last-child { block-size: 44px; inline-size: 50%; }
 .filters-skeleton { display: flex; flex-direction: column; gap: var(--space-4); position: static; }
 .filters-skeleton .skeleton { block-size: 96px; }
-.catalog-toolbar-skeleton { block-size: 60px; margin-block-end: var(--space-5); }
+.catalog-toolbar-skeleton { block-size: 60px; margin-block-end: var(--space-5); border-radius: var(--radius-pill); }
 .product-card-skeleton { display: flex; flex-direction: column; gap: var(--space-2); }
 .product-card-skeleton .skeleton:first-child { aspect-ratio: 3 / 4; }
 .product-card-skeleton .skeleton:nth-child(2) { block-size: 16px; inline-size: 80%; }

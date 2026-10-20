@@ -68,10 +68,10 @@ export default async function HomePage() {
           </figcaption>
         </figure>)}
       </div>}
-      <nav className="hero-category-links" aria-label="میان‌بُر دسته‌بندی‌ها">
+      <nav className="collection-links" aria-label="میان‌بُر دسته‌بندی‌ها">
         {categories.map((item, i) => <Link key={item.slug} href={'/category/' + item.slug}>
-          <span className="hero-index-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
-          <span className="hero-index-name">{item.title}</span>
+          <span className="collection-links-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
+          <span className="collection-links-name">{item.title}</span>
           <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
         </Link>)}
       </nav>

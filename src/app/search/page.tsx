@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { ArrowUpLeft, Search } from 'lucide-react';
 import { CatalogView } from '@/components/catalog/catalog-view';
 import { categories } from '@/data/facets';
 import { parseFilters, queryProducts } from '@/lib/catalog';
+import { editorialNumber } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'جستجو', robots: { index: false, follow: false } };
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -25,8 +26,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       ? <CatalogView title={<>نتایج جستجو برای «<span dir="auto">{filters.q}</span>»</>} titleLabel={'نتایج جستجو برای «' + filters.q + '»'} action="/search" filters={filters} data={data} compactHeading/>
       : <div className="container empty-search">
         <p>نام لباس، رنگ یا دسته‌بندی را بنویس تا نتیجه‌ها را ببینی.</p>
-        <ul className="search-chips">
-          {categories.map(category => <li key={category.slug}><Link className="chip" href={'/category/' + category.slug}>{category.title}</Link></li>)}
+        <ul className="collection-links">
+          {categories.map((category, i) => <li key={category.slug}><Link href={'/category/' + category.slug}>
+            <span className="collection-links-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
+            <span className="collection-links-name">{category.title}</span>
+            <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
+          </Link></li>)}
         </ul>
       </div>}
   </div>;
