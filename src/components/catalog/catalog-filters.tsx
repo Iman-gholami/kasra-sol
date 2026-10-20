@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { ArrowDownWideNarrow, Check, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowDownWideNarrow, Check, ChevronDown, SlidersHorizontal, X } from 'lucide-react';
 import { categories, palette, standardSizes } from '@/data/facets';
 import { formatNumber, toLatinDigits } from '@/lib/format';
 import { catalogHref, sortLabels } from '@/lib/catalog-url';
@@ -121,7 +121,7 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
         <SlidersHorizontal size={18} aria-hidden="true"/><span>فیلتر</span>
         {activeCount > 0 && <span className="filter-active-count" aria-hidden="true">{formatNumber(activeCount)}</span>}
       </button>
-      <SortForm variant="mobile" action={action} filters={filters} fixedCategory={fixedCategory}/>
+      <SortSheet action={action} filters={filters} fixedCategory={fixedCategory}/>
     </div>
     <button type="button" className="filter-floating" hidden={!showFloating || open} onClick={openSheet}>
       <SlidersHorizontal size={18} aria-hidden="true"/> فیلترها
@@ -234,11 +234,11 @@ function FilterForm({ id, action, draft, filters, fixedCategory, priceError, set
   </form>;
 }
 
-/** Sort keeps an explicit apply button (WCAG 3.2.2: changing a select does not navigate by itself). */
-export function SortForm({ variant, action, filters, fixedCategory }: { variant: 'desktop' | 'mobile'; action: string; filters: Filters; fixedCategory?: boolean }) {
+/** Desktop sort keeps an explicit apply button (WCAG 3.2.2: changing a select does not navigate by itself). */
+export function SortForm({ action, filters, fixedCategory }: { action: string; filters: Filters; fixedCategory?: boolean }) {
   const { navigate } = useCatalogNavigation();
   const uid = useId();
-  return <form className={variant === 'desktop' ? 'catalog-sort-form' : 'catalog-mobile-sort'} method="get" action={action}
+  return <form className="catalog-sort-form" method="get" action={action}
     onSubmit={event => {
       event.preventDefault();
       const value = new FormData(event.currentTarget).get('sort');
@@ -253,14 +253,56 @@ export function SortForm({ variant, action, filters, fixedCategory }: { variant:
     {filters.max !== undefined && <input type="hidden" name="max" value={String(filters.max)}/>}
     {filters.inStock && <input type="hidden" name="stock" value="1"/>}
     {filters.discounted && <input type="hidden" name="sale" value="1"/>}
-    {variant === 'desktop'
-      ? <label htmlFor={uid}>مرتب‌سازی</label>
-      : <ArrowDownWideNarrow size={18} aria-hidden="true"/>}
-    <select id={uid} name="sort" className="control" defaultValue={filters.sort ?? 'featured'} key={filters.sort ?? 'featured'}
-      aria-label={variant === 'mobile' ? 'مرتب‌سازی محصولات' : undefined}>
+    <label htmlFor={uid}>مرتب‌سازی</label>
+    <select id={uid} name="sort" className="control" defaultValue={filters.sort ?? 'featured'} key={filters.sort ?? 'featured'}>
       {Object.entries(sortLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
     </select>
-    <button type="submit" className={'btn btn-sm ' + (variant === 'desktop' ? 'btn-secondary' : 'btn-tertiary')}
-      aria-label={variant === 'mobile' ? 'اعمال مرتب‌سازی موبایل' : undefined}>اعمال</button>
+    <button type="submit" className="btn btn-secondary btn-sm">اعمال</button>
   </form>;
+}
+
+type SortKey = keyof typeof sortLabels;
+
+/** Phones: one button, showing the current order, opens a sheet of sort links; picking one applies it and closes the
+ * sheet, two taps instead of select, choose, apply. The options are links to the sorted URLs and act only when
+ * activated, like any link, so moving through them changes nothing (WCAG 3.2.2). */
+function SortSheet({ action, filters, fixedCategory }: { action: string; filters: Filters; fixedCategory?: boolean }) {
+  const { navigate } = useCatalogNavigation();
+  const [open, setOpen] = useState(false);
+  const mounted = useMountedOnce(open);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const current: SortKey = filters.sort ?? 'featured';
+  return <>
+    <button type="button" className="btn btn-tertiary catalog-sort-open" ref={trigger} onClick={() => setOpen(true)}
+      aria-expanded={open} aria-controls="catalog-sort-sheet" aria-label={'مرتب‌سازی: ' + sortLabels[current]}>
+      <ArrowDownWideNarrow size={18} aria-hidden="true"/><span>{sortLabels[current]}</span><ChevronDown size={16} aria-hidden="true"/>
+    </button>
+    {mounted && <Sheet open={open} onClose={() => setOpen(false)} id="catalog-sort-sheet" labelledBy="catalog-sort-title"
+      className="sheet-bottom sort-sheet" swipe="down" returnFocus={() => trigger.current}>
+      <div className="sheet-inner">
+        <div className="sheet-header" data-sheet-drag>
+          <span className="sheet-handle" aria-hidden="true"/>
+          <h2 className="sheet-title" id="catalog-sort-title">مرتب‌سازی</h2>
+          <button type="button" className="icon-button" aria-label="بستن مرتب‌سازی" onClick={() => setOpen(false)}><X size={22} aria-hidden="true"/></button>
+        </div>
+        <ul className="sheet-body sort-options">
+          {(Object.keys(sortLabels) as SortKey[]).map(value => {
+            const href = catalogHref(action, { ...filters, sort: value, page: undefined }, fixedCategory);
+            const selected = value === current;
+            return <li key={value}>
+              <Link href={href} className="sort-option" aria-current={selected || undefined} data-autofocus={selected || undefined}
+                onClick={event => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                  event.preventDefault();
+                  setOpen(false);
+                  if (!selected) navigate(href);
+                }}>
+                {sortLabels[value]}{selected && <Check size={18} aria-hidden="true"/>}
+              </Link>
+            </li>;
+          })}
+        </ul>
+      </div>
+    </Sheet>}
+  </>;
 }

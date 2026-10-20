@@ -194,9 +194,12 @@ name set large and light, and an `.arrow-disc`. Under the home hero and on the e
 - **Filter sidebar (desktop):** a sticky soft panel (`--radius-lg`, 256px, 224px up to 1080px). Size chips and
   colour choices inside it are paper; the chosen colour's dot is ringed in ink. Price fields stay white with an
   outline.
-- **Phones:** the filter button, sort select and apply button are soft muted pills (`btn-tertiary`); filters open in
-  the bottom sheet, where chips are muted and the chosen colour sits on a soft ground. The ink floating «فیلترها»
-  pill stays one tap away after scrolling.
+- **Phones:** two soft pills (`btn-tertiary`): «فیلتر» opens the filter sheet, where chips are muted and the chosen
+  colour sits on a soft ground; the sort pill names the current order and opens a sort sheet of links, where one tap
+  applies an order and closes the sheet (two taps in all; links act only when activated, so WCAG 3.2.2 holds). The
+  ink floating «فیلترها» pill stays one tap away after scrolling.
+- **Demo-photo note:** follows the results, so the first products start right under the controls (340px from the top
+  of a phone screen, from 389–409px).
 - **Pagination:** soft discs, the current page ink; previous and next are pills that tint on hover.
 - **Empty state:** the shared soft box with a light heading.
 - **Loading:** the route skeleton mirrors the layout (pill toolbar, panel-width sidebar) so streaming in shifts

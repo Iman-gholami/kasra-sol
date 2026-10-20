@@ -103,6 +103,7 @@
 .catalog-results { min-inline-size: 0; transition: opacity var(--duration-base) var(--ease-standard); }
 .catalog-body[data-pending] .catalog-results { opacity: 0.55; }
 .catalog-results .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-6) var(--space-4); }
+.catalog-results > :is(.product-grid, .empty-state) { margin-block-start: var(--space-5); }
 /* The toolbar is a soft bar: the count at the start, the sort pill and its apply button at the end. */
 .catalog-toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); min-block-size: 60px;
@@ -116,7 +117,8 @@
 .active-filter-list ul { display: contents; }
 .active-filter-list li { list-style: none; }
 .active-filter-chip { min-block-size: 40px; padding-inline: 14px 12px; }
-.catalog-photo-note { margin-block: var(--space-2) var(--space-4); }
+/* The demo-photo note follows the results, so products start right under the toolbar. */
+.catalog-photo-note { margin-block: var(--space-5) 0; }
 .catalog-mobile-controls, .filter-floating { display: none; }
 
 /* Sidebar: a sticky soft panel; choices inside it are paper. */
@@ -253,13 +255,19 @@
   .catalog-category-nav .chip { flex: 0 0 auto; scroll-snap-align: start; }
   .catalog-mobile-controls { display: flex; align-items: center; gap: var(--space-2); }
   .filter-open-button { flex-shrink: 0; min-block-size: 44px; padding-inline: 14px; }
-  .catalog-mobile-sort { display: flex; flex: 1; align-items: center; gap: var(--space-2); min-inline-size: 0; }
-  .catalog-mobile-sort > svg { flex-shrink: 0; color: var(--color-text-muted); }
-  .catalog-mobile-sort select {
-    flex: 1; min-inline-size: 0; min-block-size: 44px; padding-block: 6px; border-color: transparent; border-radius: var(--radius-pill);
-    background-color: var(--color-surface-muted); font-size: 1rem;
+  /* Sort: a soft pill naming the current order; it opens the sort sheet. */
+  .catalog-sort-open { flex: 1; justify-content: flex-start; min-inline-size: 0; min-block-size: 44px; padding-inline: 14px; font-weight: var(--font-weight-semibold); }
+  .catalog-sort-open > span { overflow: hidden; text-overflow: ellipsis; }
+  .catalog-sort-open > svg { color: var(--color-text-muted); }
+  .catalog-sort-open > svg:last-child { margin-inline-start: auto; }
+  .sort-options { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; list-style: none; padding-block-end: calc(var(--space-4) + var(--safe-bottom)); }
+  .sort-option {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-block-size: 52px; padding-inline: var(--space-4);
+    border-radius: var(--radius-md); font-size: var(--text-md); transition: background-color var(--duration-fast) var(--ease-standard);
   }
-  .catalog-mobile-sort .btn { flex-shrink: 0; }
+  .sort-option[aria-current] { background: var(--color-surface-muted); font-weight: var(--font-weight-bold); }
+  @media (hover: hover) { .sort-option:hover { background: var(--color-surface-muted); } }
+  .sort-option:active { background: var(--color-surface-sunken); }
   .active-filter-list { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); }
   .active-filter-list::-webkit-scrollbar { display: none; }
   .active-filter-chip, .clear-filter-link { flex-shrink: 0; }
@@ -289,7 +297,8 @@
   .catalog-number { font-size: var(--text-md); }
   .catalog-count strong { font-size: var(--text-xl); }
   .catalog-intro { font-size: var(--text-sm); }
-  .catalog-photo-note { margin-block: var(--space-2) var(--space-3); }
+  .catalog-photo-note { margin-block-start: var(--space-4); }
+  .catalog-results > :is(.product-grid, .empty-state) { margin-block-start: var(--space-3); }
   .pagination { gap: var(--space-1); padding-block-start: var(--space-6); }
   .pagination-step { min-inline-size: 0; padding-inline: var(--space-2); }
   .search-top { margin-block: var(--space-4) var(--space-2); }
@@ -297,8 +306,7 @@
   .search-experience-list { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 360px) {
-  .catalog-mobile-sort > svg { display: none; }
-  .filter-open-button { padding-inline: 10px; }
+  .filter-open-button, .catalog-sort-open { padding-inline: 10px; }
 }
 
 @media (max-width: 600px) {

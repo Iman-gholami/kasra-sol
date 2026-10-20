@@ -61,8 +61,8 @@ test('category browsing retains search query and sorting while filtering',async 
   await drawer.getByRole('button',{name:'اعمال فیلترها'}).click();
   await expect(page).toHaveURL(/size=M/);
   await expect(page).toHaveURL(/q=/);
-  await page.locator('.catalog-mobile-sort select[name="sort"]').selectOption('price-asc');
-  await page.getByRole('button',{name:'اعمال مرتب‌سازی موبایل'}).click();
+  await page.getByRole('button',{name:/^مرتب‌سازی:/}).click();
+  await page.getByRole('dialog',{name:'مرتب‌سازی'}).getByRole('link',{name:'قیمت: کم به زیاد'}).click();
   await expect(page).toHaveURL(/sort=price-asc/);
   await expect(page).toHaveURL(/size=M/);
   await expect(page).toHaveURL(/q=/);
