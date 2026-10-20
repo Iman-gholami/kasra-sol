@@ -131,7 +131,8 @@ export default async function HomePage() {
     </nav>
 
     <section className="container newsletter" aria-labelledby="closing-title">
-      <div><h2 id="closing-title">یک انتخاب برای امروز، یک استایل به سبک تو.</h2><p>لباس‌های موردعلاقه‌ات را پیدا کن و با علامت قلب برای بعد نگه دار.</p></div>
+      <span className="newsletter-figure"><Image src="/images/lookbook/tshirt-white.avif" alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>
+      <div className="newsletter-copy"><h2 id="closing-title">یک انتخاب برای امروز، یک استایل به سبک تو.</h2><p>لباس‌های موردعلاقه‌ات را پیدا کن و با علامت قلب برای بعد نگه دار.</p></div>
       <Link href="/shop" className="btn btn-primary">دیدن همه لباس‌ها <ArrowLeft size={18} aria-hidden="true"/></Link>
     </section>
   </>;

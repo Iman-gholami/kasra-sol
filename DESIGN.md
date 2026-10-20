@@ -126,7 +126,9 @@ the collections. Phones stack copy, plates and boxes.
 - **Editorial band:** a soft panel with the photograph as a rounded plate capped at 460px wide (about its real size, so
   it stays sharp); it settles from a slow zoom as it scrolls in.
 - **Service links:** three soft boxes with a round arrow disc, matching the boxes under the hero.
-- **Closing call to action:** an ink panel with a paper pill button, the page's full stop before the footer.
+- **Closing call to action:** a last sand room. A model is feathered into the panel at the inline end like the
+  collections, with the invitation and an ink pill button beside her; she settles in as the room scrolls into view.
+  On phones she stands at the panel's foot and the copy narrows beside her.
 - `.arrow-disc` is the shared round paper arrow button for every soft box; it nudges toward its arrow on hover.
 
 ### Product card

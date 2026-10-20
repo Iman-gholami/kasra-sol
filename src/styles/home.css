@@ -85,16 +85,19 @@
   border-radius: var(--radius-lg); background: var(--color-studio); color: var(--color-text);
 }
 .category-tile:focus-visible { outline-offset: 4px; }
-/* The photographs have almost no headroom, so the figure starts a little below the panel's edge and only a thin
-   strip is feathered at the top: enough to hide the photo's edge without ghosting the hair. */
-.category-figure {
-  position: absolute; z-index: -1; inset-block: var(--space-3) 0; inset-inline-end: -4%; inline-size: 62%;
+/* A model feathered into a sand room (the collections and the closing call to action). The photographs have almost
+   no headroom, so the figure starts a little below the panel's edge and only a thin strip is feathered at the top:
+   enough to hide the photo's edge without ghosting the hair. */
+.category-figure, .newsletter-figure {
+  position: absolute; z-index: -1; inset-block: var(--space-3) 0;
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30%, #000 70%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 4%, #000 88%, transparent 100%);
   -webkit-mask-composite: source-in;
   mask-image: linear-gradient(to right, transparent 0, #000 30%, #000 70%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 4%, #000 88%, transparent 100%);
   mask-composite: intersect;
 }
-.category-figure img { object-fit: cover; object-position: 50% 0; transition: transform 1200ms var(--ease-editorial); }
+.category-figure img, .newsletter-figure img { object-fit: cover; object-position: 50% 0; }
+.category-figure { inset-inline-end: -4%; inline-size: 62%; }
+.category-figure img { transition: transform 1200ms var(--ease-editorial); }
 @media (hover: hover) { .category-tile:hover .category-figure img { transform: scale(1.04) translateY(-4px); } }
 .category-description { display: flex; flex-direction: column; gap: var(--space-1); max-inline-size: 46%; margin-block-end: var(--space-4); }
 .category-name { font-size: clamp(2rem, 1.4rem + 1.6vw, 2.9rem); font-weight: var(--font-weight-light); line-height: 1.3; }
@@ -161,24 +164,23 @@
 .service-links strong { display: block; font-size: var(--text-md); }
 .service-links small { display: block; color: var(--color-text-muted); font-size: var(--text-xs); line-height: 1.7; }
 
-/* Closing call to action: an ink panel, the page's full stop before the footer. */
+/* Closing call to action: a last sand room. A model is feathered into the panel at the inline end, like the
+   collections; the invitation and an ink pill button sit beside her. */
 .newsletter {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-5);
-  margin-block-start: var(--space-7); padding: clamp(28px, 5vw, 64px); border-radius: var(--radius-lg);
-  background: var(--color-text); color: var(--color-surface);
+  position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: var(--space-5); min-block-size: clamp(320px, 28vw, 400px); margin-block-start: var(--space-7);
+  padding: clamp(28px, 5vw, 64px); border-radius: var(--radius-lg); background: var(--color-studio); color: var(--color-text);
 }
+.newsletter-figure { inset-inline-end: 4%; inline-size: min(34%, 300px); }
+.newsletter-copy { max-inline-size: min(60%, 34rem); }
 .newsletter h2 { margin: 0 0 var(--space-2); font-size: var(--text-heading); font-weight: var(--font-weight-light); }
-.newsletter p { margin: 0; color: rgb(var(--color-surface-rgb) / 0.78); }
-.newsletter :focus-visible { outline-color: var(--color-surface); }
-.newsletter .btn-primary { --btn-bg: var(--color-surface); --btn-fg: var(--color-text); flex-shrink: 0; }
-@media (hover: hover) { .newsletter .btn-primary:hover:not(:disabled) { --btn-bg: var(--color-inverse); } }
-.newsletter .btn-primary:active:not(:disabled) { --btn-bg: var(--color-surface-muted); }
+.newsletter p { margin: 0; }
 
 /* Scroll-driven settle: photographs (never text) ease into place as they enter the viewport. CSS-only and
    compositor-driven where supported; skipped entirely when reduced motion is requested. */
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
-    .category-figure { animation: home-settle linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
+    .category-figure, .newsletter-figure { animation: home-settle linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
     .editorial-art img { animation: home-settle-zoom linear both; animation-timeline: view(); animation-range: entry 0% cover 50%; }
   }
 }
@@ -229,5 +231,10 @@
   .editorial-copy::after { font-size: 220px; }
   .service-links { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); margin-block-start: var(--space-5); }
   .service-links a { min-block-size: 76px; }
-  .newsletter { flex-direction: column; align-items: stretch; }
+  .newsletter { min-block-size: 0; padding-block-end: 0; gap: var(--space-4); }
+  .newsletter-copy { max-inline-size: 58%; }
+  .newsletter h2 { font-size: var(--text-2xl); }
+  .newsletter p { font-size: var(--text-sm); }
+  .newsletter-figure { inline-size: 48%; inset-inline-end: -4%; }
+  .newsletter .btn { margin-block-end: var(--space-5); }
 }
