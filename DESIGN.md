@@ -43,6 +43,7 @@ The direction combines the layout of pitch A («مجله کسری») with the ty
 | `--color-accent` | `#6b2a22` | Oxblood: emphasis, numbers, sale tags, hover of primary buttons | 8.5:1 on muted |
 | `--color-border` | `#ddd4c8` | Hairline dividers | — |
 | `--color-outline-soft` | ink at 28% | Rings around colour swatches, inactive indicators | — |
+| `--color-studio` | `#c9ab8f` | The photographs' seamless backdrop: the panels models are feathered into | ink 7.9:1 |
 | `--color-surface-rgb` | `245 240 232` | The canvas as channels for translucent bars | — |
 
 ### Typography
@@ -88,8 +89,10 @@ Edge-to-edge elements on phones (the product gallery, checkout cards in the purc
 - Stagger: 60–110ms between lines or items.
 - RTL: "forward" is the physical left (`--inline-sign: -1`). Scale-from-start origins are `right center`. Swipe
   tracks rely on native RTL scrolling.
-- Reduced motion: the global rule in `base.css` collapses every animation and transition to its end state, so all
-  content is present immediately and nothing moves.
+- Scroll-driven settles (`animation-timeline: view()`) move photographs only, never text, and are declared inside
+  `@media (prefers-reduced-motion: no-preference)` because a duration override cannot stop a scroll-linked animation.
+- Reduced motion: the global rule in `base.css` collapses every time-based animation and transition to its end state,
+  so all content is present immediately and nothing moves.
 
 ## Component patterns
 
@@ -112,6 +115,19 @@ newest one from another collection. Each has a caption with number, name link an
 shoppable. The main plate is the LCP image: preloaded, high priority and still from the first frame. The second plate
 is fetched at low priority and unmasked by a wipe. Three soft boxes (number, collection, round arrow button) lead into
 the collections. Phones stack copy, plates and boxes.
+
+### Home sections
+`app/page.tsx`, `styles/home.css`.
+- **Collections:** three sand rooms (`--color-studio`, `--radius-lg`). Each model is feathered into her panel (mask on
+  all four sides, only a thin strip at the top because the photos have almost no headroom), so she seems to stand in
+  the page; the name in light type, a line, and a round arrow disc. The figure settles in as the room scrolls into
+  view. Side by side from 1081px, stacked below. If future photography uses another backdrop, retune `--color-studio`.
+- **Shop by colour:** a soft panel; colour choices are paper pills, the chosen one ringed in ink.
+- **Editorial band:** a soft panel with the photograph as a rounded plate capped at 460px wide (about its real size, so
+  it stays sharp); it settles from a slow zoom as it scrolls in.
+- **Service links:** three soft boxes with a round arrow disc, matching the boxes under the hero.
+- **Closing call to action:** an ink panel with a paper pill button, the page's full stop before the footer.
+- `.arrow-disc` is the shared round paper arrow button for every soft box; it nudges toward its arrow on hover.
 
 ### Product card
 `components/products/product-card.tsx`, `styles/catalog.css`. A rounded 3:4 photo with a paper pill tag for sale or
@@ -175,7 +191,7 @@ on desktop. Product photography for launch should be at least 1600px on the long
 - [x] Proof: header and menu, home hero, product card
 - [x] Design tokens across all components (colour, type weights, radius roles, outline token)
 - [x] Shared components (search, sheets and dialogs, toasts, desktop nav panel, footer, bottom nav)
-- [ ] Home page sections (shop by colour, editorial band, service links, closing call to action)
+- [x] Home page sections (collections, shop by colour, editorial band, service links, closing call to action)
 - [ ] Category and search pages
 - [ ] Product page
 - [ ] Cart and checkout (styling only)

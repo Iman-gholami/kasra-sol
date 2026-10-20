@@ -11,6 +11,7 @@
   --color-surface-raised: #ffffff;   /* cards, inputs, sheets */
   --color-surface-muted: #ece5da;    /* bands, summaries, notices */
   --color-surface-sunken: #ddd0bf;   /* image placeholders, close to the photos' studio sand */
+  --color-studio: #c9ab8f;           /* the photographs' seamless backdrop: panels models are feathered into; ink text 7.9:1 */
   --color-text: #1b1714;             /* ink, 14.2:1 */
   --color-text-muted: #5e554d;       /* 5.8:1 */
   --color-text-subtle: #675d54;      /* 5.1:1 */

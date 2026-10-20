@@ -15,12 +15,8 @@ const categoryPhotos = [
   '/images/lookbook/manto-sage.avif',
   '/images/lookbook/tshirt-blue.avif'
 ];
-// The first tile is wider on desktop; the last spans the full width on phones.
-const categorySizes = [
-  '(max-width: 600px) 50vw, (max-width: 1520px) 40vw, 600px',
-  '(max-width: 600px) 50vw, (max-width: 1520px) 30vw, 460px',
-  '(max-width: 600px) 100vw, (max-width: 1520px) 30vw, 460px'
-];
+// Each room's figure takes about 60% of its panel (three panels side by side from 1081px, stacked below).
+const roomFigureSizes = '(max-width: 600px) 52vw, (max-width: 1080px) 40vw, (max-width: 1520px) 19vw, 290px';
 
 // Hero plates: the main one is the page's LCP image (preloaded, high priority); the smaller second plate is fetched
 // at low priority so it never competes with it (its wipe starts 380ms later anyway).
@@ -76,7 +72,7 @@ export default async function HomePage() {
         {categories.map((item, i) => <Link key={item.slug} href={'/category/' + item.slug}>
           <span className="hero-index-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
           <span className="hero-index-name">{item.title}</span>
-          <span className="hero-index-go" aria-hidden="true"><ArrowUpLeft size={20}/></span>
+          <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
         </Link>)}
       </nav>
     </section>
@@ -88,10 +84,10 @@ export default async function HomePage() {
       </div>
       <ul className="category-grid">
         {categories.map((category, i) => <li key={category.slug}>
-          <Link href={'/category/' + category.slug} className={'category-tile category-' + i}>
-            <Image src={categoryPhotos[i]} alt="" fill sizes={categorySizes[i]}/>
+          <Link href={'/category/' + category.slug} className="category-tile">
+            <span className="category-figure"><Image src={categoryPhotos[i]} alt="" fill sizes={roomFigureSizes}/></span>
             <span className="category-description"><span className="category-name">{category.title}</span><span>{category.description}</span></span>
-            <span className="category-arrow" aria-hidden="true"><ArrowUpLeft size={20}/></span>
+            <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
           </Link>
         </li>)}
       </ul>
@@ -110,7 +106,7 @@ export default async function HomePage() {
 
     <section className="container wide-editorial editorial-band" aria-labelledby="edit-title">
       <div className="editorial-art">
-        <Image src="/images/lookbook/manto-black.avif" alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 600px) 100vw, (max-width: 1520px) 46vw, 700px"/>
+        <Image src="/images/lookbook/manto-black.avif" alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 600px) 86vw, 460px"/>
       </div>
       <div className="editorial-copy">
         <p className="editorial-super" dir="ltr">THE KASRA EDIT</p>
@@ -129,9 +125,9 @@ export default async function HomePage() {
     </section>
 
     <nav className="container service-links" aria-label="راهنمای خرید از کسری">
-      <Link href="/size-guide"><span><strong>راهنمای انتخاب سایز</strong><small>اندازه‌گیری درست، قبل از انتخاب</small></span><ArrowUpLeft size={20} aria-hidden="true"/></Link>
-      <Link href="/shipping-and-returns"><span><strong>ارسال و بازگشت</strong><small>اطلاعات نمونه، هنوز نهایی نشده</small></span><ArrowUpLeft size={20} aria-hidden="true"/></Link>
-      <Link href="/faq"><span><strong>سؤال‌های پرتکرار</strong><small>پاسخ کوتاه به پرسش‌های رایج</small></span><ArrowUpLeft size={20} aria-hidden="true"/></Link>
+      <Link href="/size-guide"><span><strong>راهنمای انتخاب سایز</strong><small>اندازه‌گیری درست، قبل از انتخاب</small></span><span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span></Link>
+      <Link href="/shipping-and-returns"><span><strong>ارسال و بازگشت</strong><small>اطلاعات نمونه، هنوز نهایی نشده</small></span><span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span></Link>
+      <Link href="/faq"><span><strong>سؤال‌های پرتکرار</strong><small>پاسخ کوتاه به پرسش‌های رایج</small></span><span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span></Link>
     </nav>
 
     <section className="container newsletter" aria-labelledby="closing-title">
