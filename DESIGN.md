@@ -25,7 +25,9 @@ The direction combines the layout of pitch A («مجله کسری») with the ty
 5. The LCP image is still and fully visible from the first paint: never masked, faded or zoomed.
 6. Keep entrance choreography small. Even composited animations cost main-thread time while the page hydrates; the
    home hero runs five, all finished within 1.5s. Copy, prices and calls to action never wait for an animation.
-7. Text never animates through low contrast. Reveals move text or unmask it; they don't fade small text in.
+7. Text never animates through low contrast. Reveals move text or unmask it; they don't fade small text in. The one
+   exception is transient feedback (toasts, the floating filter pill, the cart's «removed» row), which keeps its
+   short fade-and-rise (`toast-in`, under 300ms).
 8. Hover only enhances. Everything a hover reveals is also reachable by touch or keyboard.
 
 ## Tokens (`src/styles/tokens.css`)
@@ -44,7 +46,7 @@ The direction combines the layout of pitch A («مجله کسری») with the ty
 | `--color-border` | `#ddd4c8` | Hairline dividers | — |
 | `--color-outline-soft` | ink at 28% | Rings around colour swatches, inactive indicators | — |
 | `--color-studio` | `#c9ab8f` | The photographs' seamless backdrop: the panels models are feathered into | ink 7.9:1 |
-| `--color-surface-rgb` | `245 240 232` | The canvas as channels for translucent bars | — |
+| `--color-surface-rgb` | `245 240 232` | The canvas as channels for translucent paper on photos (heart disc, gallery labels and arrows); bars are solid | — |
 
 ### Typography
 
@@ -152,13 +154,26 @@ photo: category, name (semibold, underline draws in on hover), price, colour dot
 - **Phones:** the purchase bar is solid paper with a hairline, like the bottom navigation.
 - **Zoom:** the image is rounded (`--radius-md`); its controls are soft discs.
 
+### Cart and checkout
+`components/cart/*`, `components/checkout/*`, `styles/commerce.css`. Styling only: the flow, its rules and its
+copy are unchanged.
+- **Headings:** the summary, step and order-card headings are light, like every other section heading.
+- **Cart lines:** hairline-separated rows; the quantity stepper is two soft discs around the count.
+- **Summary:** the soft panel (`--radius-lg`, muted); the form step is a white sheet with a hairline, so fields read
+  as fields and the summary as a summary.
+- **Phones:** the flow keeps its own header and white card, now on a sand tint (it was a pink accent wash). The cart's
+  total bar is solid paper and the checkout submit bar solid white, like every other bottom bar.
+- **Choices, review, gateway and confirmation** keep their clear outlines: in the purchase flow a visible state wins
+  over softness.
+
 ### Accordions
 `styles/primitives.css`. Native `details` elements set as stacked soft boxes (`--radius-md`, muted), 8px apart.
 Used on the product page and the FAQ.
 
 ### Buttons and controls
 Pill-shaped. Primary buttons are ink and turn oxblood on hover (only where a pointer can hover). Size options,
-quantity steppers, chips and pagination are pills; fields are softly rounded (`--radius-sm`).
+quantity steppers, chips and pagination are pills; fields are softly rounded (`--radius-sm`). The quantity stepper is
+a soft muted pill without an outline (paper inside the buy box).
 
 Chips are soft pills without an outline: muted on the page, paper on a soft panel (the filter sidebar, empty states,
 the 404 card), ink when current or checked. Set `--chip-bg` / `--chip-bg-hover` for a new context instead of
@@ -231,6 +246,21 @@ the previous phase too and run all three interleaved: for the product page that 
 phase 6 at mean LCP 3.12s, 3.16s and 3.12s. Every later phase is held to the same rule: no page gets slower or
 shifts.
 
+Final sweep after the last phase (5 interleaved runs per page, medians; CLS is the worst run):
+
+| Page | Before: score / LCP / CLS / TBT | After: score / LCP / CLS / TBT |
+| --- | --- | --- |
+| Home | 91 / 3.39s / 0 / 38ms | 92 / 3.32s / 0 / 64ms |
+| Category | 91 / 3.39s / 0 / 78ms | 91 / 3.39s / 0 / 106ms |
+| Product | 92 / 3.24s / 0 / 72ms | 92 / 3.23s / 0 / 94ms |
+| Cart | 95 / 2.87s / 0 / 96ms | 95 / 2.87s / 0 / 99ms |
+| Checkout | 94 / 3.01s / 0 / 73ms | 94 / 3.01s / 0 / 86ms |
+
+Scores and LCP hold on every page and nothing shifts. Total blocking time is 3–28ms higher in the medians on every
+page: small, far under the 200ms “good” threshold and inside run-to-run noise at five runs (the ten-run product
+comparison had 74ms before and 79ms after), but consistently in the same direction, so it is the number to watch if
+more motion or client code is added.
+
 Lessons kept from the proof: a root-layout font preload competes with every page's LCP image; nineteen simultaneous
 entrance animations cost real main-thread time during hydration even when composited.
 
@@ -248,4 +278,4 @@ on desktop. Product photography for launch should be at least 1600px on the long
 - [x] Category and search pages (heading, collections row, toolbar, filter sidebar and sheet, pagination, empty
   and loading states, search page)
 - [x] Product page (gallery, buy box, details and accordions, zoom, phone purchase bar, loading state)
-- [ ] Cart and checkout (styling only)
+- [x] Cart and checkout (styling only)

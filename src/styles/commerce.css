@@ -33,8 +33,10 @@
 .cart-item-controls { grid-column: 2; align-self: end; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
 .cart-qty-label, .cart-line-total { color: var(--color-text-muted); font-size: var(--text-sm); }
 .cart-line-total strong { color: var(--color-text); }
-.cart-item .qty-stepper { gap: var(--space-1); border: 0; background: transparent; }
-.cart-item .qty-stepper button { border: 1px solid var(--color-border-strong); border-radius: var(--radius-pill); background: var(--color-surface-raised); }
+/* In a cart line the stepper is two soft discs around the count. */
+.cart-item .qty-stepper { gap: var(--space-1); background: transparent; }
+.cart-item .qty-stepper button { border-radius: var(--radius-pill); background: var(--color-surface-muted); }
+.cart-item .qty-stepper button:active:not(:disabled) { background: var(--color-surface-sunken); }
 .cart-line-actions { display: flex; gap: var(--space-1); margin-inline-start: auto; }
 .cart-save { color: var(--color-text-muted); }
 .cart-save:hover { color: var(--color-accent); }
@@ -47,7 +49,7 @@
 .cart-reserve-note { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; color: var(--color-text-subtle); font-size: var(--text-xs); line-height: 1.8; }
 .cart-reserve-note svg { flex-shrink: 0; margin-block-start: 3px; }
 .summary-card { position: sticky; inset-block-start: calc(var(--header-h) + var(--space-4)); padding: var(--space-5); border-radius: var(--radius-lg); background: var(--color-surface-muted); }
-.summary-card h2 { margin: 0 0 var(--space-2); font-size: var(--text-lg); }
+.summary-card h2 { margin: 0 0 var(--space-2); font-size: var(--text-xl); font-weight: var(--font-weight-light); }
 .summary-card dl { margin: 0; }
 .summary-row { display: flex; justify-content: space-between; gap: var(--space-3); padding-block: var(--space-3); border-block-end: 1px solid var(--color-border); font-size: var(--text-sm); }
 .summary-row dt, .summary-row > span:first-child { color: var(--color-text-muted); min-inline-size: 0; }
@@ -95,7 +97,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
 .checkout-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: clamp(24px, 4.5vw, 64px); align-items: start; }
 .checkout-card { padding: clamp(20px, 3vw, 36px); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-raised); }
 .checkout-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.checkout-card-head h2 { margin: 0; font-size: var(--text-xl); }
+.checkout-card-head h2 { margin: 0; font-size: var(--text-2xl); font-weight: var(--font-weight-light); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-4); margin-block-start: var(--space-4); }
 .form-field.wide { grid-column: 1 / -1; }
 .checkout-card-head h2:focus { outline: none; }
@@ -265,7 +267,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
 .order-timeline li[data-done="true"] span { border-color: var(--color-success); background: var(--color-success); color: var(--color-inverse); }
 .order-done-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
 .order-card { min-inline-size: 0; padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-raised); }
-.order-card h2 { margin: 0 0 var(--space-3); font-size: var(--text-lg); }
+.order-card h2 { margin: 0 0 var(--space-3); font-size: var(--text-xl); font-weight: var(--font-weight-light); }
 .order-card > p { margin: 0 0 var(--space-2); font-size: var(--text-sm); line-height: 1.8; overflow-wrap: anywhere; }
 .order-card-wide { grid-column: 1 / -1; }
 .order-done > .empty-actions { margin: 0; }
@@ -292,9 +294,9 @@ a.flow-step-body:hover { color: var(--color-accent); }
   .checkout-summary-mobile > summary strong { margin-inline-start: auto; }
   .checkout-summary-body { padding: 0 var(--space-4) var(--space-4); }
   /* Purchase flow: the cart and checkout swap the site header and footer for their own header, and sit in
-     one white card on a soft tint (SiteShell marks the flow from the pathname during the server render). */
+     one white card on a soft sand tint (SiteShell marks the flow from the pathname during the server render). */
   .site-shell[data-flow="checkout"] .site-header, .site-shell[data-flow="checkout"] .footer { display: none; }
-  .site-shell[data-flow="checkout"] > main { background: linear-gradient(180deg, var(--color-accent-wash) 0, var(--color-surface) 360px); }
+  .site-shell[data-flow="checkout"] > main { background: linear-gradient(180deg, var(--color-surface-muted) 0, var(--color-surface) 360px); }
   .site-shell[data-flow="checkout"] .page-heading {
     position: absolute; inline-size: 1px; block-size: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
@@ -325,7 +327,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
   .checkout-submit-bar {
     position: sticky; inset-block-end: 0; z-index: var(--z-sticky); margin-inline: calc(clamp(20px, 3vw, 36px) * -1); margin-block-end: calc(clamp(20px, 3vw, 36px) * -1);
     padding: var(--space-3) clamp(20px, 3vw, 36px) calc(var(--space-3) + var(--safe-bottom));
-    background: rgb(255 255 255 / 0.97); border-block-start: 1px solid var(--color-border); box-shadow: var(--shadow-1);
+    background: var(--color-surface-raised); border-block-start: 1px solid var(--color-border); box-shadow: var(--shadow-1);
   }
 }
 @media (max-width: 600px) {
@@ -341,7 +343,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
   .choice-card { padding-inline: var(--space-3); }
   .task-bar {
     position: fixed; z-index: var(--z-bottom-bar); inset-inline: 0; inset-block-end: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-    padding: var(--space-2) var(--gutter) calc(var(--space-2) + var(--safe-bottom)); background: rgb(var(--color-surface-rgb) / 0.97);
+    padding: var(--space-2) var(--gutter) calc(var(--space-2) + var(--safe-bottom)); background: var(--color-surface);
     border-block-start: 1px solid var(--color-border); box-shadow: var(--shadow-1);
   }
   .task-bar-total { display: flex; flex-direction: column; }

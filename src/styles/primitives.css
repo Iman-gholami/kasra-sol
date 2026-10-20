@@ -266,16 +266,17 @@ select.control {
 @keyframes skeleton-sweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
 
 /* ---------- Quantity stepper ---------- */
+/* A soft muted pill; on a soft panel (the buy box) it turns paper. */
 .qty-stepper {
   display: inline-flex; align-items: center; inline-size: max-content;
-  border: 1px solid var(--color-border-strong); border-radius: var(--radius-pill); background: var(--color-surface-raised);
+  border: 1px solid transparent; border-radius: var(--radius-pill); background: var(--color-surface-muted);
 }
 .qty-stepper button {
   display: grid; place-items: center; inline-size: var(--touch); block-size: var(--touch); border: 0;
   background: transparent; color: var(--color-text); touch-action: manipulation;
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
-@media (hover: hover) { .qty-stepper button:hover:not(:disabled) { background: var(--color-surface-muted); } }
+@media (hover: hover) { .qty-stepper button:hover:not(:disabled) { background: var(--color-surface-sunken); } }
 .qty-stepper button:disabled { color: var(--color-text-subtle); opacity: 0.5; }
 .qty-stepper span { min-inline-size: 36px; text-align: center; font-weight: var(--font-weight-semibold); font-size: var(--text-md); }
 .qty-stepper-lg button { inline-size: 48px; block-size: 48px; }
