@@ -124,6 +124,29 @@ photo: category, name (semibold, underline draws in on hover), price, colour dot
 Pill-shaped. Primary buttons are ink and turn oxblood on hover (only where a pointer can hover). Size options,
 quantity steppers, chips and pagination are pills; fields are softly rounded (`--radius-sm`).
 
+### Search
+`components/search/*`, `styles/catalog.css`. The search field (header panel and the search page) is a soft pill on
+`--color-surface-muted`; while typing it turns white with an ink focus ring. Result thumbnails are rounded
+(`--radius-sm`); result rows are `--radius-md` boxes.
+
+### Sheets, dialogs and toasts
+`components/ui/sheet.tsx`, `styles/primitives.css`. Centre dialogs and the desktop search dropdown take `--radius-lg`;
+bottom sheets round their top corners; side drawers stay square against the screen edge. Toasts are ink with
+`--radius-lg`.
+
+### Desktop navigation panel
+`components/layout/primary-nav.tsx`. Hangs from the header as a card with rounded lower corners; collection photos
+are `--radius-md`.
+
+### Footer
+`components/layout/footer.tsx`, `styles/layout.css`. A soft rounded panel (`--radius-lg`, `--color-surface-muted`) at
+page width: the panel itself is the page-width box, so its columns line up with the header. The copyright line sits
+beneath it, outside the panel.
+
+### Bottom navigation (phones)
+`components/layout/bottom-nav.tsx`. Solid paper with a hairline on top (no translucency). The current tab is oxblood
+and wears a soft pill behind its icon.
+
 ## Performance budget
 
 Measured with Lighthouse 12 (mobile, simulated throttling) against the pre-redesign build, same machine, back to back,
@@ -131,12 +154,13 @@ median of 3 runs (run-to-run noise is about ±0.4s of LCP):
 
 | Page | Before: score / LCP / CLS | After: score / LCP / CLS |
 | --- | --- | --- |
-| Home | 91 / 3.46s / 0 | 92 / 3.31s / 0 |
+| Home (8 interleaved runs) | 92 / 3.32s / 0 | 91.5 / 3.43s / 0 |
 | Category | 91 / 3.39s / 0 | 91 / 3.39s / 0 |
-| Product | 92 / 3.24s / 0 | 93 / 3.16s / 0 |
+| Product | 92 / 3.24s / 0 | 93 / 3.17s / 0 |
 
-Accessibility is 100 on all three. Home carries +6 KB (the second hero plate). Every later phase is held to the same
-rule: no page gets slower or shifts.
+Accessibility is 100 on all three. Home's distributions overlap (both cluster at 3.31–3.32s; the redesign has more
+runs in a 3.54s mode), so the difference is within the simulator's noise. Home carries +12 KB, mostly the second hero
+plate. Every later phase is held to the same rule: no page gets slower or shifts.
 
 Lessons kept from the proof: a root-layout font preload competes with every page's LCP image; nineteen simultaneous
 entrance animations cost real main-thread time during hydration even when composited.
@@ -150,7 +174,7 @@ on desktop. Product photography for launch should be at least 1600px on the long
 
 - [x] Proof: header and menu, home hero, product card
 - [x] Design tokens across all components (colour, type weights, radius roles, outline token)
-- [ ] Shared components (sheets, chips, fields, toasts, breadcrumbs, footer, bottom nav)
+- [x] Shared components (search, sheets and dialogs, toasts, desktop nav panel, footer, bottom nav)
 - [ ] Home page sections (shop by colour, editorial band, service links, closing call to action)
 - [ ] Category and search pages
 - [ ] Product page
