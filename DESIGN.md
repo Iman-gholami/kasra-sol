@@ -282,6 +282,11 @@ After the redesign, two changes that alter nothing visible (5 interleaved Lighth
 Tried and rejected: `experimental.inlineCss`. Next.js embeds the stylesheet three times (a style tag plus the RSC
 payload), so the home HTML grew from 15 KB to 82 KB compressed and FCP got worse (1.18s).
 
+Not worth doing: deferring the search, menu and cart-confirmation code. Phones download 170 KB of JavaScript, of
+which about 114 KB is React DOM and the Next.js router; all of the store's own client components share one 10.7 KB
+chunk (the 38.5 KB core-js chunk is `noModule` and never fetched by modern browsers). Deferring search and the menu
+would save 3–5 KB, below Lighthouse's run-to-run noise, and make the first search open wait for the network.
+
 Lessons kept from the proof: a root-layout font preload competes with every page's LCP image; nineteen simultaneous
 entrance animations cost real main-thread time during hydration even when composited.
 
