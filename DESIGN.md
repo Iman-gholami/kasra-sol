@@ -71,8 +71,8 @@ Soft, rounded boxes. Pick the radius by role, not by size:
 | Token | Value | Role |
 | --- | --- | --- |
 | `--radius-pill` | `999px` | Buttons, chips, size options, steppers, pagination, tags, nav hover states, search field, the catalog toolbar |
-| `--radius-lg` | `24px` | Panels, cards, sheets and dialogs, hero plates, collection boxes, empty states, the filter sidebar |
-| `--radius-md` | `16px` | Product photos, notices, option boxes, toasts, skeletons |
+| `--radius-lg` | `24px` | Panels, cards, sheets and dialogs, hero plates, the product gallery plate, collection boxes, empty states, the filter sidebar, the buy box |
+| `--radius-md` | `16px` | Product photos, notices, option boxes, accordions, toasts, skeletons |
 | `--radius-sm` | `10px` | Form fields, small thumbnails |
 | `--radius-xs` | `4px` | Focus ring, keyboard hints |
 
@@ -139,6 +139,23 @@ focus over a slow zoom. On touch screens the photos are a scroll-snap track, and
 (scroll-driven where supported, static otherwise). No client JavaScript: only the wishlist button hydrates. Below the
 photo: category, name (semibold, underline draws in on hover), price, colour dots.
 
+### Product page
+`components/products/product-detail.tsx`, `product-gallery.tsx`, `purchase-panel.tsx`, `styles/product.css`.
+- **Gallery:** a rounded plate (`--radius-lg`) with rounded thumbnails; the chosen thumbnail is ringed in ink. On
+  phones the gallery runs edge to edge and square. The first image is the LCP image and is never animated.
+- **Buy box:** the title in light type and the price above a soft panel holding colour, size, quantity and the
+  buttons. Inside it, options are paper: the chosen colour box is ringed in ink, the chosen size is ink, and
+  unavailable options lose their fill for a dashed outline. The stepper and the wishlist disc are paper too. The
+  add button keeps 16px side padding so its longest label fits a 320px phone.
+- **Details:** «درباره این مدل» in light type; material and shipping are soft accordion boxes; the demo notice is the
+  same soft box.
+- **Phones:** the purchase bar is solid paper with a hairline, like the bottom navigation.
+- **Zoom:** the image is rounded (`--radius-md`); its controls are soft discs.
+
+### Accordions
+`styles/primitives.css`. Native `details` elements set as stacked soft boxes (`--radius-md`, muted), 8px apart.
+Used on the product page and the FAQ.
+
 ### Buttons and controls
 Pill-shaped. Primary buttons are ink and turn oxblood on hover (only where a pointer can hover). Size options,
 quantity steppers, chips and pagination are pills; fields are softly rounded (`--radius-sm`).
@@ -204,12 +221,14 @@ median of 3 runs (run-to-run noise is about ±0.4s of LCP):
 | Home (8 interleaved runs) | 92 / 3.32s / 0 | 91.5 / 3.43s / 0 |
 | Category (10 interleaved runs, phase 5) | 91.5 / 3.39s / 0 | 91 / 3.39s / 0 |
 | Search results (10 interleaved runs, phase 5) | 91 / 3.39s / 0 | 91 / 3.39s / 0 |
-| Product | 92 / 3.24s / 0 | 93 / 3.17s / 0 |
+| Product (10 interleaved runs, phase 6) | 92 / 3.23s / 0 | 93 / 3.17s / 0 |
 
 Accessibility is 100 on every page measured. Home's distributions overlap (both cluster at 3.31–3.32s; the redesign
 has more runs in a 3.54s mode), so the difference is within the simulator's noise. Home carries +12 KB, mostly the
 second hero plate. Catalog LCP is bimodal on both builds (about 2.6–2.9s or 3.39s per run), so four runs can
-mislead; compare at least ten interleaved runs. Every later phase is held to the same rule: no page gets slower or
+mislead; compare at least ten interleaved runs, and the mean as well as the median. When a page looks slower, build
+the previous phase too and run all three interleaved: for the product page that showed pre-redesign, phase 5 and
+phase 6 at mean LCP 3.12s, 3.16s and 3.12s. Every later phase is held to the same rule: no page gets slower or
 shifts.
 
 Lessons kept from the proof: a root-layout font preload competes with every page's LCP image; nineteen simultaneous
@@ -228,5 +247,5 @@ on desktop. Product photography for launch should be at least 1600px on the long
 - [x] Home page sections (collections, shop by colour, editorial band, service links, closing call to action)
 - [x] Category and search pages (heading, collections row, toolbar, filter sidebar and sheet, pagination, empty
   and loading states, search page)
-- [ ] Product page
+- [x] Product page (gallery, buy box, details and accordions, zoom, phone purchase bar, loading state)
 - [ ] Cart and checkout (styling only)

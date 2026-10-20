@@ -280,9 +280,9 @@ select.control {
 .qty-stepper span { min-inline-size: 36px; text-align: center; font-weight: var(--font-weight-semibold); font-size: var(--text-md); }
 .qty-stepper-lg button { inline-size: 48px; block-size: 48px; }
 
-/* ---------- Accordion (native details/summary) ---------- */
-.accordion { border-block-end: 1px solid var(--color-border); }
-.accordion:first-child { border-block-start: 1px solid var(--color-border); }
+/* ---------- Accordion (native details/summary): stacked soft boxes ---------- */
+.accordion { padding-inline: var(--space-4); border-radius: var(--radius-md); background: var(--color-surface-muted); }
+.accordion + .accordion { margin-block-start: var(--space-2); }
 .accordion > summary {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
   min-block-size: 56px; padding-block: var(--space-2); cursor: pointer; list-style: none;
