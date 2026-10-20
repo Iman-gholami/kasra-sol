@@ -261,6 +261,24 @@ page: small, far under the 200ms “good” threshold and inside run-to-run nois
 comparison had 74ms before and 79ms after), but consistently in the same direction, so it is the number to watch if
 more motion or client code is added.
 
+### Mobile speed pass
+
+After the redesign, two changes that alter nothing visible (5 interleaved Lighthouse mobile runs, medians):
+
+- **Admin styles only on `/admin`** (`app/admin/layout.tsx`): shoppers no longer download the back office's CSS or
+  its `html:has()` rules. Storefront CSS: 27.6 KB → 22.0 KB compressed.
+- **Persian subset of Estedad** (`fonts/Estedad-VF-fa.woff2`, see `fonts/README.md`): 121 KB → 81 KB. The font is
+  preloaded and shares the first seconds of a phone's bandwidth with the LCP image.
+
+| Page | Before: score / FCP / LCP | After: score / FCP / LCP |
+| --- | --- | --- |
+| Home | 91 / 1.22s / 3.46s | 93 / 0.91s / 3.17s |
+| Category | 91 / 1.07s / 3.39s | 95 / 0.92s / 2.89s |
+| Product | 94 / 1.06s / 3.16s | 95 / 0.91s / 2.93s |
+
+Tried and rejected: `experimental.inlineCss`. Next.js embeds the stylesheet three times (a style tag plus the RSC
+payload), so the home HTML grew from 15 KB to 82 KB compressed and FCP got worse (1.18s).
+
 Lessons kept from the proof: a root-layout font preload competes with every page's LCP image; nineteen simultaneous
 entrance animations cost real main-thread time during hydration even when composited.
 
