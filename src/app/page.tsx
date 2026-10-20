@@ -76,7 +76,7 @@ export default async function HomePage() {
         {categories.map((item, i) => <Link key={item.slug} href={'/category/' + item.slug}>
           <span className="hero-index-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
           <span className="hero-index-name">{item.title}</span>
-          <ArrowUpLeft size={20} aria-hidden="true"/>
+          <span className="hero-index-go" aria-hidden="true"><ArrowUpLeft size={20}/></span>
         </Link>)}
       </nav>
     </section>

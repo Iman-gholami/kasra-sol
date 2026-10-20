@@ -1,6 +1,6 @@
 /* KASRA design tokens — single source for color, space, type, shape, depth, layering and motion.
-   Direction «مجله کسری» (Kasra Journal): warm paper, near-black ink, one oxblood accent, thin rules;
-   the sand of the photographs is the only other colour. See DESIGN.md.
+   Direction «مجله کسری» (Kasra Journal): warm paper, near-black ink, one oxblood accent, Estedad's light weights for
+   display, soft rounded boxes; the sand of the photographs is the only other colour. See DESIGN.md.
    Theme tokens are declared through Tailwind 4 `@theme`, so they exist as CSS variables and as
    utilities; component CSS reads them with var(). Breakpoints used in media queries:
    600px (phone) · 820px (tablet) · 1080px (small laptop) · 1440px (wide). */
@@ -19,6 +19,7 @@
   --color-accent-wash: #f2e4df;
   --color-border: #ddd4c8;           /* hairline dividers */
   --color-border-strong: #8c8178;    /* form controls and chips, 3.0:1 on surface-muted, 3.8:1 on white */
+  --color-outline-soft: rgb(27 23 20 / 0.28); /* rings around colour swatches, inactive indicator dots and tracks */
   --color-success: #2e6b4c;
   --color-success-wash: #e8f1ec;
   --color-warning: #865a0f;
@@ -29,11 +30,12 @@
   --color-inverse: #ffffff;
   --color-scrim: rgb(28 24 21 / 0.48);
 
-  /* Type */
+  /* Type: one family, Estedad, for everything. Large headings speak in its extra-light weight, with medium for the
+     emphasised words: the contrast in weight is the display voice. */
   --font-sans: var(--font-estedad), Tahoma, "Segoe UI", sans-serif;
-  /* Amiri carries large editorial headings only (28px and up); everything readable at body size stays Estedad. */
-  --font-display: var(--font-amiri), var(--font-estedad), Tahoma, serif;
   --font-wordmark: Georgia, "Times New Roman", serif;
+  --font-weight-extralight: 200;
+  --font-weight-light: 300;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -48,19 +50,23 @@
   --text-2xl: clamp(1.5rem, 1.28rem + 0.95vw, 2rem);
   --text-3xl: clamp(1.75rem, 1.38rem + 1.55vw, 2.625rem);
   --text-display: clamp(2.25rem, 1.5rem + 3.1vw, 4.25rem);
-  /* Amiri cover lines, sized so that even the wider fallback face fits each line unwrapped (no reflow on swap):
-     about 6.3vw beside the photos, 12vw when the hero stacks on narrow screens. */
+  /* Page and section headings: Estedad light at this size; emphasised words take medium. */
+  --text-heading: clamp(2rem, 1.35rem + 2.4vw, 3.25rem);
+  /* Cover lines, sized so each line fits its column unwrapped from 320 to 1920px:
+     beside the photos on wide screens, and when the hero stacks on narrow ones. */
   --text-hero: clamp(3rem, 6.3vw, 6.4rem);
   --text-hero-stacked: clamp(2.5rem, 0.2rem + 12vw, 4.4rem);
   --leading-body: 1.85;
   --leading-snug: 1.55;
   --leading-heading: 1.4;
-  --leading-display: 1.38;  /* Amiri's tall ascenders and deep descenders need the room */
+  --leading-display: 1.3;
 
-  /* Shape and depth */
-  --radius-xs: 2px;
-  --radius-sm: 6px;
-  --radius-lg: 16px;
+  /* Shape and depth: soft, rounded boxes. Photos and cards take md, panels and sheets lg; buttons, chips, tags and
+     options are pills. */
+  --radius-xs: 4px;    /* tiny marks: keyboard hints, indicator dots */
+  --radius-sm: 10px;   /* fields and small controls */
+  --radius-md: 16px;   /* photos and cards */
+  --radius-lg: 24px;   /* panels, sheets and dialogs */
   --radius-pill: 999px;
   --shadow-1: 0 -1px 0 rgb(34 34 34 / 0.06), 0 -6px 18px rgb(36 30 26 / 0.06);
   --shadow-2: 0 10px 30px rgb(36 30 26 / 0.12), 0 2px 6px rgb(36 30 26 / 0.06);
