@@ -10,7 +10,8 @@ const seed = (page: Page) => page.addInitScript(() => localStorage.setItem('kasr
 /** Overlays scale or slide in; measure their geometry only once the enter transition has finished. */
 const settled = (overlay: Locator) => overlay.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
 
-const box = async (locator: Locator) => (await locator.boundingBox())!;
+/** Pages stream in behind their route's loading state and are revealed just after load; measure once shown. */
+const box = async (locator: Locator) => { await locator.waitFor(); return (await locator.boundingBox())!; };
 
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
