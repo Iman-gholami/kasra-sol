@@ -94,13 +94,13 @@ export function CartPage() {
                   onChange={value => updateQuantity(row.item, value)}/>
                 {row.item.quantity > 1 && <span className="cart-line-total">جمع: <strong className="price">{toman(row.product.price * row.item.quantity)}</strong></span>}
                 <div className="cart-line-actions">
-                  <button type="button" className="icon-button cart-save" aria-label={'ذخیره برای بعد، ' + row.product.name}
+                  <button type="button" className="link-button cart-save" aria-label={'انتقال به علاقه‌مندی‌ها، ' + row.product.name}
                     onClick={() => { remove(row.item, true); focusIn('[data-undo="' + CSS.escape(row.key) + '"]'); }}>
-                    <Heart size={20} aria-hidden="true"/>
+                    <Heart size={18} aria-hidden="true"/> انتقال به علاقه‌مندی‌ها
                   </button>
-                  <button type="button" className="icon-button cart-remove" aria-label={'حذف ' + row.product.name + ' از سبد'}
+                  <button type="button" className="link-button cart-remove" aria-label={'حذف ' + row.product.name + ' از سبد'}
                     onClick={() => { remove(row.item); focusIn('[data-undo="' + CSS.escape(row.key) + '"]'); }}>
-                    <Trash2 size={20} aria-hidden="true"/>
+                    <Trash2 size={18} aria-hidden="true"/> حذف
                   </button>
                 </div>
               </div>
