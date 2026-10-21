@@ -35,7 +35,8 @@
 .cart-line-total strong { color: var(--color-text); }
 .cart-item .qty-stepper { gap: var(--space-1); border: 0; background: transparent; }
 .cart-item .qty-stepper button { border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-surface-raised); }
-.cart-line-actions { display: flex; gap: var(--space-1); margin-inline-start: auto; }
+.cart-line-actions { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-inline-start: auto; }
+.cart-line-actions .link-button { min-block-size: var(--touch); padding-inline: var(--space-2); }
 .cart-save { color: var(--color-text-muted); }
 .cart-save:hover { color: var(--color-accent); }
 .cart-remove { color: var(--color-danger); }
@@ -330,7 +331,7 @@ a.flow-step-body:hover { color: var(--color-accent); }
   .cart-item { grid-template-columns: 80px minmax(0, 1fr); gap: var(--space-3); }
   .cart-img { grid-row: auto; inline-size: 80px; }
   .cart-item-controls { grid-column: 1 / -1; }
-  .cart-line-actions { margin-inline-end: calc(var(--space-2) * -1); }
+  .cart-line-actions { flex-basis: 100%; margin-inline-start: 0; }
   .order-done { margin-block: var(--space-5); }
   .order-done-head { padding: var(--space-5) var(--space-4); }
   .order-done-grid { grid-template-columns: minmax(0, 1fr); }
