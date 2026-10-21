@@ -39,11 +39,12 @@
   border-start-end-radius: var(--radius-lg); border-end-end-radius: var(--radius-lg);
 }
 .hero-controls {
-  position: absolute; z-index: 3; inset-block-start: var(--space-3); inset-inline: var(--space-4);
-  display: flex; align-items: center; gap: var(--space-3);
+  position: absolute; z-index: 3; inset-block-start: var(--space-3); inset-inline: var(--space-1);
+  display: flex; align-items: center;
 }
-.hero-segments { flex: 1; display: flex; gap: 6px; }
-.hero-segment { flex: 1; display: grid; align-items: center; block-size: var(--touch); padding: 0; border: 0; background: none; cursor: pointer; }
+.hero-segments { flex: 1; display: flex; }
+/* The buttons tile the row with no gap, so five keep a 44px target from 320px; the gap between bars is padding. */
+.hero-segment { flex: 1; display: grid; align-items: center; block-size: var(--touch); padding: 0 3px; border: 0; background: none; cursor: pointer; }
 .hero-segment-fill { position: relative; display: block; block-size: 3px; overflow: hidden; border-radius: 3px; background: rgb(27 23 20 / 0.2); }
 /* Fills from the inline start (right in RTL). */
 .hero-segment-fill::after {

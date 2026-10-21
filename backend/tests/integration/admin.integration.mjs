@@ -463,7 +463,7 @@ describe('home page slider', () => {
     const pick = ['manto-03', 'shomiz-01', PRODUCT];
     assert.equal((await save(staff.token, pick)).status, 403);
     assert.equal((await save(manager.token, ['manto-03', 'manto-03'])).status, 400);
-    assert.equal((await save(manager.token, Array.from({ length: 9 }, (_, i) => 'manto-0' + (i + 1)))).status, 400);
+    assert.equal((await save(manager.token, Array.from({ length: 6 }, (_, i) => 'manto-0' + (i + 1)))).status, 400);
     const draftId = 'it-slide-draft-' + run;
     assert.equal((await api('/v1/admin/products', { method: 'POST', token: owner.token,
       body: productBody({ id: draftId, slug: draftId }) })).status, 201);

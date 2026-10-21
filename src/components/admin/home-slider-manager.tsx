@@ -28,7 +28,7 @@ function Prices({ slide }: { slide: Slide }) {
 export function HomeSliderManager() {
   const [slides, setSlides] = useState<Slide[] | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [max, setMax] = useState(8);
+  const [max, setMax] = useState(5);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Slide[] | null>(null);
   const [searching, setSearching] = useState(false);

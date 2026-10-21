@@ -153,7 +153,7 @@ purchased, but order snapshots and database records remain intact.
 Color/size/stock editing is atomic; product writes invalidate the public Redis cache.
 
 Home page slider: `GET /v1/admin/home-slider` (`products:read`) lists the picked products in order, with their
-status; `PUT /v1/admin/home-slider` (`products:write`) replaces the pick with `{ productIds }` (at most 8, no
+status; `PUT /v1/admin/home-slider` (`products:write`) replaces the pick with `{ productIds }` (at most 5, no
 repeats, all published: otherwise `409 slide_unavailable`). The pick lives in `home_slides` (migration 007), is
 written to the audit log as `products.home_slider` and invalidates the public cache. A product archived later simply
 drops out of `GET /v1/home/slider`. With an empty pick the storefront shows its discounted products instead.

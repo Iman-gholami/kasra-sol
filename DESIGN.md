@@ -117,9 +117,10 @@ the second medium in oxblood. The other side is a slider: one model at a time, f
 collection rooms, with a paper tag (discount badge, name, `Price`) that links to the product. Phones stack it: the
 headline and the main button over the room, the lede and «تازه‌ترین‌ها» below.
 
-- **Which products:** the owner picks up to eight in the back office (**اسلایدر صفحه اول**, `products:write`), in
+- **Which products:** the owner picks up to five in the back office (**اسلایدر صفحه اول**, `products:write`), in
   order. With no pick, the cover shows up to five discounted products (one per photo first); with no discounts, the
-  three newest. Archived or hidden products drop out on their own.
+  three newest. Archived or hidden products drop out on their own. Five is the cap so the slide buttons, which tile
+  the row beside the pause button, stay 44px wide on a 320px phone.
 - **Autoplay:** a new slide every 5 seconds, cross-faded over 700ms. The progress segments at the top are also the
   slide buttons («اسلاید ۲ از ۵»). A pause button stops it (WCAG 2.2.2), and hover or keyboard focus holds the
   current slide. A sideways swipe changes slides (a drag to the right brings the next one, as in the product
