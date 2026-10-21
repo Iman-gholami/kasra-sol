@@ -53,9 +53,9 @@ function Field({ title, hint, children, wide }: { title: string; hint?: string; 
 }
 
 /** Edits `productId`, creates a new draft, or (with `copyOf`) a new draft prefilled from another product. */
-export function ProductEditor({ productId, copyOf, permissions, done, onDirty }: {
+export function ProductEditor({ productId, copyOf, permissions, done, onUnsaved }: {
   productId?: string; copyOf?: string; permissions: string[]; done: (saved: boolean) => void;
-  onDirty?: (dirty: boolean) => void;
+  onUnsaved?: (question: string | null) => void;
 }) {
   const canPrice = permissions.includes('products:price');
   const canStock = permissions.includes('inventory:write');
@@ -99,8 +99,8 @@ export function ProductEditor({ productId, copyOf, permissions, done, onDirty }:
   const payload = useMemo(() => payloadOf(item, sizeText), [item, sizeText]);
   const dirty = !loading && JSON.stringify(payload) !== baseline;
   // The dashboard asks before switching sections; the browser asks before closing or reloading the tab.
-  useEffect(() => { onDirty?.(dirty); }, [dirty, onDirty]);
-  useEffect(() => () => onDirty?.(false), [onDirty]);
+  useEffect(() => { onUnsaved?.(dirty ? UNSAVED_CHANGES : null); }, [dirty, onUnsaved]);
+  useEffect(() => () => onUnsaved?.(null), [onUnsaved]);
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };

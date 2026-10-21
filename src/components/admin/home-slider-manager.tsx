@@ -10,6 +10,7 @@ import type { ProductRow } from '@/components/admin/product-list';
 
 type Slide = Pick<ProductRow, 'id' | 'name' | 'price' | 'compareAt' | 'images' | 'status'>;
 type State = { tone: 'error' | 'success' | 'warning'; text: string } | null;
+const UNSAVED_SLIDES = 'ترتیب ذخیره‌نشده اسلایدر از بین می‌رود. ادامه می‌دهید؟';
 
 function Thumb({ slide }: { slide: Slide }) {
   return <span className="admin-product-image">
@@ -25,7 +26,7 @@ function Prices({ slide }: { slide: Slide }) {
 
 /** «اسلایدر صفحه اول»: the products the home page cover shows one at a time, in order. Search published products,
  * add them, reorder with the arrows and save. With nothing saved the storefront shows its discounted products. */
-export function HomeSliderManager() {
+export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string | null) => void }) {
   const [slides, setSlides] = useState<Slide[] | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [max, setMax] = useState(5);
@@ -47,6 +48,15 @@ export function HomeSliderManager() {
   const dirty = slides !== null && ids.join() !== savedIds.join();
   const unpublished = slides?.filter(slide => slide.status !== 'active') ?? [];
   const full = ids.length >= max;
+  // Like the product editor: the dashboard asks before switching sections, the browser before closing or reloading.
+  useEffect(() => { onUnsaved?.(dirty ? UNSAVED_SLIDES : null); }, [dirty, onUnsaved]);
+  useEffect(() => () => onUnsaved?.(null), [onUnsaved]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   function move(index: number, delta: number) {
     setSlides(current => {

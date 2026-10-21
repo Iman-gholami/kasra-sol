@@ -6,7 +6,7 @@ import { Activity, ClipboardList, ExternalLink, GalleryHorizontal, LayoutDashboa
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/components/admin/admin-api';
 import { formatNumber, ROLE } from '@/components/admin/labels';
-import { ProductEditor, UNSAVED_CHANGES } from '@/components/admin/product-editor';
+import { ProductEditor } from '@/components/admin/product-editor';
 import { ProductList } from '@/components/admin/product-list';
 import { SalesOverview } from '@/components/admin/sales-overview';
 import { TrafficOverview } from '@/components/admin/traffic-overview';
@@ -58,9 +58,10 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
   const [newOrders, setNewOrders] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
   const current = useRef(view);
-  // Set by the product editor while its form differs from what is stored.
-  const dirty = useRef(false);
-  const setDirty = useCallback((value: boolean) => { dirty.current = value; }, []);
+  // Set by the product editor and the home slider while their changes differ from what is stored: the question to
+  // ask before leaving them, or null.
+  const unsaved = useRef<string | null>(null);
+  const setUnsaved = useCallback((question: string | null) => { unsaved.current = question; }, []);
   // Saving steps back through history to the list; the «saved» notice is carried across that step.
   const savedOnBack = useRef(false);
   const can = (permission: string) => user.permissions.includes(permission);
@@ -76,11 +77,11 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
   useEffect(() => {
     const back = () => {
       const params = new URLSearchParams(window.location.search);
-      if (dirty.current && !window.confirm(UNSAVED_CHANGES)) {
+      if (unsaved.current && !window.confirm(unsaved.current)) {
         window.history.pushState(null, '', addressOf(current.current));
         return;
       }
-      dirty.current = false;
+      unsaved.current = null;
       setSaved(savedOnBack.current);
       savedOnBack.current = false;
       setView(resolveView({ tab: params.get('tab'), edit: params.get('edit'), q: params.get('q') }, user.permissions));
@@ -105,13 +106,13 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
   }, [readsOrders, onOrders]);
 
   function show(next: View, entry: 'push' | 'replace' = 'push', state: Record<string, unknown> | null = null) {
-    dirty.current = false;
+    unsaved.current = null;
     setView(next);
     if (entry === 'push') window.history.pushState(state, '', addressOf(next));
     else window.history.replaceState(state, '', addressOf(next));
   }
   function go(next: Section, q = '') {
-    if (dirty.current && !window.confirm(UNSAVED_CHANGES)) return;
+    if (unsaved.current && !window.confirm(unsaved.current)) return;
     setSaved(false);
     show({ section: next, editor: null, q });
     // Screen readers and keyboard users land on the new section's heading instead of staying in the menu.
@@ -122,7 +123,7 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
     show({ ...view, editor, q: '' }, 'push', { fromList: true });
   }
   function closeEditor(changed: boolean) {
-    dirty.current = false;
+    unsaved.current = null;
     if (changed) setListVersion(v => v + 1);
     // Opened from the list: step back to that history entry, so Back afterwards does not reopen the editor.
     if ((window.history.state as { fromList?: boolean } | null)?.fromList) {
@@ -134,8 +135,8 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
     }
   }
   async function signOut() {
-    if (dirty.current && !window.confirm(UNSAVED_CHANGES)) return;
-    dirty.current = false;
+    if (unsaved.current && !window.confirm(unsaved.current)) return;
+    unsaved.current = null;
     try { await adminApi('auth/logout', { method: 'POST' }); } catch { /* the cookie is cleared regardless */ }
     router.replace('/admin/login'); router.refresh();
   }
@@ -183,7 +184,7 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
           openProduct={can('products:read') ? id => go('products', id) : undefined}/>}
         {view.section === 'traffic' && <TrafficOverview/>}
         {view.section === 'products' && (editor !== null
-          ? <ProductEditor key={editor} permissions={user.permissions} onDirty={setDirty} done={closeEditor}
+          ? <ProductEditor key={editor} permissions={user.permissions} onUnsaved={setUnsaved} done={closeEditor}
             productId={editor === 'new' || editor.startsWith('copy:') ? undefined : editor}
             copyOf={editor.startsWith('copy:') ? editor.slice(5) : undefined}/>
           : <div className="admin-stack">
@@ -191,7 +192,7 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
             <ProductList key={listVersion + ':' + view.q} permissions={user.permissions} initialQuery={view.q}
               edit={id => openEditor(id)} create={() => openEditor('new')} duplicate={id => openEditor('copy:' + id)}/>
           </div>)}
-        {view.section === 'home' && <HomeSliderManager/>}
+        {view.section === 'home' && <HomeSliderManager onUnsaved={setUnsaved}/>}
         {view.section === 'orders' && <OrderManager canFulfill={can('orders:fulfill')} canExport={can('orders:export')}/>}
         {view.section === 'staff' && <StaffManager/>}
         {view.section === 'audit' && <AuditLog/>}

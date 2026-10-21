@@ -219,6 +219,13 @@ test('manager picks the home slider products and their order, and the storefront
   await page.getByRole('button', { name: 'حذف تیشرت بیسیک سپید از اسلایدر' }).click();
   await expect(order).toHaveText(['شومیز لینن آوید', PRODUCT_NAME]);
   await expect(page.getByText('تغییرات هنوز ذخیره نشده است.')).toBeVisible();
+  // Leaving with unsaved changes asks first; staying keeps them.
+  const asked: string[] = [];
+  page.on('dialog', dialog => { asked.push(dialog.message()); void dialog.dismiss(); });
+  await openTab(page, 'داشبورد');
+  expect(asked).toEqual(['ترتیب ذخیره‌نشده اسلایدر از بین می‌رود. ادامه می‌دهید؟']);
+  await expect(order).toHaveText(['شومیز لینن آوید', PRODUCT_NAME]);
+  page.removeAllListeners('dialog');
   const scan = await new AxeBuilder({ page }).include('.admin-app').withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(scan.violations.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', '))).toEqual([]);
   await page.getByRole('button', { name: 'ذخیره اسلایدر' }).click();
