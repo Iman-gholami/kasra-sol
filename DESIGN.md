@@ -303,6 +303,19 @@ which about 114 KB is React DOM and the Next.js router; all of the store's own c
 chunk (the 38.5 KB core-js chunk is `noModule` and never fetched by modern browsers). Deferring search and the menu
 would save 3–5 KB, below Lighthouse's run-to-run noise, and make the first search open wait for the network.
 
+### Home cover slider
+
+Home with the slider against the build before it (6 interleaved Lighthouse mobile runs, medians):
+
+| Build | Score | FCP | LCP | CLS | TBT | Bytes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Before (two plates) | 94 | 0.91s | 3.12s | 0 | 54ms | 330 KB |
+| Slider | 94 | 0.92s | 3.05s | 0 | 53ms | 356 KB |
+
+The extra 26 KB are the other slides' photos, fetched at low priority once the browser is idle, after the LCP. A
+first run showed CLS 0.002: the pause button appeared only after hydration and narrowed the progress segments. It is
+now in the server HTML and hidden by CSS under reduced motion, so the first paint already has the final layout.
+
 Lessons kept from the proof: a root-layout font preload competes with every page's LCP image; nineteen simultaneous
 entrance animations cost real main-thread time during hydration even when composited.
 
