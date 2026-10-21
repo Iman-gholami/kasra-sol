@@ -8,6 +8,7 @@ import { orderAdminRoutes } from './order-routes';
 import { mediaRoutes } from './media';
 import { reportRoutes } from './reports';
 import { trafficRoutes } from './traffic';
+import { homeAdminRoutes } from './home-routes';
 import { recordAudit } from './audit';
 import type { Identity } from './identity';
 import { PERMISSIONS, assignable, effectivePermissions, may, type Permission } from './permissions';
@@ -224,6 +225,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
   await mediaRoutes(app, requirePermission);
   await reportRoutes(app, requirePermission);
   await trafficRoutes(app, requirePermission);
+  await homeAdminRoutes(app, requirePermission, opts);
 
   // Newest first, 100 per page. `group` is the part of the action before the dot; `actor` is an account id.
   // `targetName` names the account or product an entry is about, so the owner does not have to read ids.

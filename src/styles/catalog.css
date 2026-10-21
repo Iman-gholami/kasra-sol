@@ -188,7 +188,7 @@
 .search-top-compact .search-line { margin-block-start: var(--space-2); min-block-size: 50px; }
 .empty-search { padding-block: var(--space-5) var(--space-8); color: var(--color-text-muted); }
 .empty-search > p { margin: 0 0 var(--space-4); }
-.empty-search .collection-links { color: var(--color-text); }
+.empty-search .collection-circles { justify-content: flex-start; color: var(--color-text); }
 .search-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
 
 /* ---------- Search panel (dropdown on desktop, full screen on phones) ---------- */

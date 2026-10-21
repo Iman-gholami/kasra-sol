@@ -54,9 +54,9 @@
   /* Page and section headings: Estedad light at this size; emphasised words take medium. */
   --text-heading: clamp(2rem, 1.35rem + 2.4vw, 3.25rem);
   /* Cover lines, sized so each line fits its column unwrapped from 320 to 1920px:
-     beside the photos on wide screens, and when the hero stacks on narrow ones. */
-  --text-hero: clamp(3rem, 6.3vw, 6.4rem);
-  --text-hero-stacked: clamp(2.5rem, 0.2rem + 12vw, 4.4rem);
+     beside the slider on wide screens, and above it when the hero stacks on narrow ones. */
+  --text-hero: clamp(2.6rem, 5vw, 5.4rem);
+  --text-hero-stacked: clamp(2.1rem, 10vw, 2.9rem);
   --leading-body: 1.85;
   --leading-snug: 1.55;
   --leading-heading: 1.4;

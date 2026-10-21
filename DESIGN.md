@@ -24,7 +24,7 @@ The direction combines the layout of pitch A («مجله کسری») with the ty
 4. Motion uses `transform` and `opacity` only, starts from CSS (no hydration wait), and never hijacks scrolling.
 5. The LCP image is still and fully visible from the first paint: never masked, faded or zoomed.
 6. Keep entrance choreography small. Even composited animations cost main-thread time while the page hydrates; the
-   home hero runs five, all finished within 1.5s. Copy, prices and calls to action never wait for an animation.
+   home hero runs three, all finished within 1.5s. Copy, prices and calls to action never wait for an animation.
 7. Text never animates through low contrast. Reveals move text or unmask it; they don't fade small text in. The one
    exception is transient feedback (toasts, the floating filter pill, the cart's «removed» row), which keeps its
    short fade-and-rise (`toast-in`, under 300ms).
@@ -56,12 +56,12 @@ One family for everything: **Estedad** (variable 100–900, self-hosted). The wo
 | --- | --- | --- |
 | Cover headline (home hero) | `--text-hero` / `--text-hero-stacked` | 200 (`--font-weight-extralight`), emphasised words 500 |
 | Page and section headings | `--text-heading`, `clamp(2rem, 1.35rem + 2.4vw, 3.25rem)` | 300 (`--font-weight-light`), emphasised words 500 |
-| Collection names in boxes and the menu | 1.6–2.6rem | 300 |
+| Collection names in the menu | 1.6–2.6rem | 300 |
 | Body, product names, prices, forms | the `--text-*` scale | 400–700 as before |
 
-- `--text-hero: clamp(3rem, 6.3vw, 6.4rem)` beside the photos and `--text-hero-stacked: clamp(2.5rem, 0.2rem + 12vw,
-  4.4rem)` when the hero stacks, with `--leading-display: 1.3`. Each cover line fits its column unwrapped from 320 to
-  1920px (checked).
+- `--text-hero: clamp(2.6rem, 5vw, 5.4rem)` beside the slider and `--text-hero-stacked: clamp(2.1rem, 10vw, 2.9rem)`
+  when the hero stacks, with `--leading-display: 1.3`. Each cover line fits its column unwrapped from 320 to 1920px
+  (checked).
 - Editorial numbering (`۰۱`, `۰۲` …) comes from `editorialNumber()` in `lib/format.ts`, is set light in the accent
   colour and is `aria-hidden`.
 - Prices always use Persian digits with `٬` grouping and the تومان label (`Price` component).
@@ -73,7 +73,7 @@ Soft, rounded boxes. Pick the radius by role, not by size:
 | Token | Value | Role |
 | --- | --- | --- |
 | `--radius-pill` | `999px` | Buttons, chips, size options, steppers, pagination, tags, nav hover states, search field, the catalog toolbar |
-| `--radius-lg` | `24px` | Panels, cards, sheets and dialogs, hero plates, the product gallery plate, collection boxes, empty states, the filter sidebar, the buy box |
+| `--radius-lg` | `24px` | Panels, cards, sheets and dialogs, the hero room, the product gallery plate, soft link boxes, empty states, the filter sidebar, the buy box |
 | `--radius-md` | `16px` | Product photos, notices, option boxes, accordions, toasts, skeletons |
 | `--radius-sm` | `10px` | Form fields, small thumbnails |
 | `--radius-xs` | `4px` | Focus ring, keyboard hints |
@@ -110,13 +110,28 @@ screens and an icon below.
 or by Escape. The collections are set large and light, numbered like a contents page, and drift up one after another
 on every open (movement only, full contrast throughout).
 
-### Home hero (magazine cover)
-`app/page.tsx`, `styles/home.css`. The headline on the start side, with each line rising out of its own mask: the
-first line extra-light, the second medium in oxblood. Two overlapping rounded plates show the newest product and the
-newest one from another collection. Each has a caption with number, name link and price (`Price`), so the cover is
-shoppable. The main plate is the LCP image: preloaded, high priority and still from the first frame. The second plate
-is fetched at low priority and unmasked by a wipe. Three soft boxes (`.collection-links`: number, collection, round
-arrow button) lead into the collections. Phones stack copy, plates and boxes.
+### Home hero (magazine cover with a product slider)
+`app/page.tsx`, `components/home/hero-slider.tsx`, `styles/home.css`. One sand room (`--color-studio`) holds the
+whole cover. The headline sits on the start side, each line rising out of its own mask: the first line extra-light,
+the second medium in oxblood. The other side is a slider: one model at a time, feathered into the sand like the
+collection rooms, with a paper tag (discount badge, name, `Price`) that links to the product. Phones stack it: the
+headline and the main button over the room, the lede and «تازه‌ترین‌ها» below.
+
+- **Which products:** the owner picks up to eight in the back office (**اسلایدر صفحه اول**, `products:write`), in
+  order. With no pick, the cover shows up to five discounted products (one per photo first); with no discounts, the
+  three newest. Archived or hidden products drop out on their own.
+- **Autoplay:** a new slide every 5 seconds, cross-faded over 700ms. The progress segments at the top are also the
+  slide buttons («اسلاید ۲ از ۵»). A pause button stops it (WCAG 2.2.2), and hover or keyboard focus holds the
+  current slide. A sideways swipe changes slides (a drag to the right brings the next one, as in the product
+  galleries); vertical scrolling is untouched. With reduced motion there is no autoplay and no pause
+  button; the segments still change slides.
+- **Speed:** only the first slide is in the server HTML; it is the LCP image (preloaded, high priority, still from
+  the first frame). The other slides' photos are added once the browser is idle, so they never compete with it.
+- **Screen readers:** a region «محصولات ویژه» with `aria-roledescription="اسلایدر"`; each slide is a group, and
+  inactive slides are `inert` and hidden. Slide changes are announced only while autoplay is off (paused, or
+  reduced motion), never every five seconds.
+
+The collections follow as circles (below).
 
 ### Home sections
 `app/page.tsx`, `styles/home.css`.
@@ -127,7 +142,7 @@ arrow button) lead into the collections. Phones stack copy, plates and boxes.
 - **Shop by colour:** a soft panel; colour choices are paper pills, the chosen one ringed in ink.
 - **Editorial band:** a soft panel with the photograph as a rounded plate capped at 460px wide (about its real size, so
   it stays sharp); it settles from a slow zoom as it scrolls in.
-- **Service links:** three soft boxes with a round arrow disc, matching the boxes under the hero.
+- **Service links:** three soft boxes with a round arrow disc.
 - **Closing call to action:** a last sand room. A model is feathered into the panel at the inline end like the
   collections, with the invitation and an ink pill button beside her; she settles in as the room scrolls into view.
   On phones she stands at the panel's foot and the copy narrows beside her.
@@ -180,9 +195,10 @@ the 404 card), ink when current or checked. Set `--chip-bg` / `--chip-bg-hover` 
 restyling the chip. The same rule holds for any control on a soft panel: it turns paper so it still reads as a
 control (the 404 search field does this).
 
-### Collection links
-`.collection-links` in `styles/primitives.css`. Three soft boxes, each a light editorial number, the collection
-name set large and light, and an `.arrow-disc`. Under the home hero and on the empty search page; stacked from 820px.
+### Collection circles
+`components/home/collection-circles.tsx`, `.collection-circles` in `styles/primitives.css`. Story-style circles: the
+model's face and shoulders in an oxblood ring with the collection name below, side by side at every width (88–132px,
+so all three fit a 320px phone). Under the home hero and on the empty search page.
 
 ### Catalog (category, all products, search results)
 `components/catalog/*`, `styles/catalog.css`.
@@ -209,7 +225,7 @@ name set large and light, and an `.arrow-disc`. Under the home hero and on the e
 `components/search/*`, `app/search/page.tsx`, `styles/catalog.css`. The search field (header panel and the search
 page) is a soft pill on `--color-surface-muted`; while typing it turns white with an ink focus ring. Result thumbnails
 are rounded (`--radius-sm`); result rows are `--radius-md` boxes. The search page opens with a light heading and,
-before a query, the collection links; results use the catalog layout above.
+before a query, the collection circles; results use the catalog layout above.
 
 ### Sheets, dialogs and toasts
 `components/ui/sheet.tsx`, `styles/primitives.css`. Centre dialogs and the desktop search dropdown take `--radius-lg`;
@@ -292,8 +308,8 @@ entrance animations cost real main-thread time during hydration even when compos
 
 ## Photography
 
-The demo photos are 480×640. Plates are sized so they are rarely upscaled: the hero main plate is about 470px wide
-on desktop. Product photography for launch should be at least 1600px on the long edge, 3:4, on a consistent backdrop.
+The demo photos are 480×640. Plates are sized so they are rarely upscaled: the hero slide is about 470px wide on
+desktop. Product photography for launch should be at least 1600px on the long edge, 3:4, on a consistent backdrop.
 
 ## Rollout status
 
@@ -305,3 +321,4 @@ on desktop. Product photography for launch should be at least 1600px on the long
   and loading states, search page)
 - [x] Product page (gallery, buy box, details and accordions, zoom, phone purchase bar, loading state)
 - [x] Cart and checkout (styling only)
+- [x] Home cover as a product slider chosen in the back office; collection circles

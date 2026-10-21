@@ -1,0 +1,26 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import { categories } from '@/data/facets';
+import type { CategorySlug } from '@/types/store';
+
+/** One model photo per collection: the circles below, and the sand rooms further down the home page. */
+export const collectionPhotos: Record<CategorySlug, string> = {
+  shomiz: '/images/lookbook/shomiz-rose.avif',
+  manto: '/images/lookbook/manto-sage.avif',
+  tshirt: '/images/lookbook/tshirt-blue.avif'
+};
+
+/** The collections as story-style circles: a model on the studio sand inside an oxblood ring, the name below.
+ * Under the home cover and on the empty search page. The list is the caller's to label (wrap it in a nav). */
+export function CollectionCircles() {
+  return <ul className="collection-circles">
+    {categories.map(category => <li key={category.slug}>
+      <Link href={'/category/' + category.slug}>
+        <span className="collection-circle" aria-hidden="true">
+          <span><Image src={collectionPhotos[category.slug]} alt="" fill sizes="(max-width: 600px) 96px, 132px"/></span>
+        </span>
+        {category.title}
+      </Link>
+    </li>)}
+  </ul>;
+}

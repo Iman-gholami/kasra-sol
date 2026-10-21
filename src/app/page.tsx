@@ -2,79 +2,52 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
 import { categories } from '@/data/products';
-import { getCatalogProducts } from '@/lib/backend-products';
+import { getCatalogProducts, getHomeSlides } from '@/lib/backend-products';
 import { ProductGrid } from '@/components/products/product-grid';
-import { Price } from '@/components/products/price';
 import { ShopByColor } from '@/components/home/shop-by-color';
+import { HeroSlider } from '@/components/home/hero-slider';
+import { CollectionCircles, collectionPhotos } from '@/components/home/collection-circles';
 import { getShopByColorResults } from '@/lib/shop-by-color';
-import { editorialNumber } from '@/lib/format';
 import type { Product } from '@/types/store';
 
-const categoryPhotos = [
-  '/images/lookbook/shomiz-rose.avif',
-  '/images/lookbook/manto-sage.avif',
-  '/images/lookbook/tshirt-blue.avif'
-];
 // Each room's figure takes about 60% of its panel (three panels side by side from 1081px, stacked below).
 const roomFigureSizes = '(max-width: 600px) 52vw, (max-width: 1080px) 40vw, (max-width: 1520px) 19vw, 290px';
 
-// Hero plates: the main one is the page's LCP image (preloaded, high priority); the smaller second plate is fetched
-// at low priority so it never competes with it (its wipe starts 380ms later anyway).
-const plateSizes = [
-  '(max-width: 820px) 66vw, (max-width: 1520px) 31vw, 470px',
-  '(max-width: 820px) 44vw, (max-width: 1520px) 19vw, 290px'
-];
-/** The cover looks: the newest product, then the newest one from another collection with a different photo. */
-function coverLooks(newest: Product[]) {
-  const [first] = newest;
-  if (!first) return [];
-  const second = newest.find(item => item.category !== first.category && item.images[0] !== first.images[0]);
-  return second ? [first, second] : [first];
+// The cover figure takes about three quarters of the sand room on phones and a third of the page on wide screens.
+const slideSizes = '(max-width: 820px) 76vw, (max-width: 1520px) 34vw, 520px';
+/** The cover slides: the owner's pick from the admin panel. Without one, up to five discounted products, newest first,
+ * leading with different photos so consecutive slides look different; failing that, the three newest products. */
+function coverSlides(picked: Product[], newest: Product[]) {
+  if (picked.length) return picked;
+  const discounted = newest.filter(item => item.compareAt && item.compareAt > item.price);
+  const distinct = discounted.filter((item, i) => discounted.findIndex(other => other.images[0] === item.images[0]) === i);
+  const slides = [...distinct, ...discounted.filter(item => !distinct.includes(item))].slice(0, 5);
+  return slides.length ? slides : newest.slice(0, 3);
 }
 
 export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   // With the API enabled every section reflects published products only: archived ones disappear and new ones appear.
-  const products = await getCatalogProducts();
+  const [products, picked] = await Promise.all([getCatalogProducts(), getHomeSlides()]);
   const newest = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const arrivals = newest.slice(0, 4);
-  const looks = coverLooks(newest);
+  const slides = coverSlides(picked, newest).map(({ id, slug, name, images, price, compareAt }) =>
+    ({ id, slug, name, image: images[0], price, compareAt }));
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
   const colors = getShopByColorResults(products);
 
   return <>
     <section className="hero container wide-editorial" aria-labelledby="hero-title">
-      <div className="hero-copy">
-        <p className="hero-pretitle"><span className="overline-rule" aria-hidden="true"/>انتخاب‌های تازه، هر روز</p>
-        <h1 id="hero-title"><span className="hero-line"><span>استایل هر روزت،</span></span> <em className="hero-line"><span>به سبک خودت.</span></em></h1>
-        <p className="hero-lede">از یک شومیز دوست‌داشتنی تا مانتویی که هر روز سراغش می‌ری؛ انتخاب‌های ساده برای سلیقه تو.</p>
-        <div className="hero-actions">
-          <Link href="/shop" className="btn btn-primary btn-lg">کالکشن رو ببین <ArrowLeft size={19} aria-hidden="true"/></Link>
-          <Link href="/shop?sort=newest" className="text-link">تازه‌ترین‌ها</Link>
-        </div>
+      <div className="hero-room" aria-hidden="true"/>
+      <p className="hero-pretitle"><span className="overline-rule" aria-hidden="true"/>انتخاب‌های تازه، هر روز</p>
+      <h1 id="hero-title"><span className="hero-line"><span>استایل هر روزت،</span></span> <em className="hero-line"><span>به سبک خودت.</span></em></h1>
+      <p className="hero-lede">از یک شومیز دوست‌داشتنی تا مانتویی که هر روز سراغش می‌ری؛ انتخاب‌های ساده برای سلیقه تو.</p>
+      <div className="hero-actions">
+        <Link href="/shop" className="btn btn-primary btn-lg">کالکشن رو ببین <ArrowLeft size={19} aria-hidden="true"/></Link>
+        <Link href="/shop?sort=newest" className="text-link">تازه‌ترین‌ها</Link>
       </div>
-      {looks.length > 0 && <div className="hero-plates">
-        {looks.map((look, i) => <figure key={look.id} className={'hero-plate ' + (i === 0 ? 'hero-plate-main' : 'hero-plate-second')}>
-          {/* Like product cards: the photo repeats the name link, so it stays out of the tab order and the accessibility tree. */}
-          <Link href={'/product/' + look.slug} className={'hero-plate-photo' + (i === 0 ? ' hero-visual' : '')} tabIndex={-1} aria-hidden="true">
-            <span className="hero-plate-wipe"><span className="hero-plate-counter">
-              <Image src={look.images[0]} alt="" fill sizes={plateSizes[i]} preload={i === 0} fetchPriority={i === 0 ? 'high' : 'low'}/>
-            </span></span>
-          </Link>
-          <figcaption>
-            <span className="hero-plate-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
-            <Link href={'/product/' + look.slug} className="hero-plate-name">{look.name}</Link>
-            <Price price={look.price} compareAt={look.compareAt}/>
-          </figcaption>
-        </figure>)}
-      </div>}
-      <nav className="collection-links" aria-label="میان‌بُر دسته‌بندی‌ها">
-        {categories.map((item, i) => <Link key={item.slug} href={'/category/' + item.slug}>
-          <span className="collection-links-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
-          <span className="collection-links-name">{item.title}</span>
-          <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
-        </Link>)}
-      </nav>
+      {slides.length > 0 && <HeroSlider slides={slides} sizes={slideSizes}/>}
+      <nav className="hero-collections" aria-label="میان‌بُر دسته‌بندی‌ها"><CollectionCircles/></nav>
     </section>
 
     <section className="container section-block category-section" aria-labelledby="categories-title">
@@ -83,9 +56,9 @@ export default async function HomePage() {
         <p>هر روز، یک سبک تازه از خودت.</p>
       </div>
       <ul className="category-grid">
-        {categories.map((category, i) => <li key={category.slug}>
+        {categories.map(category => <li key={category.slug}>
           <Link href={'/category/' + category.slug} className="category-tile">
-            <span className="category-figure"><Image src={categoryPhotos[i]} alt="" fill sizes={roomFigureSizes}/></span>
+            <span className="category-figure"><Image src={collectionPhotos[category.slug]} alt="" fill sizes={roomFigureSizes}/></span>
             <span className="category-description"><span className="category-name">{category.title}</span><span>{category.description}</span></span>
             <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
           </Link>

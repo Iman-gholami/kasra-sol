@@ -201,6 +201,44 @@ test('manager: runs the store but cannot administer staff', async ({ page }) => 
   expect(await page.evaluate(async () => (await fetch('/api/admin/staff')).status)).toBe(403);
 });
 
+test('manager picks the home slider products and their order, and the storefront cover follows it', async ({ page, browser }) => {
+  const problems = watchConsole(page);
+  await signIn(page, accounts().manager);
+  await openTab(page, 'اسلایدر صفحه اول');
+  await expect(page.getByText('هنوز محصولی انتخاب نشده است', { exact: false })).toBeVisible();
+  const search = page.getByRole('searchbox', { name: 'جست‌وجوی محصول برای اسلایدر' });
+  for (const name of [PRODUCT_NAME, 'تیشرت بیسیک سپید', 'شومیز لینن آوید']) {
+    await search.fill(name);
+    await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+    await page.getByRole('button', { name: 'افزودن به اسلایدر: ' + name }).click();
+    await expect(page.getByRole('button', { name: 'در اسلایدر است: ' + name })).toBeDisabled();
+  }
+  const order = page.getByRole('list', { name: 'ترتیب اسلایدها' }).locator('.admin-product-name');
+  await page.getByRole('button', { name: 'جلوتر بردن شومیز لینن آوید' }).click();
+  await page.getByRole('button', { name: 'جلوتر بردن شومیز لینن آوید' }).click();
+  await page.getByRole('button', { name: 'حذف تیشرت بیسیک سپید از اسلایدر' }).click();
+  await expect(order).toHaveText(['شومیز لینن آوید', PRODUCT_NAME]);
+  await expect(page.getByText('تغییرات هنوز ذخیره نشده است.')).toBeVisible();
+  const scan = await new AxeBuilder({ page }).include('.admin-app').withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(scan.violations.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', '))).toEqual([]);
+  await page.getByRole('button', { name: 'ذخیره اسلایدر' }).click();
+  await expect(page.getByText('اسلایدر ذخیره شد', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'ذخیره اسلایدر' })).toBeDisabled();
+  await shot(page, 'home-slider-desktop');
+  await page.reload();
+  await expect(order).toHaveText(['شومیز لینن آوید', PRODUCT_NAME]);
+
+  const context = await browser.newContext({ extraHTTPHeaders: { 'X-Forwarded-For': visitorAddress() }, reducedMotion: 'reduce' });
+  const home = await context.newPage();
+  await home.goto('/');
+  const slides = home.getByRole('region', { name: 'محصولات ویژه' }).locator('.hero-slide');
+  await expect(slides.locator('.hero-tag-name')).toHaveText(['شومیز لینن آوید', PRODUCT_NAME]);
+  await expect(slides.first()).toHaveAttribute('data-active');
+  await expect(slides.first()).toContainText('۱۷٪ تخفیف');
+  await context.close();
+  expect(problems).toEqual([]);
+});
+
 test('product editor: unsaved changes are guarded, Back moves between screens, a copy starts as an empty draft', async ({ page }) => {
   const problems = watchConsole(page);
   await signIn(page, accounts().owner);
@@ -438,8 +476,8 @@ test.describe('phone layout', () => {
     expect(await overflowing(page)).toEqual([]);
     await shot(page, 'login-mobile');
     await signIn(page, accounts().owner);
-    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'], ['محصولات و موجودی', 'products'], ['سفارش‌ها', 'orders'],
-      ['کارکنان و مجوزها', 'staff'], ['تاریخچه فعالیت‌ها', 'audit'], ['حساب من', 'account']] as const) {
+    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'], ['محصولات و موجودی', 'products'], ['اسلایدر صفحه اول', 'home-slider'],
+      ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff'], ['تاریخچه فعالیت‌ها', 'audit'], ['حساب من', 'account']] as const) {
       await openTab(page, label);
       await expect(page.locator('.admin-loading')).toHaveCount(0);
       expect(await overflowing(page), label).toEqual([]);
@@ -457,7 +495,7 @@ test('audit viewport matrix keeps admin sections within the viewport', async ({ 
   for (const width of [360, 390, 430, 768, 1280, 1440, 1920]) {
     await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
     for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'],
-      ['محصولات و موجودی', 'products'], ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff']] as const) {
+      ['محصولات و موجودی', 'products'], ['اسلایدر صفحه اول', 'home-slider'], ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff']] as const) {
       await openTab(page, label);
       await expect(page.locator('.admin-loading')).toHaveCount(0);
       expect(await overflowing(page), label + ' at ' + width).toEqual([]);

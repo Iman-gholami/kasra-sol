@@ -8,11 +8,11 @@ const UUID = '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
 // Only these admin endpoints are reachable from the browser; the API checks the session's permissions on each.
 const ROUTES: Record<string, RegExp> = {
   GET: new RegExp('^(auth/me|reports/overview|reports/traffic|products|products/' + PRODUCT + '|products/' + PRODUCT + '/variants|' +
-    'orders|orders/export|orders/' + UUID + '|staff|audit)$'),
+    'orders|orders/export|orders/' + UUID + '|staff|audit|home-slider)$'),
   POST: /^(auth\/logout|auth\/password|staff|products)$/,
   PATCH: new RegExp('^(staff/' + UUID + '|products/' + PRODUCT + '/(price|visibility)|variants/' + UUID + '/stock|' +
     'orders/' + UUID + '/status)$'),
-  PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password)$')
+  PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password|home-slider)$')
 };
 // List endpoints accept these query parameters; anything else is dropped rather than forwarded.
 const QUERY: Record<string, string[]> = {

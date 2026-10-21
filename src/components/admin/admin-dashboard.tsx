@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Activity, ClipboardList, ExternalLink, LayoutDashboard, LogOut, Package, ScrollText, UserCog, UsersRound } from 'lucide-react';
+import { Activity, ClipboardList, ExternalLink, GalleryHorizontal, LayoutDashboard, LogOut, Package, ScrollText, UserCog, UsersRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/components/admin/admin-api';
 import { formatNumber, ROLE } from '@/components/admin/labels';
@@ -14,18 +14,20 @@ import { OrderManager } from '@/components/admin/order-manager';
 import { StaffManager } from '@/components/admin/staff-manager';
 import { AuditLog } from '@/components/admin/audit-log';
 import { AccountSettings } from '@/components/admin/account-settings';
+import { HomeSliderManager } from '@/components/admin/home-slider-manager';
 import { Notice } from '@/components/admin/ui';
 
 export type AdminUser = {
   id: string; username: string; displayName: string; role: 'owner' | 'manager' | 'staff';
   active: boolean; grants: string[]; revokes: string[]; permissions: string[];
 };
-export type Section = 'overview' | 'traffic' | 'products' | 'orders' | 'staff' | 'audit' | 'account';
+export type Section = 'overview' | 'traffic' | 'products' | 'home' | 'orders' | 'staff' | 'audit' | 'account';
 // The menu mirrors the API's permissions; the API still enforces every one of them on each request.
 const SECTIONS: { id: Section; label: string; title: string; permission: string | null; icon: typeof Package }[] = [
   { id: 'overview', label: 'داشبورد', title: 'داشبورد فروشگاه', permission: 'reports:read', icon: LayoutDashboard },
   { id: 'traffic', label: 'آمار بازدید', title: 'آمار بازدید', permission: 'reports:read', icon: Activity },
   { id: 'products', label: 'محصولات و موجودی', title: 'محصولات و موجودی', permission: 'products:read', icon: Package },
+  { id: 'home', label: 'اسلایدر صفحه اول', title: 'اسلایدر صفحه اول', permission: 'products:write', icon: GalleryHorizontal },
   { id: 'orders', label: 'سفارش‌ها', title: 'مدیریت سفارش‌ها', permission: 'orders:read', icon: ClipboardList },
   { id: 'staff', label: 'کارکنان و مجوزها', title: 'کارکنان و مجوزها', permission: 'staff:manage', icon: UsersRound },
   { id: 'audit', label: 'تاریخچه فعالیت‌ها', title: 'تاریخچه فعالیت‌ها', permission: 'staff:manage', icon: ScrollText },
@@ -189,6 +191,7 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
             <ProductList key={listVersion + ':' + view.q} permissions={user.permissions} initialQuery={view.q}
               edit={id => openEditor(id)} create={() => openEditor('new')} duplicate={id => openEditor('copy:' + id)}/>
           </div>)}
+        {view.section === 'home' && <HomeSliderManager/>}
         {view.section === 'orders' && <OrderManager canFulfill={can('orders:fulfill')} canExport={can('orders:export')}/>}
         {view.section === 'staff' && <StaffManager/>}
         {view.section === 'audit' && <AuditLog/>}

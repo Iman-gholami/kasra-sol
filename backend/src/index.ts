@@ -92,6 +92,12 @@ app.get('/v1/products/:slug', async (req, reply) => {
   const product = await cached('product:' + slug, () => getProduct(slug));
   return product ?? reply.code(404).send({ error: 'not_found' });
 });
+// The home page slider: the owner's pick in order, published products only. Empty when nothing is picked (or
+// everything picked was archived); the storefront then shows discounted products instead.
+app.get('/v1/home/slider', async () => cached('home-slider', async () => {
+  const picked = await pool.query<{ product_id: string }>('SELECT product_id FROM home_slides ORDER BY position');
+  return { items: await getProductsByIds(picked.rows.map(row => row.product_id)) };
+}));
 app.get('/v1/search/suggestions', async (req, reply) => {
   const query = z.object({ q: z.string().max(100).default('') }).safeParse(req.query);
   if (!query.success) return reply.code(400).send({ error: 'invalid_query' });

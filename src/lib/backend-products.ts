@@ -24,6 +24,14 @@ export const getHomeProducts = cache(async (): Promise<Product[]> => {
   const result = await response.json() as { items: Product[] };
   return result.items;
 });
+/** The owner's pick for the home page slider, in order (published products only). Demo mode has no pick, and the
+ * home page then shows discounted products instead. */
+export const getHomeSlides = cache(async (): Promise<Product[]> => {
+  if (!base) return [];
+  const response = await fetch(base + '/v1/home/slider', { cache: 'no-store', headers: await visitorHeaders() });
+  if (!response.ok) throw new Error('Home slider API unavailable: ' + response.status);
+  return (await response.json() as { items: Product[] }).items;
+});
 /** Every published product (newest first), for sections that summarise the whole catalog such as Shop by Color.
  * Capped at 10 API pages (480 products); the API serves these lists from its short Redis cache. */
 export const getCatalogProducts = cache(async (): Promise<Product[]> => {
