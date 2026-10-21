@@ -56,6 +56,7 @@
   display: grid; place-items: center; flex-shrink: 0; inline-size: var(--touch); block-size: var(--touch); border: 0; border-radius: 50%;
   background: rgb(var(--color-surface-rgb) / 0.9); color: var(--color-text);
 }
+@media (prefers-reduced-motion: reduce) { .hero-pause { display: none; } }
 .hero-slides { position: absolute; inset: 0; touch-action: pan-y; }
 .hero-slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity 700ms var(--ease-editorial), visibility 0s linear 700ms; }
 .hero-slide[data-active] { opacity: 1; visibility: visible; transition: opacity 700ms var(--ease-editorial), visibility 0s; }

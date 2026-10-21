@@ -71,10 +71,11 @@ export function HeroSlider({ slides, sizes }: { slides: HeroSlide[]; sizes: stri
           <span className="hero-segment-fill" onAnimationEnd={i === index ? next : undefined}/>
         </button>)}
       </div>
-      {autoplay && <button type="button" className="hero-pause" onClick={() => setPaused(value => !value)}
+      {/* Rendered from the server so the segments never narrow when it appears; CSS hides it with reduced motion. */}
+      <button type="button" className="hero-pause" onClick={() => setPaused(value => !value)}
         aria-label={paused ? 'پخش خودکار اسلایدها' : 'توقف خودکار اسلایدها'}>
         {paused ? <Play size={16} aria-hidden="true"/> : <Pause size={16} aria-hidden="true"/>}
-      </button>}
+      </button>
     </div>}
     <div className="hero-slides" aria-live={autoplay && !paused ? 'off' : 'polite'}
       onPointerDown={event => { swipe.current = { x: event.clientX, y: event.clientY }; }}
