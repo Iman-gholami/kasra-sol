@@ -159,7 +159,7 @@ export function PurchasePanel({ product }: { product: Product }) {
       </div>}
       <div className="purchase-row">
         <button type="button" className="btn btn-secondary btn-lg size-guide-trigger"
-          aria-haspopup="dialog" aria-expanded={guideOpen} aria-controls="size-guide-title"
+          aria-haspopup="dialog" aria-expanded={guideOpen}
           onClick={() => setGuideOpen(true)}>
           <Ruler size={18} aria-hidden="true"/><span>راهنمای سایز</span>
         </button>
