@@ -7,6 +7,8 @@ import { forwardedFor } from '@/lib/backend-proxy';
 export const metadata: Metadata = { title: 'مدیریت فروشگاه', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; edit?: string; q?: string }> }) {
+  // The preview has no backend: direct /admin visitors to sample-data-only UI instead of a broken login.
+  if (process.env.VERCEL_ENV === 'preview' && !process.env.BACKEND_INTERNAL_URL) redirect('/admin/demo');
   const token = (await cookies()).get('kasra_admin')?.value;
   if (!token || !/^[a-f0-9]{64}$/.test(token)) redirect('/admin/login');
   const internal = process.env.BACKEND_INTERNAL_URL;
