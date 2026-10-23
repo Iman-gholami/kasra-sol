@@ -57,6 +57,10 @@ for (const [name, use] of [
         await expect(page.getByRole('dialog', { name: 'فیلترهای محصولات' })).toBeVisible();
         await audit(page, name + ' filters');
         await page.keyboard.press('Escape');
+        await page.getByRole('button', { name: /^مرتب‌سازی:/ }).click();
+        await expect(page.getByRole('dialog', { name: 'مرتب‌سازی' })).toBeVisible();
+        await audit(page, name + ' sort');
+        await page.keyboard.press('Escape');
       } else {
         await page.getByRole('button', { name: 'نمایش راهنمای فروشگاه' }).click();
         await expect(page.locator('.nav-panel a').first()).toBeVisible();

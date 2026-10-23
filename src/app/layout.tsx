@@ -11,8 +11,10 @@ import { PageViewBeacon } from '@/components/layout/page-view-beacon';
 import { ToastProvider } from '@/components/ui/toast';
 import './globals.css';
 
+// The Persian subset (derived from the verified upstream file, see src/fonts/README.md) is 40 KB lighter, which
+// matters on phones: the font is preloaded and shares the first seconds of bandwidth with the LCP image.
 const estedad = localFont({
-  src: '../fonts/Estedad-VF.woff2',
+  src: '../fonts/Estedad-VF-fa.woff2',
   variable: '--font-estedad',
   weight: '100 900',
   style: 'normal',
@@ -35,7 +37,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#faf8f5'
+  themeColor: '#f5f0e8'
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -1,13 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowLeft, Menu, X } from 'lucide-react';
 import { categories, palette } from '@/data/facets';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
+import { editorialNumber } from '@/lib/format';
 
-/** Navigation drawer for ≤ 820px: slides from the inline-start edge, swipe toward that edge to close. */
+/** Stagger position for the opening reveal (see .menu-list-display in layout.css). */
+const order = (i: number) => ({ '--i': i }) as CSSProperties;
+
+/** Full-screen navigation for ≤ 1080px: slides from the inline-start edge, swipe toward that edge to close.
+ * The collections are set large and numbered like a contents page. */
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
   const mounted = useMountedOnce(open);
@@ -29,11 +34,14 @@ export function MobileMenu() {
         </div>
         <nav className="sheet-body menu-body" aria-label="منوی موبایل">
           <p className="menu-group-title">کالکشن‌ها</p>
-          <ul className="menu-list">
-            <li><Link href="/shop" aria-current={current('/shop')} onClick={close}>همه محصولات <ArrowLeft size={18} aria-hidden="true"/></Link></li>
-            {categories.map(item => <li key={item.slug}>
+          <ul className="menu-list menu-list-display">
+            <li style={order(0)}><Link href="/shop" aria-current={current('/shop')} onClick={close}>
+              همه محصولات<ArrowLeft size={20} aria-hidden="true"/>
+            </Link></li>
+            {categories.map((item, i) => <li key={item.slug} style={order(i + 1)}>
               <Link href={'/category/' + item.slug} aria-current={current('/category/' + item.slug)} onClick={close}>
-                {item.title} <ArrowLeft size={18} aria-hidden="true"/>
+                <span className="menu-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
+                {item.title}<ArrowLeft size={20} aria-hidden="true"/>
               </Link>
             </li>)}
           </ul>

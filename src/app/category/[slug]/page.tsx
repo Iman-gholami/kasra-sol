@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { CatalogView } from '@/components/catalog/catalog-view';
 import { categories, getCategory } from '@/data/products';
 import { parseFilters, queryProducts } from '@/lib/catalog';
+import { editorialNumber } from '@/lib/format';
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 export function generateStaticParams() { return categories.map(({ slug }) => ({ slug })); }
@@ -15,7 +16,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (!category) notFound();
   const filters = parseFilters(await searchParams, category.slug);
   const data = await queryProducts(filters);
-  return <CatalogView title={category.title} intro={category.description} action={'/category/' + category.slug} fixedCategory filters={filters} data={data} />;
+  return <CatalogView title={category.title} intro={category.description} number={editorialNumber(categories.indexOf(category) + 1)}
+    action={'/category/' + category.slug} fixedCategory filters={filters} data={data} />;
 }
 
 export const dynamic = 'force-dynamic';

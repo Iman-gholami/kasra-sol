@@ -49,3 +49,10 @@ export const productInput = z.object({
 });
 export type ProductInput = z.infer<typeof productInput>;
 export const productIdentity = ident;
+
+/** Most slides the home page shows; the home_slides position check allows exactly this many. */
+// Five fit one row of 44px slide buttons beside the pause button on a 320px phone.
+export const MAX_SLIDES = 5;
+/** The home page slider: an ordered pick of products, each at most once. */
+export const homeSlidesInput = z.object({ productIds: z.array(ident).max(MAX_SLIDES) }).strict()
+  .refine(input => new Set(input.productIds).size === input.productIds.length, 'Each product can appear once');

@@ -228,12 +228,19 @@ test('mobile shopping toolbar reaches products sooner and keeps sort filters', a
   const top = await first.evaluate(el => el.getBoundingClientRect().top);
   expect(top).toBeLessThan(510);
   await expect(page.getByRole('button',{name:'فیلتر محصولات'})).toBeVisible();
-  await page.locator('.catalog-mobile-sort select[name="sort"]').selectOption('price-desc');
-  await page.getByRole('button',{name:'اعمال مرتب‌سازی موبایل'}).click();
+  // Sorting takes two taps: the sort pill opens a sheet, picking an order applies it and closes the sheet.
+  const sortButton = page.getByRole('button',{name:'مرتب‌سازی: پیشنهادی'});
+  await sortButton.click();
+  const sheet = page.getByRole('dialog',{name:'مرتب‌سازی'});
+  await expect(sheet.getByRole('link',{name:'پیشنهادی'})).toHaveAttribute('aria-current','true');
+  await expect(sheet.getByRole('link',{name:'پیشنهادی'})).toBeFocused();
+  await sheet.getByRole('link',{name:'قیمت: زیاد به کم'}).click();
+  await expect(sheet).toBeHidden();
   await expect(page).toHaveURL(/sort=price-desc/);
+  await expect(page.getByRole('button',{name:'مرتب‌سازی: قیمت: زیاد به کم'})).toBeFocused();
   await page.goto('/shop?color=black&sort=featured');
-  await page.locator('.catalog-mobile-sort select[name="sort"]').selectOption('newest');
-  await page.getByRole('button',{name:'اعمال مرتب‌سازی موبایل'}).click();
+  await page.getByRole('button',{name:/^مرتب‌سازی:/}).click();
+  await page.getByRole('dialog',{name:'مرتب‌سازی'}).getByRole('link',{name:'تازه‌ترین'}).click();
   await expect(page).toHaveURL(/color=black/);
   await expect(page).toHaveURL(/sort=newest/);
 });

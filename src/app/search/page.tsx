@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { CatalogView } from '@/components/catalog/catalog-view';
-import { categories } from '@/data/facets';
+import { CollectionCircles } from '@/components/home/collection-circles';
 import { parseFilters, queryProducts } from '@/lib/catalog';
 
 export const metadata: Metadata = { title: 'جستجو', robots: { index: false, follow: false } };
@@ -25,9 +24,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       ? <CatalogView title={<>نتایج جستجو برای «<span dir="auto">{filters.q}</span>»</>} titleLabel={'نتایج جستجو برای «' + filters.q + '»'} action="/search" filters={filters} data={data} compactHeading/>
       : <div className="container empty-search">
         <p>نام لباس، رنگ یا دسته‌بندی را بنویس تا نتیجه‌ها را ببینی.</p>
-        <ul className="search-chips">
-          {categories.map(category => <li key={category.slug}><Link className="chip" href={'/category/' + category.slug}>{category.title}</Link></li>)}
-        </ul>
+        <CollectionCircles/>
       </div>}
   </div>;
 }

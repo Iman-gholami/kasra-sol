@@ -51,7 +51,7 @@ export const AUDIT_ACTION: Record<string, string> = {
   'staff.created': 'ایجاد حساب کارمند', 'staff.updated': 'تغییر نقش یا دسترسی کارمند', 'staff.password_reset': 'تعیین رمز جدید برای کارمند',
   'products.created': 'ایجاد محصول', 'products.updated': 'ویرایش محصول', 'products.price': 'تغییر قیمت',
   'products.visibility': 'انتشار یا آرشیو محصول', 'inventory.stock': 'تغییر موجودی', 'orders.status': 'تغییر وضعیت سفارش',
-  'media.uploaded': 'آپلود تصویر', 'orders.exported': 'دریافت خروجی سفارش‌ها'
+  'media.uploaded': 'آپلود تصویر', 'orders.exported': 'دریافت خروجی سفارش‌ها', 'products.home_slider': 'تغییر اسلایدر صفحه اول'
 };
 /** Groups of audit events, for filtering the history; the API matches on the part before the dot. */
 export const AUDIT_GROUP: Record<string, string> = {

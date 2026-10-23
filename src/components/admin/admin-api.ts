@@ -33,6 +33,7 @@ const MESSAGES: Record<string, string> = {
   invalid_image_type: 'فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود.',
   unsupported_media_type: 'فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود.',
   image_too_large: 'حجم هر تصویر باید حداکثر ۲ مگابایت باشد.',
+  slide_unavailable: 'یکی از محصولات انتخاب‌شده منتشر نیست یا آرشیو شده است؛ آن را از اسلایدر بردارید و دوباره ذخیره کنید.',
   export_too_large: 'تعداد سفارش‌ها برای یک فایل بیش از ۵۰۰۰ است؛ بازه زمانی یا وضعیت را محدودتر کنید.'
 };
 

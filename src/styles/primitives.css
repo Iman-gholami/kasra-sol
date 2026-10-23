@@ -9,7 +9,7 @@
 .btn {
   --btn-bg: transparent; --btn-fg: var(--color-text); --btn-border: transparent;
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
-  min-block-size: 48px; padding: 10px 22px; border: 1px solid var(--btn-border); border-radius: var(--radius-xs);
+  min-block-size: 48px; padding: 10px 22px; border: 1px solid var(--btn-border); border-radius: var(--radius-pill);
   background: var(--btn-bg); color: var(--btn-fg);
   font-size: var(--text-sm); font-weight: var(--font-weight-bold); line-height: 1.4; text-align: center;
   white-space: nowrap; touch-action: manipulation; user-select: none;
@@ -21,7 +21,7 @@
    a tapped button (or the one that replaced it under the finger, like the pay button) in its hover shade.
    :active still gives touch feedback. The same guard is used for fills and selected-looking hovers elsewhere. */
 .btn-primary, .btn-dark { --btn-bg: var(--color-text); --btn-fg: var(--color-inverse); }
-@media (hover: hover) { .btn-primary:hover:not(:disabled), .btn-dark:hover:not(:disabled) { --btn-bg: #463d38; } }
+@media (hover: hover) { .btn-primary:hover:not(:disabled), .btn-dark:hover:not(:disabled) { --btn-bg: var(--color-accent); } }
 .btn-primary:active:not(:disabled), .btn-dark:active:not(:disabled) { --btn-bg: #000; }
 .btn-secondary, .btn-outline, .btn-line { --btn-bg: var(--color-surface-raised); --btn-border: var(--color-border-strong); }
 @media (hover: hover) {
@@ -78,20 +78,46 @@
 .count[data-bump="true"] { animation: badge-bump var(--duration-slow) var(--ease-enter); }
 @keyframes badge-bump { 0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); } }
 
-/* ---------- Chips (filters, category nav, active filters, color pills) ---------- */
+/* ---------- Chips (filters, category nav, active filters, color pills) ----------
+   Soft pills: muted on the page, paper on a soft panel (the filter sidebar, empty states, the 404 card). The
+   current or checked chip is ink. */
 .chip {
+  --chip-bg: var(--color-surface-muted); --chip-bg-hover: var(--color-surface-sunken);
   display: inline-flex; align-items: center; gap: var(--space-2); min-block-size: var(--touch);
-  padding: 6px 16px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-pill);
-  background: var(--color-surface-raised); color: var(--color-text);
+  padding: 6px 16px; border: 1px solid transparent; border-radius: var(--radius-pill);
+  background: var(--chip-bg); color: var(--color-text);
   font-size: var(--text-sm); font-weight: var(--font-weight-medium); white-space: nowrap; touch-action: manipulation;
   transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
-@media (hover: hover) { .chip:hover { border-color: var(--color-text); } }
+:is(.filters-panel, .empty-state, .confirmation) .chip { --chip-bg: var(--color-surface); --chip-bg-hover: var(--color-surface-raised); }
+@media (hover: hover) { .chip:hover { background: var(--chip-bg-hover); } }
 .chip[aria-current="page"], .chip[aria-pressed="true"], .chip:has(input:checked) {
   background: var(--color-text); border-color: var(--color-text); color: var(--color-inverse);
 }
 .chip:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .chip-remove svg { opacity: 0.75; }
+
+/* ---------- Collection circles (`components/home/collection-circles.tsx`) ----------
+   Story-style: a model on the studio sand inside an oxblood ring, the name below. Under the home cover and on the
+   empty search page. */
+.collection-circles { display: flex; justify-content: center; gap: clamp(20px, 6vw, 72px); margin: 0; padding: 0; list-style: none; }
+.collection-circles a { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); font-size: var(--text-md); font-weight: var(--font-weight-semibold); }
+.collection-circle {
+  display: block; inline-size: clamp(88px, 24vw, 132px); aspect-ratio: 1; padding: 3px; border: 1.5px solid var(--color-accent); border-radius: 50%;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.collection-circle > span { position: relative; display: block; block-size: 100%; overflow: hidden; border-radius: 50%; background: var(--color-studio); }
+/* The photos are full-length; the circle shows head and shoulders. */
+.collection-circle img { object-fit: cover; object-position: 50% 0; transform: scale(1.7); transform-origin: 50% 4%; }
+@media (hover: hover) { .collection-circles a:hover .collection-circle { border-color: var(--color-text); } }
+
+/* Round paper arrow button every soft link box ends with (the collection rooms and service links); it nudges toward
+   its arrow on hover. */
+.arrow-disc {
+  display: grid; place-items: center; inline-size: var(--touch); block-size: var(--touch); flex-shrink: 0;
+  border-radius: 50%; background: var(--color-surface); color: var(--color-text); transition: transform 500ms var(--ease-editorial);
+}
+@media (hover: hover) { a:hover > .arrow-disc { transform: translate(-3px, -3px); } }
 
 /* ---------- Fields ---------- */
 .field { display: flex; flex-direction: column; gap: var(--space-2); min-inline-size: 0; }
@@ -104,7 +130,7 @@
 }
 .control {
   inline-size: 100%; min-inline-size: 0; min-block-size: 48px; padding: 10px 14px;
-  border: 1px solid var(--color-border-strong); border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm);
   background: var(--color-surface-raised); color: var(--color-text);
   font-size: 1rem; /* 16px keeps iOS Safari from zooming on focus */
   transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
@@ -173,7 +199,7 @@ select.control {
 
 .sheet-center {
   inset: 0; margin: auto; inline-size: min(100% - 32px, 620px); max-block-size: min(88dvh, 820px);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
 }
 .sheet-center:not([open]), .sheet-dropdown:not([open]) { opacity: 0; transform: translateY(8px) scale(0.98); }
 @starting-style {
@@ -201,7 +227,7 @@ select.control {
 .sheet-dropdown {
   inset-block-start: var(--anchor-top, 96px); inset-inline: 0; margin-inline: auto;
   inline-size: min(100% - 2 * var(--gutter), 780px); max-block-size: min(100dvh - var(--anchor-top, 96px) - 24px, 760px);
-  border-radius: var(--radius-sm); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); border: 1px solid var(--color-border);
 }
 .sheet-dropdown::backdrop { background: rgb(28 24 21 / 0.28); }
 
@@ -214,7 +240,7 @@ select.control {
 .toast {
   display: flex; align-items: center; gap: var(--space-3); inline-size: min(100%, 460px); min-block-size: 52px;
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); padding-inline-start: var(--space-4);
-  border-radius: var(--radius-sm); background: var(--color-text); color: var(--color-inverse);
+  border-radius: var(--radius-lg); background: var(--color-text); color: var(--color-inverse);
   box-shadow: var(--shadow-2); font-size: var(--text-sm); pointer-events: auto;
   animation: toast-in var(--duration-base) var(--ease-enter);
 }
@@ -230,30 +256,31 @@ select.control {
 
 /* ---------- Skeleton ---------- */
 .skeleton {
-  display: block; background: var(--color-surface-sunken); border-radius: var(--radius-xs);
+  display: block; background: var(--color-surface-sunken); border-radius: var(--radius-md);
   background-image: linear-gradient(90deg, transparent 0, rgb(255 255 255 / 0.45) 50%, transparent 100%);
   background-size: 200% 100%; background-repeat: no-repeat; animation: skeleton-sweep 1.4s var(--ease-standard) infinite;
 }
 @keyframes skeleton-sweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
 
 /* ---------- Quantity stepper ---------- */
+/* A soft muted pill; on a soft panel (the buy box) it turns paper. */
 .qty-stepper {
   display: inline-flex; align-items: center; inline-size: max-content;
-  border: 1px solid var(--color-border-strong); border-radius: var(--radius-xs); background: var(--color-surface-raised);
+  border: 1px solid transparent; border-radius: var(--radius-pill); background: var(--color-surface-muted);
 }
 .qty-stepper button {
   display: grid; place-items: center; inline-size: var(--touch); block-size: var(--touch); border: 0;
   background: transparent; color: var(--color-text); touch-action: manipulation;
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
-@media (hover: hover) { .qty-stepper button:hover:not(:disabled) { background: var(--color-surface-muted); } }
+@media (hover: hover) { .qty-stepper button:hover:not(:disabled) { background: var(--color-surface-sunken); } }
 .qty-stepper button:disabled { color: var(--color-text-subtle); opacity: 0.5; }
 .qty-stepper span { min-inline-size: 36px; text-align: center; font-weight: var(--font-weight-semibold); font-size: var(--text-md); }
 .qty-stepper-lg button { inline-size: 48px; block-size: 48px; }
 
-/* ---------- Accordion (native details/summary) ---------- */
-.accordion { border-block-end: 1px solid var(--color-border); }
-.accordion:first-child { border-block-start: 1px solid var(--color-border); }
+/* ---------- Accordion (native details/summary): stacked soft boxes ---------- */
+.accordion { padding-inline: var(--space-4); border-radius: var(--radius-md); background: var(--color-surface-muted); }
+.accordion + .accordion { margin-block-start: var(--space-2); }
 .accordion > summary {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
   min-block-size: 56px; padding-block: var(--space-2); cursor: pointer; list-style: none;
@@ -273,13 +300,13 @@ select.control {
 /* ---------- Notices and status ---------- */
 .notice, .demo-alert, .checkout-disclaimer {
   display: flex; gap: var(--space-3); align-items: flex-start; margin-block: var(--space-4);
-  padding: var(--space-3) var(--space-4); border-radius: var(--radius-xs);
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
   background: var(--color-surface-muted); color: var(--color-text-muted); font-size: var(--text-sm); line-height: 1.85;
 }
 .notice svg { flex-shrink: 0; margin-block-start: 3px; color: var(--color-accent); }
 .status-message {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3);
-  margin-block: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-xs);
+  margin-block: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
   background: var(--color-success-wash); color: var(--color-success); font-size: var(--text-sm); line-height: 1.8;
 }
 .status-message.error { background: var(--color-danger-wash); color: var(--color-danger); }
@@ -288,10 +315,10 @@ select.control {
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3);
   min-block-size: 320px; padding: var(--space-7) var(--space-5); text-align: center;
-  background: var(--color-surface-muted); border-radius: var(--radius-xs);
+  background: var(--color-surface-muted); border-radius: var(--radius-lg);
 }
 .empty-state > svg { color: var(--color-accent); }
-.empty-state h2, .empty-state h3 { margin: 0; font-size: var(--text-2xl); }
+.empty-state h2, .empty-state h3 { margin: 0; font-size: var(--text-3xl); font-weight: var(--font-weight-light); line-height: 1.45; }
 .empty-state p { margin: 0; max-inline-size: 44ch; color: var(--color-text-muted); }
 .empty-actions, .discovery-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-block-start: var(--space-2); }
 

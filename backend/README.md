@@ -25,6 +25,7 @@ Demo seed runs only if **no products exist**; restarting never resets stock. Dem
 | GET | `/v1/categories` | Existing category metadata |
 | GET | `/v1/products` | Paginated catalog filters: `category,q,size,color,min,max,stock,sale,sort,page,limit` |
 | GET | `/v1/products/:slug` | Product, colors, variants and stock |
+| GET | `/v1/home/slider` | The home page slider's products, in the order the back office set (published only) |
 | GET | `/v1/search/suggestions?q=...` | Search autocomplete |
 | POST | `/v1/checkout/quote` | Authoritative cart/shipping/discount quote |
 | POST | `/v1/orders` | Durable guest order, requires `Idempotency-Key` |
@@ -114,7 +115,7 @@ Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`,
 `/products` (`?q&status&stock&page&limit`), `/products/:id`, `/products/:id/price`, `/products/:id/variants`,
 `/products/:id/visibility`, `/variants/:id/stock`, `/orders` (`?status&q&period&page&limit`), `/orders/export`
 (`?status&q&period`, CSV), `/orders/:id`, `/orders/:id/status`, `/staff`, `/staff/:id`, `/staff/:id/password`, `/media`,
-`/reports/overview`, `/audit` (`?before&group&actor`).
+`/reports/overview`, `/audit` (`?before&group&actor`), `/home-slider` (GET, PUT).
 
 `/audit` filters by event group (`auth`, `staff`, `products`, `inventory`, `orders`, `media`: the part of the action
 before the dot) and by acting account id, and adds `targetName` (the account or product an entry is about).
@@ -150,6 +151,12 @@ image and a free product could be ordered. Drafts may stay incomplete.
 There is **no hard delete**. Archived products disappear from catalog and cannot be
 purchased, but order snapshots and database records remain intact.
 Color/size/stock editing is atomic; product writes invalidate the public Redis cache.
+
+Home page slider: `GET /v1/admin/home-slider` (`products:read`) lists the picked products in order, with their
+status; `PUT /v1/admin/home-slider` (`products:write`) replaces the pick with `{ productIds }` (at most 5, no
+repeats, all published: otherwise `409 slide_unavailable`). The pick lives in `home_slides` (migration 007), is
+written to the audit log as `products.home_slider` and invalidates the public cache. A product archived later simply
+drops out of `GET /v1/home/slider`. With an empty pick the storefront shows its discounted products instead.
 
 Uploaded images are stored in `media_data`, an independent **persistent Compose volume**
 mounted at `/app/backend/uploads` with `MEDIA_DIR` set accordingly.

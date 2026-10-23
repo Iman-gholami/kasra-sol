@@ -20,9 +20,11 @@ type Props = {
   compactHeading?: boolean;
   /** Plain-text name when `title` contains bidi-isolated user text (isolation adds spaces to computed names). */
   titleLabel?: string;
+  /** Editorial number of a collection (۰۱, ۰۲ …), set beside the title as on the home contents strip. */
+  number?: string;
 };
 
-export function CatalogView({ title, intro, action, filters, data, fixedCategory, compactHeading, titleLabel }: Props) {
+export function CatalogView({ title, intro, action, filters, data, fixedCategory, compactHeading, titleLabel, number }: Props) {
   const makeUrl = (overrides: Record<string, string | null>) => catalogHref(action, filters, fixedCategory, overrides);
   const chips: { key: string; label: string }[] = [];
   if (filters.category && !fixedCategory) chips.push({ key: 'category', label: categories.find(c => c.slug === filters.category)?.title || '' });
@@ -46,7 +48,8 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   return <div className="container catalog-layout">
     <Breadcrumbs items={[{ label: 'خانه', href: '/' }, { label: typeof title === 'string' && !compactHeading ? title : 'جستجو' }]}/>
     <div className="catalog-heading">
-      <div>
+      <div className="catalog-title">
+        {number && <span className="catalog-number" aria-hidden="true">{number}</span>}
         <h1 aria-label={titleLabel}>{title}</h1>
         {intro && <p className="catalog-intro">{intro}</p>}
       </div>
@@ -65,7 +68,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
           <p className="catalog-toolbar-count">
             {data.total > 0 ? <>نمایش {formatNumber(from)}–{formatNumber(to)} از {formatNumber(data.total)} مدل</> : 'بدون نتیجه'}
           </p>
-          <SortForm variant="desktop" action={action} filters={filters} fixedCategory={fixedCategory}/>
+          <SortForm action={action} filters={filters} fixedCategory={fixedCategory}/>
         </div>
         {chips.length > 0 && <div className="active-filter-list">
           <p className="sr-only" id="active-filters-hint">فیلترهای فعال؛ برای حذف هر فیلتر آن را انتخاب کن.</p>
@@ -78,7 +81,6 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
           </ul>
           <Link className="link-button clear-filter-link" href={clearHref}>پاک کردن همه</Link>
         </div>}
-        <p className="catalog-photo-note"><ImageIcon size={15} aria-hidden="true"/> عکس‌ها نمونه‌اند و ممکن است با جزئیات کالای نام‌برده یکسان نباشند.</p>
         {data.items.length ? <ProductGrid products={data.items} eagerCount={4}/> :
           <div className="empty-state">
             <h2>محصولی با این انتخاب‌ها پیدا نشد</h2>
@@ -89,6 +91,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
               <Link className="btn btn-ghost" href={filters.q ? '/search' : '/shop'}>{filters.q ? 'جستجوی تازه' : 'همه محصولات'}</Link>
             </div>
           </div>}
+        <p className="catalog-photo-note"><ImageIcon size={15} aria-hidden="true"/> عکس‌ها نمونه‌اند و ممکن است با جزئیات کالای نام‌برده یکسان نباشند.</p>
         {data.pages > 1 && <nav aria-label="صفحات نتایج" className="pagination">
           {data.page > 1
             ? <Link className="pagination-step" href={makeUrl({ page: String(data.page - 1) })}><ArrowRight size={18} aria-hidden="true"/>صفحه قبل</Link>

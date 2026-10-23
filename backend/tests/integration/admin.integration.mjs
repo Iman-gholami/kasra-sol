@@ -455,6 +455,48 @@ describe('catalog management', () => {
   });
 });
 
+describe('home page slider', () => {
+  const save = (token, productIds) => api('/v1/admin/home-slider', { method: 'PUT', token, body: { productIds } });
+  const shown = async () => (await api('/v1/home/slider')).data.items.map(item => item.id);
+
+  it('lets managers order published products and refuses staff, duplicates and unpublished picks', async () => {
+    const pick = ['manto-03', 'shomiz-01', PRODUCT];
+    assert.equal((await save(staff.token, pick)).status, 403);
+    assert.equal((await save(manager.token, ['manto-03', 'manto-03'])).status, 400);
+    assert.equal((await save(manager.token, Array.from({ length: 6 }, (_, i) => 'manto-0' + (i + 1)))).status, 400);
+    const draftId = 'it-slide-draft-' + run;
+    assert.equal((await api('/v1/admin/products', { method: 'POST', token: owner.token,
+      body: productBody({ id: draftId, slug: draftId }) })).status, 201);
+    const unpublished = await save(manager.token, ['manto-03', draftId]);
+    assert.deepEqual([unpublished.status, unpublished.data.error], [409, 'slide_unavailable']);
+
+    const saved = await save(manager.token, pick);
+    assert.equal(saved.status, 200);
+    assert.deepEqual(await shown(), pick, 'public order follows the pick');
+    const listed = await api('/v1/admin/home-slider', { token: staff.token });
+    assert.equal(listed.status, 200, 'staff may read the pick');
+    assert.deepEqual(listed.data.items.map(item => item.id), pick);
+    const audit = await pool.query("SELECT details FROM admin_audit_log WHERE action='products.home_slider' AND actor_id=$1",
+      [manager.id]);
+    assert.deepEqual(audit.rows.at(-1).details.to, pick);
+  });
+
+  it('drops archived products from the public slider and accepts an empty pick', async () => {
+    const id = 'it-slide-' + run;
+    assert.equal((await api('/v1/admin/products', { method: 'POST', token: owner.token,
+      body: productBody({ id, slug: id }) })).status, 201);
+    await api('/v1/admin/products/' + id + '/visibility', { method: 'PATCH', token: owner.token, body: { active: true } });
+    assert.equal((await save(owner.token, [id, 'shomiz-01'])).status, 200);
+    assert.deepEqual(await shown(), [id, 'shomiz-01']);
+    await api('/v1/admin/products/' + id + '/visibility', { method: 'PATCH', token: owner.token, body: { active: false } });
+    assert.deepEqual(await shown(), ['shomiz-01'], 'archived product leaves the slider');
+    const listed = await api('/v1/admin/home-slider', { token: owner.token });
+    assert.deepEqual(listed.data.items.map(item => [item.id, item.status]), [[id, 'archived'], ['shomiz-01', 'active']]);
+    assert.equal((await save(owner.token, [])).status, 200);
+    assert.deepEqual(await shown(), []);
+  });
+});
+
 describe('reports', () => {
   it('reports real database counts in Tehran days and the current Persian month', async () => {
     const first = (await api('/v1/admin/reports/overview', { token: manager.token })).data;

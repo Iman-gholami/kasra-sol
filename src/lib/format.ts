@@ -5,6 +5,9 @@ export const toLatinDigits = (value: string): string =>
 /** For digit strings that are not quantities (phone numbers, postal and tracking codes): no grouping. */
 export const toPersianDigits = (value: string): string => value.replace(/[0-9]/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
 
+/** Editorial numbering for contents-style lists: 1 → ۰۱. */
+export const editorialNumber = (value: number): string => toPersianDigits(String(value).padStart(2, '0'));
+
 export const normalizePersian = (value: string): string =>
   toLatinDigits(value.normalize('NFKC')).replace(/[يى]/g, 'ی').replace(/ك/g, 'ک')
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g, '')
