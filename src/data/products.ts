@@ -1,19 +1,21 @@
 import type { CategorySlug, Product } from '@/types/store';
 
 export { categories, palette, standardSizes } from '@/data/facets';
+import { allCategories } from '@/data/facets';
 import { categories, palette, standardSizes } from '@/data/facets';
 
 /** Six locally optimized AI-generated fashion photographs.
  * Reused across mock listings ONLY to evaluate storefront visual design.
  * Do not treat the pictured clothing as verified photos of individual SKUs. */
-const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
+type DemoCategorySlug = 'shomiz' | 'manto' | 'tshirt';
+const demoPhotos: Record<DemoCategorySlug, readonly [string, string]> = {
   shomiz: ['/images/lookbook/shomiz-cream.avif', '/images/lookbook/shomiz-rose.avif'],
   manto: ['/images/lookbook/manto-black.avif', '/images/lookbook/manto-sage.avif'],
   tshirt: ['/images/lookbook/tshirt-white.avif', '/images/lookbook/tshirt-blue.avif']
 };
 
 const collections: {
-  slug: CategorySlug;
+  slug: DemoCategorySlug;
   names: string[];
   material: string;
   fit: string;
@@ -86,6 +88,6 @@ export const bySlug = (slug: string): Product | undefined =>
 export const byId = (id: string): Product | undefined =>
   products.find((product) => product.id === id);
 export const getCategory = (slug: string) =>
-  categories.find((category) => category.slug === slug);
+  allCategories.find((category) => category.slug === slug);
 export const getVariant = (product: Product, colorId: string, size: string) =>
   product.variants.find((variant) => variant.colorId === colorId && variant.size === size);
