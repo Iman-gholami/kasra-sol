@@ -178,7 +178,10 @@ function FilterForm({ id, action, draft, filters, fixedCategory, priceError, set
       <select id={uid + '-category'} name="category" className="control" value={draft.category}
         onChange={event => change('category', event.target.value)}>
         <option value="">همه دسته‌ها</option>
-        {categories.map(category => <option key={category.slug} value={category.slug}>{category.title}</option>)}
+        {categories.map(group => <optgroup key={group.slug} label={group.title}>
+          <option value={group.slug}>{group.title}</option>
+          {group.children.map(child => <option key={child.slug} value={child.slug}>↳ {child.title}</option>)}
+        </optgroup>)}
       </select>
     </div>}
     <fieldset className="filter-fieldset">
