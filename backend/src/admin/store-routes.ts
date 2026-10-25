@@ -43,7 +43,14 @@ const saleInput = z.object({
   note: z.string().trim().max(300).optional(),
   lines: z.array(z.object({ code: barcode, quantity: z.number().int().min(1).max(999) }).strict()).min(1).max(100)
 }).strict();
+const holdInput = z.object({
+  note: z.string().trim().max(300).optional(),
+  lines: z.array(z.object({ code: barcode, quantity: z.number().int().min(1).max(999) }).strict()).min(1).max(100)
+}).strict();
 const serial = z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+// Held carts are for customers still in the shop; more than this many at once means old ones were forgotten.
+const MAX_HOLDS = 50;
+type Described = Key & { code: string; name: string; price: number; active: boolean; colorName: string; stock: number | null };
 
 /** The barcode of each product/color/size, created on first use. Two concurrent callers may both draw a sequence
  * number; the unique key keeps the first row and the other number is never used. */
@@ -83,6 +90,34 @@ async function lockVariants(client: PoolClient, keys: Key[]) {
   const product = new Map(products.rows.map(row => [row.id, row]));
   const variant = new Map(variants.rows.map(row => [keyOf({ productId: row.product_id, colorId: row.color_id, size: row.size }), row]));
   return keys.map(key => ({ key, product: product.get(key.productId), variant: variant.get(keyOf(key)) }));
+}
+
+/** What each scanned code is now: product, color/size, current price and stock (null when the color/size was removed). */
+async function describeCodes(db: Db, codes: string[]) {
+  const found = await db.query<Described>(
+    'SELECT b.code,b.product_id AS "productId",p.name,p.price,p.active,b.color_id AS "colorId",' +
+    COLOR_NAME('p', 'b.color_id') + ' AS "colorName",b.size,v.stock FROM variant_barcodes b ' +
+    'JOIN products p ON p.id=b.product_id ' +
+    'LEFT JOIN product_variants v ON v.product_id=b.product_id AND v.color_id=b.color_id AND v.size=b.size ' +
+    'WHERE b.code = ANY($1::char(13)[])', [codes]);
+  return new Map(found.rows.map(row => [row.code, row]));
+}
+
+/** Held carts with what their codes are now, and their total at current prices. */
+async function heldSales(db: Db, where: string, values: unknown[]) {
+  const held = await db.query<{ id: string; note: string | null; createdAt: string; cashier: string | null;
+    lines: { code: string; quantity: number }[] }>(
+    'SELECT h.id,h.note,h.created_at AS "createdAt",u.display_name AS cashier,h.lines FROM store_held_sales h ' +
+    'LEFT JOIN admin_users u ON u.id=h.actor_id ' + where + ' ORDER BY h.id', values);
+  const codes = await describeCodes(db, [...new Set(held.rows.flatMap(row => row.lines.map(line => line.code)))]);
+  return held.rows.map(({ lines, ...row }) => {
+    const items = lines.flatMap(line => {
+      const item = codes.get(line.code);
+      return item && item.stock !== null ? [{ ...item, quantity: line.quantity }] : [];
+    });
+    return { ...row, items, missing: lines.length - items.length,
+      total: items.reduce((sum, item) => sum + item.price * item.quantity, 0) };
+  });
 }
 
 async function receiptDetail(db: Db, id: string) {
@@ -144,13 +179,7 @@ export async function storeRoutes(app: FastifyInstance, check: Guard, opts: { in
     if (!await check(req, reply, 'inventory:read')) return;
     const code = (req.params as { code: string }).code;
     if (!isStoreBarcode(code)) return reply.code(400).send({ error: 'invalid_barcode' });
-    const found = await pool.query<{ stock: number | null }>(
-      'SELECT b.code,b.product_id AS "productId",p.name,p.price,p.active,b.color_id AS "colorId",' +
-      COLOR_NAME('p', 'b.color_id') + ' AS "colorName",b.size,v.stock FROM variant_barcodes b ' +
-      'JOIN products p ON p.id=b.product_id ' +
-      'LEFT JOIN product_variants v ON v.product_id=b.product_id AND v.color_id=b.color_id AND v.size=b.size ' +
-      'WHERE b.code=$1', [code]);
-    const item = found.rows[0];
+    const item = (await describeCodes(pool, [code])).get(code);
     if (!item) return reply.code(404).send({ error: 'barcode_not_found', code });
     if (item.stock === null) return reply.code(409).send({ error: 'variant_removed', code });
     return reply.header('Cache-Control', 'no-store').send({ item });
@@ -303,6 +332,71 @@ export async function storeRoutes(app: FastifyInstance, check: Guard, opts: { in
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
     await opts.invalidateCatalog?.();
     return reply.code(201).header('Cache-Control', 'no-store').send({ sale });
+  });
+
+  // Carts on hold («تعلیق فاکتور»), oldest first: shared by every counter device, so any cashier can finish one.
+  app.get('/v1/admin/store-holds', async (req, reply) => {
+    if (!await check(req, reply, 'sales:pos')) return;
+    return reply.header('Cache-Control', 'no-store').send({ items: await heldSales(pool, '', []) });
+  });
+
+  app.post('/v1/admin/store-holds', async (req, reply) => {
+    const actor = await check(req, reply, 'sales:pos');
+    if (!actor) return;
+    const parsed = holdInput.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_payload' });
+    const codes = await describeCodes(pool, parsed.data.lines.map(line => line.code));
+    const unknown = parsed.data.lines.find(line => !codes.has(line.code));
+    if (unknown) return reply.code(404).send({ error: 'barcode_not_found', code: unknown.code });
+    const client = await pool.connect();
+    let id: string;
+    try {
+      await client.query('BEGIN');
+      // One hold at a time, so the cap cannot be passed by parallel requests.
+      await client.query('SELECT pg_advisory_xact_lock(490202608)');
+      const open = await client.query<{ n: number }>('SELECT COUNT(*)::int AS n FROM store_held_sales');
+      if (open.rows[0].n >= MAX_HOLDS) {
+        await client.query('ROLLBACK');
+        return reply.code(409).send({ error: 'too_many_holds', max: MAX_HOLDS });
+      }
+      const created = await client.query<{ id: string }>(
+        'INSERT INTO store_held_sales(lines,note,actor_id) VALUES($1::jsonb,$2,$3) RETURNING id',
+        [JSON.stringify(parsed.data.lines), parsed.data.note || null, actor.id]);
+      id = created.rows[0].id;
+      await client.query('COMMIT');
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+    const [hold] = await heldSales(pool, 'WHERE h.id=$1', [id]);
+    return reply.code(201).header('Cache-Control', 'no-store').send({ hold });
+  });
+
+  // Takes a held cart back to a counter. The row is deleted in the same statement, so two cashiers pressing «ادامه»
+  // at once cannot both get it; the loser is told it is gone.
+  app.post('/v1/admin/store-holds/:id/resume', async (req, reply) => {
+    if (!await check(req, reply, 'sales:pos')) return;
+    const id = serial.safeParse((req.params as { id: string }).id);
+    if (!id.success) return reply.code(404).send({ error: 'held_sale_gone' });
+    const client = await pool.connect();
+    let hold;
+    try {
+      await client.query('BEGIN');
+      [hold] = await heldSales(client, 'WHERE h.id=$1', [id.data]);
+      const taken = await client.query('DELETE FROM store_held_sales WHERE id=$1', [id.data]);
+      if (!hold || !taken.rowCount) {
+        await client.query('ROLLBACK');
+        return reply.code(404).send({ error: 'held_sale_gone' });
+      }
+      await client.query('COMMIT');
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+    return reply.header('Cache-Control', 'no-store').send({ hold });
+  });
+
+  app.delete('/v1/admin/store-holds/:id', async (req, reply) => {
+    if (!await check(req, reply, 'sales:pos')) return;
+    const id = serial.safeParse((req.params as { id: string }).id);
+    if (!id.success) return reply.code(404).send({ error: 'held_sale_gone' });
+    const removed = await pool.query('DELETE FROM store_held_sales WHERE id=$1', [id.data]);
+    if (!removed.rowCount) return reply.code(404).send({ error: 'held_sale_gone' });
+    return reply.header('Cache-Control', 'no-store').send({ ok: true });
   });
 
   // One Tehran day of counter sales (today by default), newest first, with totals that leave voided sales out.

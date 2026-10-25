@@ -237,3 +237,46 @@ describe('counter sales', () => {
     assert.deepEqual([audit.rows.length, audit.rows[0].details.restocked], [1, 2]);
   });
 });
+
+describe('held carts', () => {
+  const hold = (token, lines, note) => api('/v1/admin/store-holds', { method: 'POST', token, body: { lines, ...(note ? { note } : {}) } });
+  const held = async id => (await api('/v1/admin/store-holds', { token: staff.token })).data.items.find(item => item.id === id);
+
+  it('holds a cart without touching stock and gives it back to exactly one cashier at current prices', async () => {
+    const id = await product('hold', { M: 3, L: 1 });
+    const { M, L } = await barcodes(id);
+    const parked = await hold(staff.token, [{ code: M, quantity: 2 }, { code: L, quantity: 1 }], 'خانم کت چرم، اتاق پرو');
+    assert.equal(parked.status, 201);
+    assert.equal(parked.data.hold.total, 3 * PRICE);
+    assert.equal(parked.data.hold.cashier, 'فروشگاه staff');
+    assert.equal(await stockOf(id, 'M'), 3, 'a held cart reserves nothing');
+    assert.equal((await api('/v1/admin/products/' + id + '/price', { method: 'PATCH', token: owner.token, body: { price: PRICE + 10_000 } })).status, 200);
+    const listed = await held(parked.data.hold.id);
+    assert.equal(listed.note, 'خانم کت چرم، اتاق پرو');
+    assert.equal(listed.total, 3 * (PRICE + 10_000), 'shown at the current price');
+    const path = '/v1/admin/store-holds/' + parked.data.hold.id + '/resume';
+    const [one, two] = await Promise.all([api(path, { method: 'POST', token: staff.token }), api(path, { method: 'POST', token: manager.token })]);
+    assert.deepEqual([one.status, two.status].sort(), [200, 404]);
+    const taken = one.status === 200 ? one.data.hold : two.data.hold;
+    assert.deepEqual(taken.items.map(item => [item.size, item.quantity, item.price, item.stock]),
+      [['M', 2, PRICE + 10_000, 3], ['L', 1, PRICE + 10_000, 1]]);
+    assert.equal((one.status === 404 ? one : two).data.error, 'held_sale_gone');
+    assert.equal(await held(parked.data.hold.id), undefined);
+  });
+
+  it('refuses unknown labels, lets staff discard a held cart, and leaves out sizes removed meanwhile', async () => {
+    const id = await product('hold-edit', { M: 1, L: 1 });
+    const { M, L } = await barcodes(id);
+    assert.deepEqual((await hold(staff.token, [{ code: '2099999999998', quantity: 1 }])).data.error, 'barcode_not_found');
+    const gone = (await hold(staff.token, [{ code: M, quantity: 1 }])).data.hold;
+    assert.equal((await api('/v1/admin/store-holds/' + gone.id, { method: 'DELETE', token: staff.token })).status, 200);
+    assert.equal((await api('/v1/admin/store-holds/' + gone.id, { method: 'DELETE', token: staff.token })).status, 404);
+    const kept = (await hold(staff.token, [{ code: M, quantity: 1 }, { code: L, quantity: 1 }])).data.hold;
+    const latest = (await api('/v1/admin/products/' + id, { token: owner.token })).data;
+    assert.equal((await api('/v1/admin/products/' + id, { method: 'PUT', token: owner.token,
+      headers: { 'If-Match': '"' + latest.revision + '"' },
+      body: editable({ ...latest.item, sizes: ['M'], variants: latest.item.variants.filter(v => v.size === 'M') }) })).status, 200);
+    const back = (await api('/v1/admin/store-holds/' + kept.id + '/resume', { method: 'POST', token: staff.token })).data.hold;
+    assert.deepEqual([back.items.map(item => item.size), back.missing], [['M'], 1]);
+  });
+});

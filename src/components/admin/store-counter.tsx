@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Minus, Plus, ReceiptText, RefreshCw, Trash2, Undo2 } from 'lucide-react';
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { CirclePause, Minus, Play, Plus, ReceiptText, RefreshCw, Trash2, Undo2 } from 'lucide-react';
 import { adminApi, AdminApiError, errorMessage, newClientRef } from '@/components/admin/admin-api';
 import { digitsOnly, formatDateTime, formatNumber, formatToman, STORE_PAYMENT } from '@/components/admin/labels';
 import { barcodeProblem, ScanField } from '@/components/admin/scan-field';
@@ -17,7 +17,9 @@ type Sale = {
 };
 type Day = { date: string; summary: { sales: number; units: number; total: string; cash: string; card: string; transfer: string };
   items: Sale[] };
-const UNSAVED_CART = 'اقلام اسکن‌شده هنوز به‌عنوان فروش ثبت نشده‌اند. از صندوق خارج می‌شوید؟';
+type Held = { id: string; note: string | null; createdAt: string; cashier: string | null; total: number; missing: number; items: Line[] };
+const UNSAVED_CART = 'اقلام اسکن‌شده هنوز به‌عنوان فروش ثبت نشده‌اند (برای نگه داشتن، «تعلیق فاکتور» را بزنید). از صندوق خارج می‌شوید؟';
+const timeFormat = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', hour: '2-digit', minute: '2-digit' });
 const PAYMENTS = ['card', 'cash', 'transfer'] as const;
 
 function TodaySales({ version, canVoid, voided }: { version: number; canVoid: boolean; voided: () => void }) {
@@ -112,6 +114,8 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
   const [message, setMessage] = useState<{ tone: 'error' | 'success' | 'warning'; text: string } | null>(null);
   const [shortage, setShortage] = useState<Short[]>([]);
   const [salesVersion, setSalesVersion] = useState(0);
+  const [holds, setHolds] = useState<Held[]>([]);
+  const [holdsVersion, setHoldsVersion] = useState(0);
   const scan = useRef<HTMLInputElement>(null);
   // Scans arrive faster than lookups answer; they are handled one after another so a repeated label adds up.
   const queue = useRef(Promise.resolve());
@@ -123,6 +127,15 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
   useEffect(() => { onUnsaved?.(lines.length ? UNSAVED_CART : null); }, [lines.length, onUnsaved]);
   useEffect(() => () => onUnsaved?.(null), [onUnsaved]);
   const refocus = useCallback(() => requestAnimationFrame(() => scan.current?.focus()), []);
+  // Held carts are shared by every counter device, so the list is read again whenever this window gets focus.
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = () => adminApi<{ items: Held[] }>('store-holds', { signal: controller.signal })
+      .then(result => setHolds(result.items)).catch(() => { /* actions on held carts report their own errors */ });
+    void load();
+    window.addEventListener('focus', load);
+    return () => { controller.abort(); window.removeEventListener('focus', load); };
+  }, [holdsVersion]);
 
   async function add(code: string) {
     const problem = barcodeProblem(code);
@@ -161,6 +174,59 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
   const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
   const off = canDiscount ? Number(discount || 0) : 0;
   const units = lines.reduce((sum, line) => sum + line.quantity, 0);
+
+  /** Puts the cart on hold for a customer still in the fitting room and empties the counter for the next one. */
+  async function park() {
+    const current = linesRef.current;
+    if (!current.length) return;
+    await adminApi('store-holds', { method: 'POST', body: { ...(note.trim() ? { note: note.trim() } : {}),
+      lines: current.map(line => ({ code: line.code, quantity: line.quantity })) } });
+    commit([]); setNote(''); setDiscount(''); setShortage([]);
+    attempt.current = { signature: '', ref: '' };
+  }
+  async function holdCart() {
+    if (!lines.length || busy) return;
+    setBusy(true); setMessage(null);
+    try {
+      await park();
+      setMessage({ tone: 'success', text: 'فاکتور معلق شد و صندوق برای مشتری بعدی خالی است. وقتی مشتری برگشت، در «فاکتورهای معلق» ' +
+        '«ادامه» را بزنید.' });
+    } catch (cause) { setMessage({ tone: 'error', text: errorMessage(cause) }); }
+    finally { setBusy(false); setHoldsVersion(v => v + 1); refocus(); }
+  }
+  /** Brings a held cart back; a cart already on the counter is held first, so the two swap places. Prices and stock are
+   * the current ones, and units no longer in stock are left out with a warning. */
+  async function resume(held: Held) {
+    if (busy) return;
+    const number = formatNumber(Number(held.id));
+    if (linesRef.current.length && !window.confirm('سبد فعلی معلق شود و فاکتور معلق شماره ' + number + ' باز شود؟')) return;
+    setBusy(true); setMessage(null);
+    try {
+      await park();
+      const { hold } = await adminApi<{ hold: Held }>('store-holds/' + held.id + '/resume', { method: 'POST' });
+      const warnings = hold.missing ? [formatNumber(hold.missing) + ' قلم از مشخصات محصول حذف شده بود'] : [];
+      commit(hold.items.flatMap(item => {
+        const label = '«' + item.name + '» (' + item.colorName + ' / ' + item.size + ')';
+        if (item.stock <= 0) { warnings.push(label + ' دیگر موجودی ندارد'); return []; }
+        if (item.quantity > item.stock) {
+          warnings.push(label + ' فقط ' + formatNumber(item.stock) + ' عدد موجود است');
+          return [{ ...item, quantity: item.stock }];
+        }
+        return [item];
+      }));
+      setNote(hold.note ?? '');
+      setMessage(warnings.length ? { tone: 'warning', text: 'فاکتور معلق شماره ' + number + ' باز شد، ولی ' + warnings.join('؛ ') + '.' }
+        : { tone: 'success', text: 'فاکتور معلق شماره ' + number + ' باز شد.' });
+    } catch (cause) { setMessage({ tone: 'error', text: errorMessage(cause) }); }
+    finally { setBusy(false); setHoldsVersion(v => v + 1); refocus(); }
+  }
+  async function discard(held: Held) {
+    if (busy || !window.confirm('فاکتور معلق شماره ' + formatNumber(Number(held.id)) + ' حذف شود؟ (موجودی تغییری نمی‌کند.)')) return;
+    setBusy(true); setMessage(null);
+    try { await adminApi('store-holds/' + held.id, { method: 'DELETE' }); }
+    catch (cause) { setMessage({ tone: 'error', text: errorMessage(cause) }); }
+    finally { setBusy(false); setHoldsVersion(v => v + 1); refocus(); }
+  }
 
   async function record(event: FormEvent) {
     event.preventDefault();
@@ -203,6 +269,31 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
         <p className="admin-toolbar-desc">برچسب هر کالا را اسکن کنید؛ با ثبت فروش، همان لحظه از موجودی سایت هم کم می‌شود.</p>
       </div>
     </div>
+    {holds.length > 0 && <section className="admin-panel" aria-labelledby="held-heading">
+      <div className="admin-panel-head"><div>
+        <h3 id="held-heading"><CirclePause size={18} aria-hidden="true"/> فاکتورهای معلق
+          <span className="admin-count">({formatNumber(holds.length)})</span></h3>
+        <p>مشتری‌هایی که هنوز خریدشان تمام نشده؛ فاکتور معلق از موجودی کم نمی‌کند.</p>
+      </div></div>
+      <ul className="admin-held" aria-label="فاکتورهای معلق">
+        {holds.map(held => <li key={held.id} className="admin-held-item">
+          <div className="admin-cart-info">
+            <strong>#{formatNumber(Number(held.id))}{held.note ? ' — ' + held.note : ''}</strong>
+            <span>{held.items.map((item, index) => <Fragment key={item.code}>{index > 0 && '، '}{item.name} {item.colorName}
+              {' / '}سایز <bdi>{item.size}</bdi> × {formatNumber(item.quantity)}</Fragment>)}</span>
+            <span>{timeFormat.format(new Date(held.createdAt))}{held.cashier ? ' · ' + held.cashier : ''} · {formatToman(held.total)}</span>
+          </div>
+          <div className="admin-actions">
+            <button type="button" className="admin-btn admin-btn-primary admin-btn-small" disabled={busy}
+              aria-label={'ادامه فاکتور معلق ' + formatNumber(Number(held.id))} onClick={() => void resume(held)}>
+              <Play size={13} aria-hidden="true"/> ادامه</button>
+            <button type="button" className="admin-btn admin-btn-danger admin-btn-small" disabled={busy}
+              aria-label={'حذف فاکتور معلق ' + formatNumber(Number(held.id))} onClick={() => void discard(held)}>
+              <Trash2 size={13} aria-hidden="true"/> حذف</button>
+          </div>
+        </li>)}
+      </ul>
+    </section>}
     <div className="admin-counter">
       <section className="admin-panel" aria-labelledby="counter-cart-heading">
         <div className="admin-panel-head"><h3 id="counter-cart-heading">سبد خرید مشتری {units > 0 &&
@@ -255,6 +346,7 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
           </label>}
           <label className="admin-field">یادداشت (اختیاری)
             <input type="text" maxLength={300} value={note} onChange={event => setNote(event.target.value)}/>
+            <small>برای فاکتور معلق، نشانی از مشتری بنویسید؛ مثلاً «خانم کت چرم، اتاق پرو».</small>
           </label>
           <dl className="admin-dl">
             <div><dt>جمع اقلام</dt><dd>{formatToman(subtotal)}</dd></div>
@@ -263,6 +355,8 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
           </dl>
           <button type="submit" className="admin-btn admin-btn-primary admin-counter-submit" disabled={busy || !lines.length}>
             {busy ? 'در حال ثبت…' : 'ثبت فروش و کم کردن از موجودی'}</button>
+          <button type="button" className="admin-btn admin-btn-outline" disabled={busy || !lines.length} onClick={() => void holdCart()}>
+            <CirclePause size={16} aria-hidden="true"/> تعلیق فاکتور (مشتری بعدی)</button>
           {lines.length > 0 && <button type="button" className="admin-btn admin-btn-outline" disabled={busy}
             onClick={() => { if (window.confirm('همه اقلام سبد پاک شود؟')) { commit([]); setShortage([]); setMessage(null); refocus(); } }}>
             خالی کردن سبد</button>}

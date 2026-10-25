@@ -117,7 +117,7 @@ Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`,
 (`?status&q&period`, CSV), `/orders/:id`, `/orders/:id/status`, `/staff`, `/staff/:id`, `/staff/:id/password`, `/media`,
 `/reports/overview`, `/audit` (`?before&group&actor`), `/home-slider` (GET, PUT), `/products/:id/barcodes` (POST),
 `/barcodes/:code`, `/stock-receipts` (`?page`; GET, POST), `/stock-receipts/:id`, `/store-sales` (`?date`; GET, POST),
-`/store-sales/:id/void` (POST).
+`/store-sales/:id/void` (POST), `/store-holds` (GET, POST), `/store-holds/:id/resume` (POST), `/store-holds/:id` (DELETE).
 
 `/audit` filters by event group (`auth`, `staff`, `products`, `inventory`, `orders`, `sales`, `media`: the part of the action
 before the dot) and by acting account id, and adds `targetName` (the account or product an entry is about).
@@ -138,7 +138,8 @@ each product/color/size a shop-internal EAN-13 code (prefix `20`, stored in `var
 a new permission that staff and managers have by default) sells scanned codes at the current catalog price, locking like COD
 checkout and refusing the whole sale with `409 insufficient_stock` when a unit is gone; a discount needs `products:price`.
 `POST /store-sales/:id/void` (`inventory:write`) returns a sale's units once. Receipts and sales take a client `clientRef` UUID and
-are applied once per reference. Details, labels and the counter flow: [docs/STORE-INVENTORY.md](../docs/STORE-INVENTORY.md).
+are applied once per reference. Held counter carts (`/store-holds`, migration 009) reserve no stock and are taken back by
+one cashier only (the row is deleted on resume). Details, labels and the counter flow: [docs/STORE-INVENTORY.md](../docs/STORE-INVENTORY.md).
 
 ## Product catalog editing and media (PR #7)
 

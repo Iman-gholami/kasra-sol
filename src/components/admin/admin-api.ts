@@ -43,7 +43,9 @@ const MESSAGES: Record<string, string> = {
   insufficient_stock: 'موجودی سیستم برای بعضی اقلام کافی نیست؛ فروش ثبت نشد.',
   discount_too_large: 'تخفیف نمی‌تواند از جمع خرید بیشتر باشد.',
   sale_too_large: 'جمع این فاکتور بیش از حد مجاز است؛ آن را در دو فاکتور ثبت کنید.',
-  sale_already_voided: 'این فروش قبلاً باطل شده است.'
+  sale_already_voided: 'این فروش قبلاً باطل شده است.',
+  held_sale_gone: 'این فاکتور معلق دیگر وجود ندارد؛ احتمالاً همکار دیگری آن را باز یا حذف کرده است.',
+  too_many_holds: 'تعداد فاکتورهای معلق به ۵۰ رسیده است؛ فاکتورهای معلق قدیمی را ادامه دهید یا حذف کنید.'
 };
 
 export class AdminApiError extends Error {

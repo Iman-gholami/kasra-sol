@@ -490,6 +490,10 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 .admin-counter-totals span { color: var(--admin-muted); font-size: 12px; }
 .admin-counter-totals strong { font-size: 17px; }
 .admin-plain-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.admin-held { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin: 0; padding: 16px 22px;
+  list-style: none; }
+.admin-held-item { display: grid; gap: 10px; align-content: space-between; padding: 12px 14px; border: 1px solid #f2d6ab;
+  border-radius: 12px; background: #fffaf2; }
 @media (max-width: 1080px) {
   .admin-counter { grid-template-columns: 1fr; }
   .admin-counter-pay { position: static; }
@@ -500,6 +504,7 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .admin-cart-info { flex-basis: 100%; }
   .admin-cart-total { margin-inline-start: auto; }
   .admin-scan > .admin-btn { display: none; }
+  .admin-held { padding: 14px; }
 }
 
 /* Barcode labels (/admin/labels): sizes are real millimetres. The tools show on screen only, so the print holds

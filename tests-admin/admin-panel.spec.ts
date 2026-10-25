@@ -327,6 +327,20 @@ test('goods arrive with barcode labels, the counter sells them by scan, and the 
   await scan.fill(code.slice(0, 12) + String((Number(code[12]) + 1) % 10));
   await scan.press('Enter');
   await expect(counter.getByRole('alert').filter({ hasText: 'رقم کنترل' })).toBeVisible();
+  // The customer goes back to the fitting room: the cart is held and the counter serves the next customer meanwhile.
+  await counter.getByLabel('یادداشت (اختیاری)').fill('خانم تیشرت سفید، اتاق پرو');
+  await counter.getByRole('button', { name: 'تعلیق فاکتور (مشتری بعدی)' }).click();
+  await expect(counter.getByText('سبد خالی است؛ اولین کالا را اسکن کنید.')).toBeVisible();
+  const heldCarts = counter.getByRole('list', { name: 'فاکتورهای معلق' });
+  await expect(heldCarts.getByRole('listitem')).toHaveCount(1);
+  await expect(heldCarts).toContainText('خانم تیشرت سفید، اتاق پرو');
+  await expect(heldCarts).toContainText('۱٬۲۸۰٬۰۰۰ تومان');
+  expect(await websiteStock('M')).toBe(3);
+  await shot(counter, 'counter-held-desktop');
+  await heldCarts.getByRole('button', { name: /^ادامه فاکتور معلق/ }).click();
+  await expect(counter.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۲');
+  await expect(counter.getByLabel('یادداشت (اختیاری)')).toHaveValue('خانم تیشرت سفید، اتاق پرو');
+  await expect(counter.getByRole('list', { name: 'فاکتورهای معلق' })).toHaveCount(0);
   await counter.getByRole('radio', { name: 'نقدی' }).check();
   await counter.getByRole('button', { name: 'ثبت فروش و کم کردن از موجودی' }).click();
   await expect(counter.getByText(/فروش شماره .* به مبلغ ۱٬۲۸۰٬۰۰۰ تومان ثبت شد/)).toBeVisible();

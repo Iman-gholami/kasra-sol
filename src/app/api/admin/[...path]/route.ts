@@ -10,12 +10,13 @@ const SERIAL = '[1-9][0-9]{0,15}';
 const ROUTES: Record<string, RegExp> = {
   GET: new RegExp('^(auth/me|reports/overview|reports/traffic|products|products/' + PRODUCT + '|products/' + PRODUCT + '/variants|' +
     'orders|orders/export|orders/' + UUID + '|staff|audit|home-slider|barcodes/[0-9]{13}|stock-receipts|stock-receipts/' + SERIAL +
-    '|store-sales)$'),
+    '|store-sales|store-holds)$'),
   POST: new RegExp('^(auth/logout|auth/password|staff|products|products/' + PRODUCT + '/barcodes|stock-receipts|store-sales|' +
-    'store-sales/' + SERIAL + '/void)$'),
+    'store-sales/' + SERIAL + '/void|store-holds|store-holds/' + SERIAL + '/resume)$'),
   PATCH: new RegExp('^(staff/' + UUID + '|products/' + PRODUCT + '/(price|visibility)|variants/' + UUID + '/stock|' +
     'orders/' + UUID + '/status)$'),
-  PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password|home-slider)$')
+  PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password|home-slider)$'),
+  DELETE: new RegExp('^store-holds/' + SERIAL + '$')
 };
 // List endpoints accept these query parameters; anything else is dropped rather than forwarded.
 const QUERY: Record<string, string[]> = {
@@ -73,3 +74,4 @@ export const GET = handle;
 export const POST = handle;
 export const PATCH = handle;
 export const PUT = handle;
+export const DELETE = handle;

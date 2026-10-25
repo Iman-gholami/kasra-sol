@@ -65,6 +65,12 @@ the price at printing time; the counter always charges the current catalog price
   its units once.
 - «فروش حضوری امروز» lists the day's sales (Tehran day) with totals per payment method, leaving voided sales out.
 - A sale submitted again after a lost answer (same cart, same reference) is recorded once.
+- **Holding an invoice («تعلیق فاکتور»)**: when a customer goes back to the fitting room or wants to look further, the cart is put
+  on hold (the note field names the customer) and the counter is free for the next customer. «فاکتورهای معلق» lists held carts with
+  time, items, note and total at current prices; «ادامه» brings one back (a cart already on the counter is held first, so they swap)
+  and «حذف» discards it. Held carts are stored on the server, so they survive a reload and every counter device sees them; resuming
+  deletes the row in one statement, so two cashiers cannot take the same one. A held cart reserves **no** stock: prices and stock
+  are read again on resume (units sold meanwhile are left out with a warning) and when the sale is recorded. At most 50 at once.
 
 ## Permissions
 
@@ -90,6 +96,9 @@ All under `/v1/admin`, behind the same session and the same-origin proxy (`/api/
 | GET | `/stock-receipts/:id` (lines with barcode and current price, for labels) | `inventory:read` |
 | GET / POST | `/store-sales` (`?date=YYYY-MM-DD`, default today in Tehran) | `sales:pos` |
 | POST | `/store-sales/:id/void` | `inventory:write` |
+| GET / POST | `/store-holds` (held carts: `{ lines: [{ code, quantity }], note? }`) | `sales:pos` |
+| POST | `/store-holds/:id/resume` (takes and deletes it; `404 held_sale_gone` if already taken) | `sales:pos` |
+| DELETE | `/store-holds/:id` | `sales:pos` |
 
 `POST /stock-receipts` and `POST /store-sales` take a client-generated `clientRef` (UUID); repeating it returns the first result
 (`200`, `duplicate: true`) instead of applying it twice. Errors: `variant_not_found`, `barcode_not_found`, `invalid_barcode`,
@@ -98,16 +107,17 @@ All under `/v1/admin`, behind the same session and the same-origin proxy (`/api/
 
 Locking follows checkout: products `FOR SHARE` ordered by id, then the variants `FOR UPDATE` ordered by product, color and size, so
 counter sales, receipts, online orders and full product edits neither deadlock nor interleave. Migration
-`backend/sql/008_store_inventory.sql` is additive.
+`backend/sql/008_store_inventory.sql` and `009_store_holds.sql` are additive.
 
 ## Tests
 
 - `backend/tests/barcode.test.ts`: EAN-13 check digits against published codes, the in-store range, rejection of typos.
 - `backend/tests/integration/store.integration.mjs` (real PostgreSQL): receipts applied once and atomically, barcodes stable
   across a removed/restored size, sales at catalog price, all-or-nothing refusal, discount permission, **counter and website racing
-  for the last 3 units sell exactly 3**, a cancelled online order's unit sold at the counter, void once with correct day totals.
+  for the last 3 units sell exactly 3**, a cancelled online order's unit sold at the counter, void once with correct day totals,
+  held carts that reserve nothing, show current prices and are resumed by exactly one of two cashiers.
 - `tests-admin/admin-panel.spec.ts`: receive → print (3 labels, one 50 × 25 mm PDF page each, and a custom size) → staff scan with Persian digits →
-  sale → website stock follows → manager voids; staff menu and permissions; axe checks of the new screens; phone layouts.
+  hold the invoice and resume it → sale → website stock follows → manager voids; staff menu and permissions; axe checks of the new screens; phone layouts.
 
 The EAN-13 drawing was also checked by decoding the generated symbols with ZXing (not part of the repository's tests).
 
@@ -133,5 +143,9 @@ The EAN-13 drawing was also checked by decoding the generated symbols with ZXing
 1. در «صندوق فروش» برچسب هر کالا را با بارکدخوان اسکن کنید.
 2. روش پرداخت را انتخاب کنید و «ثبت فروش و کم کردن از موجودی» را بزنید؛ از موجودی سایت هم کم می‌شود.
 3. اگر سیستم گفت موجودی ندارد، احتمالاً آخرین عدد در سایت سفارش داده شده است: سفارش‌های باز را ببینید و آن تکه را کنار بگذارید.
+
+**مشتری هنوز خریدش تمام نشده (پرو، یا می‌خواهد بیشتر ببیند)**: در یادداشت نشانی از مشتری بنویسید (مثلاً «خانم کت چرم، پرو») و
+«تعلیق فاکتور» را بزنید؛ صندوق برای مشتری بعدی خالی می‌شود. وقتی برگشت، در «فاکتورهای معلق» «ادامه» را بزنید. فاکتور معلق از
+موجودی کم نمی‌کند.
 
 **مرجوعی یا اشتباه**: در «فروش حضوری امروز» دکمه «ابطال / مرجوعی» (فقط مدیر) کالا را به موجودی برمی‌گرداند.
