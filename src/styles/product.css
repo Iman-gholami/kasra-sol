@@ -25,7 +25,7 @@
 .gallery-thumb img { object-fit: cover; object-position: center 20%; }
 .gallery-thumb:hover { opacity: 1; }
 .gallery-thumb.selected { opacity: 1; box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-text); }
-.pdp-gallery { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--radius-lg); background: var(--color-photo-card); }
+.pdp-gallery { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--radius-lg); background: var(--color-surface-sunken); }
 .pdp-track { display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; outline: none; }
 .pdp-track::-webkit-scrollbar { display: none; }
 .pdp-slide {

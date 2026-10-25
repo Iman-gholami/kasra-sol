@@ -15,9 +15,7 @@
   --color-surface-raised: #FFFFFF; /* menus, inputs and cards */
   --color-surface-muted: #F1F2F4;  /* sections, summaries, soft pills */
   --color-surface-sunken: #E5E7EB; /* pressed states and placeholders */
-  --color-photo-card: #F7F8F9;
-  --color-photo-hero: #EAECF0;
-  --color-studio: var(--color-photo-hero);
+  --color-studio: #E6E3E0;         /* image-specific neutral for warm demo photos */
   --color-text: #181818;
   --color-text-muted: #62666D;
   --color-text-subtle: #62666D;

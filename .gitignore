@@ -10,6 +10,3 @@ test-results
 artifacts
 backend/dist
 backend/uploads
-
-# Generated sample photo variants
-public/images/lookbook-brand/

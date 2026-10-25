@@ -9,16 +9,13 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:unit": "node --experimental-strip-types --test tests-unit/*.test.mjs",
-    "predev": "node scripts/normalize-lookbook.mjs",
-    "prebuild": "node scripts/normalize-lookbook.mjs"
+    "test:unit": "node --experimental-strip-types --test tests-unit/*.test.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "lucide-react": "^0.468.0",
-    "sharp": "^0.34.4"
+    "lucide-react": "^0.468.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -33,7 +30,5 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.3"
   },
-  "engines": {
-    "node": ">=22"
-  }
+  "engines": { "node": ">=22" }
 }
