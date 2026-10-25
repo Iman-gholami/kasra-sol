@@ -9,12 +9,13 @@ import { categories, products as demoProducts } from '@/data/products';
 import { getHomeProducts, getProductBySlug } from '@/lib/backend-products';
 
 type Props = { params: Promise<{ slug: string }> };
-// Pre-render the known demo catalog so product clicks can use full-route prefetching.
-// With a live backend, don't bake sample items (or stock levels) into the build:
-// the no-store API requests in backend-products.ts keep those routes dynamic.
+// The backend-enabled flag is available at BUILD time, while BACKEND_INTERNAL_URL may
+// only be injected at runtime (e.g. Playwright or container deployments).
+// Never prerender demo SKUs into backend-enabled builds or cache stock across requests.
 export const dynamicParams = true;
 export function generateStaticParams() {
-  return process.env.BACKEND_INTERNAL_URL ? [] : demoProducts.map(({ slug }) => ({ slug }));
+  const liveCatalog = process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true' || Boolean(process.env.BACKEND_INTERNAL_URL);
+  return liveCatalog ? [] : demoProducts.map(({ slug }) => ({ slug }));
 }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Live product information and stock must never be served from a static route.
