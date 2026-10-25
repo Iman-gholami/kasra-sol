@@ -6,7 +6,7 @@ import { getCatalogProducts, getHomeSlides } from '@/lib/backend-products';
 import { ProductGrid } from '@/components/products/product-grid';
 import { ShopByColor } from '@/components/home/shop-by-color';
 import { HeroSlider } from '@/components/home/hero-slider';
-import { CollectionCircles, collectionPhotos } from '@/components/home/collection-circles';
+import { CollectionCircles, visibleFeaturedCollections } from '@/components/home/collection-circles';
 import { getShopByColorResults } from '@/lib/shop-by-color';
 import type { Product } from '@/types/store';
 
@@ -57,14 +57,17 @@ export default async function HomePage() {
         <p>هر روز، یک سبک تازه از خودت.</p>
       </div>
       <ul className="category-grid">
-        {categories.map(category => <li key={category.slug}>
+        {visibleFeaturedCollections.map(category => <li key={category.slug}>
           <Link href={'/category/' + category.slug} prefetch={demoPrefetch} className="category-tile">
-            <span className="category-figure"><Image src={collectionPhotos[category.slug]} alt="" fill sizes={roomFigureSizes}/></span>
+            <span className="category-figure"><Image src={category.photo} alt="" fill sizes={roomFigureSizes}/></span>
             <span className="category-description"><span className="category-name">{category.title}</span><span>{category.description}</span></span>
             <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
           </Link>
         </li>)}
       </ul>
+      <nav className="all-category-links" aria-label="همه دسته‌بندی‌های لباس زنانه">
+        {categories.map(category => <Link key={category.slug} href={'/category/' + category.slug} prefetch={demoPrefetch}>{category.title}</Link>)}
+      </nav>
       <p className="demo-photo-note"><Info size={15} aria-hidden="true"/> تصاویر این نسخه با هوش مصنوعی ساخته شده‌اند و برای نمایش حال‌وهوای فروشگاه هستند.</p>
     </section>
 
