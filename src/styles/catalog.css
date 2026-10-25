@@ -55,12 +55,13 @@
   .product-card:hover .product-image-link img { transform: scale(1.045); }
   .product-photo-bar { display: none; }
 }
-/* Sale and sold-out tags: a paper pill on the photo. */
+/* Sale tags use the brand red; sold-out labels remain neutral. */
 .product-badge {
   position: absolute; inset-block-start: var(--space-3); inset-inline-start: var(--space-3); padding: 3px 12px;
   border-radius: var(--radius-pill); background: var(--color-surface); color: var(--color-accent);
   font-size: var(--text-xs); font-weight: var(--font-weight-bold); line-height: 1.8;
 }
+.discount-tag { background: var(--color-brand); color: var(--color-inverse); }
 .is-sold-out .product-badge { color: var(--color-text-muted); }
 .is-sold-out .product-image-link { filter: grayscale(0.5); opacity: 0.75; }
 /* The heart sits on a 34px paper disc inside its 44px target, aligned with the tag's top edge. */
@@ -100,6 +101,8 @@
 .product-card:hover .product-link, .product-link:hover { text-decoration-color: currentColor; }
 .price-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); }
 .price-line strong { font-size: var(--text-md); font-weight: var(--font-weight-bold); color: var(--color-text); }
+/* Discounted prices stand out; regular prices remain charcoal. */
+.price-line:has(del) > strong { color: var(--color-brand); }
 .price-line del { color: var(--color-text-subtle); font-size: var(--text-xs); }
 .price-line-lg strong { font-size: var(--text-2xl); }
 .price-line-lg del { font-size: var(--text-sm); }

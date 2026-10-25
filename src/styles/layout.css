@@ -1,7 +1,7 @@
 /* Layout chrome: announcement, header, desktop nav panel, mobile menu, footer, breadcrumbs, bottom bars. */
 
 .announcement {
-  background: var(--color-text); color: var(--color-surface); text-align: center;
+  background: var(--color-brand); color: var(--color-inverse); text-align: center;
   padding: max(6px, var(--safe-top)) var(--gutter) 6px;
 }
 .announcement p { margin: 0; font-size: var(--text-xs); line-height: 1.7; }
@@ -20,9 +20,9 @@
 .header-actions { justify-self: end; gap: var(--space-1); }
 .menu-trigger { display: none; }
 .brand { display: inline-flex; align-items: center; gap: 12px; min-block-size: var(--touch); direction: ltr; padding-inline: 2px; }
-.brand-monogram { inline-size: 38px; block-size: 40px; display: grid; place-items: center; border: 1px solid var(--color-text); font: 26px/0.9 var(--font-wordmark); }
+.brand-monogram { inline-size: 38px; block-size: 40px; display: grid; place-items: center; border: 1px solid var(--color-brand); color: var(--color-brand); font: 26px/0.9 var(--font-wordmark); }
 .brand-type { display: flex; flex-direction: column; align-items: center; }
-.brand-type strong { font: 500 24px/0.95 var(--font-wordmark); letter-spacing: 0.17em; padding-inline-start: 0.17em; }
+.brand-type strong { font: 500 24px/0.95 var(--font-wordmark); letter-spacing: 0.17em; padding-inline-start: 0.17em; color: var(--color-brand); }
 /* Logotype detail: part of the wordmark image, aria-hidden — the one documented exception to the 12px floor.
    The wordmark is LTR, so inline-start padding balances the trailing letter-spacing on the left. */
 .brand-type small { font: 600 9px/2 Arial, sans-serif; letter-spacing: 0.32em; padding-inline-start: 0.32em; color: var(--color-text-muted); }
@@ -36,7 +36,7 @@
 }
 /* A soft pill marks the hovered link and the current page. */
 @media (hover: hover) { .desktop-nav > ul > li > a:hover { background: var(--color-surface-muted); } }
-.desktop-nav > ul > li > a[aria-current="page"] { background: var(--color-surface-muted); font-weight: var(--font-weight-bold); }
+.desktop-nav > ul > li > a[aria-current="page"] { background: var(--color-surface-muted); color: var(--color-brand); font-weight: var(--font-weight-bold); }
 .nav-toggle {
   display: grid; place-items: center; inline-size: 30px; block-size: var(--touch); padding: 0; border: 0;
   background: transparent; color: var(--color-text-muted); border-radius: var(--radius-pill);
@@ -120,25 +120,25 @@
 .breadcrumbs [aria-current="page"] { color: var(--color-text); max-inline-size: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- Footer ---------- */
-/* Footer: a soft rounded panel at page width, with the copyright line quietly beneath it. */
+/* Footer: a charcoal panel with high-contrast links; copyright stays on the white canvas. */
 .footer { margin-block-start: var(--section-gap); }
 .footer-grid {
   display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); gap: var(--space-6);
-  padding: var(--space-7) clamp(20px, 3.5vw, 56px); border-radius: var(--radius-lg); background: var(--color-surface-muted);
+  padding: var(--space-7) clamp(20px, 3.5vw, 56px); border-radius: var(--radius-lg); background: var(--color-text); color: var(--color-inverse);
 }
-.footer-intro p { margin: 0 0 var(--space-3); max-inline-size: 38ch; color: var(--color-text-muted); font-size: var(--text-sm); }
-.footer-intro .footer-demo { font-size: var(--text-xs); color: var(--color-text-subtle); }
+.footer-intro p { margin: 0 0 var(--space-3); max-inline-size: 38ch; color: var(--color-footer-muted); font-size: var(--text-sm); }
+.footer-intro .footer-demo { font-size: var(--text-xs); color: var(--color-footer-muted); }
 /* Same lockup as the header: BOUTIQUE centred under KASRA, trailing letter-spacing balanced on the left. */
 .footer-wordmark { display: inline-flex; flex-direction: column; align-items: center; margin-block-end: var(--space-4); direction: ltr; }
 .footer-wordmark span { font: 28px/1 var(--font-wordmark); letter-spacing: 0.19em; padding-inline-start: 0.19em; }
-.footer-wordmark small { font: 600 10px/1 Arial, sans-serif; letter-spacing: 0.42em; padding-block-start: 10px; padding-inline-start: 0.42em; color: var(--color-text-muted); }
+.footer-wordmark small { font: 600 10px/1 Arial, sans-serif; letter-spacing: 0.42em; padding-block-start: 10px; padding-inline-start: 0.42em; color: var(--color-footer-muted); }
 .footer h2 { margin: 0 0 var(--space-2); font-size: var(--text-sm); font-weight: var(--font-weight-bold); }
 .footer ul { margin: 0; padding: 0; list-style: none; }
 .footer nav a {
-  display: inline-flex; align-items: center; min-block-size: 36px; color: var(--color-text-muted); font-size: var(--text-sm);
+  display: inline-flex; align-items: center; min-block-size: 36px; color: var(--color-footer-muted); font-size: var(--text-sm);
   transition: color var(--duration-fast) var(--ease-standard);
 }
-.footer nav a:hover { color: var(--color-accent); }
+.footer nav a:hover { color: var(--color-inverse); text-decoration: underline; text-underline-offset: 4px; }
 .footer-bottom { padding-block: var(--space-4) var(--space-6); }
 .footer-bottom p { margin: 0; color: var(--color-text-subtle); font-size: var(--text-xs); }
 
