@@ -158,13 +158,13 @@ export function PurchasePanel({ product }: { product: Product }) {
         </span>}
       </div>}
       <div className="purchase-row">
-        <button ref={buyButton} type="button" className="btn btn-primary btn-dark btn-lg" onClick={add}>
-          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : allInCart ? 'همه موجودی در سبد خریدت' : 'رنگ و سایز رو انتخاب کن'}
-        </button>
         <button type="button" className="size-guide-trigger" aria-label="راهنمای سایز"
           aria-haspopup="dialog" aria-expanded={guideOpen} onClick={() => setGuideOpen(true)}>
           <Ruler size={19} strokeWidth={1.8} aria-hidden="true"/>
           <span>راهنمای سایز</span>
+        </button>
+        <button ref={buyButton} type="button" className="btn btn-primary btn-dark btn-lg" onClick={add}>
+          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : allInCart ? 'همه موجودی در سبد خریدت' : 'رنگ و سایز رو انتخاب کن'}
         </button>
         <button type="button" className={'btn btn-secondary btn-lg pdp-wishlist' + (isFavorite ? ' is-liked' : '')}
           aria-label={isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'} aria-pressed={isFavorite}

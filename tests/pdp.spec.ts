@@ -115,6 +115,10 @@ test('compact size guide sits by the color-and-size CTA without crowding small p
     expect(cta).not.toBeNull();
     expect(card).not.toBeNull();
     expect(Math.abs(cta!.y-card!.y)).toBeLessThanOrEqual(1);
+    // Direction is RTL: the first purchase-row element must appear physically to the right.
+    expect(card!.x).toBeGreaterThan(cta!.x + cta!.width - 1);
+    await expect(guide).toHaveCSS('background-color','rgb(249, 235, 237)');
+    await expect(guide).toHaveCSS('border-top-color','rgb(214, 139, 147)');
     expect(card!.width).toBeLessThanOrEqual(75);
     expect(card!.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+1);
