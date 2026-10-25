@@ -64,7 +64,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
     {fixedCategory && selectedGroup && selectedGroup.children.length > 0 && <nav className="catalog-subcategory-nav" aria-label="زیرگروه‌های این دسته">
       <Link href={'/category/' + selectedGroup.slug} className="chip" aria-current="page">همه {selectedGroup.title}</Link>
       {selectedGroup.children.map(child => <Link key={child.slug} href={'/category/' + child.slug} className="chip">{child.title}</Link>)}
-    </nav>
+    </nav>}
     <CatalogShell>
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
       <section className="catalog-results" aria-labelledby="results-title">
