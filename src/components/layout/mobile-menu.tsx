@@ -43,10 +43,10 @@ export function MobileMenu() {
               {item.children.length ? <details className="mobile-category-details">
                 <summary><span className="menu-no" aria-hidden="true">{editorialNumber(i + 1)}</span>{item.title}<span className="mobile-category-chevron" aria-hidden="true">⌄</span></summary>
                 <ul className="mobile-category-children">
-                  <li><Link href={'/category/' + item.slug} prefetch={demoPrefetch} onClick={close}>مشاهده همه {item.title}</Link></li>
-                  {item.children.map(child => <li key={child.slug}><Link href={'/category/' + child.slug} prefetch={demoPrefetch} onClick={close}>{child.title}</Link></li>)}
+                  <li><Link href={'/category/' + item.slug} prefetch={false} onClick={close}>مشاهده همه {item.title}</Link></li>
+                  {item.children.map(child => <li key={child.slug}><Link href={'/category/' + child.slug} prefetch={false} onClick={close}>{child.title}</Link></li>)}
                 </ul>
-              </details> : <Link href={'/category/' + item.slug} prefetch={demoPrefetch} aria-current={current('/category/' + item.slug)} onClick={close}>
+              </details> : <Link href={'/category/' + item.slug} prefetch={false} aria-current={current('/category/' + item.slug)} onClick={close}>
                 <span className="menu-no" aria-hidden="true">{editorialNumber(i + 1)}</span>{item.title}<ArrowLeft size={20} aria-hidden="true"/>
               </Link>}
             </li>)}
