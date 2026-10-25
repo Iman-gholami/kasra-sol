@@ -42,6 +42,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   const categoryHref = (slug: string) => action === '/search'
     ? makeUrl({ category: slug, page: null })
     : '/category/' + slug + makeUrl({ category: null, page: null }).slice(action.length);
+  const selectedGroup = categories.find(group => group.slug === filters.category);
   const from = (data.page - 1) * 12 + 1;
   const to = from + data.items.length - 1;
 
@@ -60,10 +61,10 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
       {categories.map(item => <Link key={item.slug} href={categoryHref(item.slug)} className="chip"
         aria-current={filters.category === item.slug ? 'page' : undefined}>{item.title}</Link>)}
     </nav>
-    {fixedCategory && categories.find(group => group.slug === filters.category)?.children.map(child => child).length ? <nav className="catalog-subcategory-nav" aria-label="زیرگروه‌های این دسته">
-      {categories.find(group => group.slug === filters.category)?.children.map(child =>
-        <Link key={child.slug} href={'/category/' + child.slug} className="chip">{child.title}</Link>)}
-    </nav> : null}
+    {fixedCategory && selectedGroup && selectedGroup.children.length > 0 && <nav className="catalog-subcategory-nav" aria-label="زیرگروه‌های این دسته">
+      <Link href={'/category/' + selectedGroup.slug} className="chip" aria-current="page">همه {selectedGroup.title}</Link>
+      {selectedGroup.children.map(child => <Link key={child.slug} href={'/category/' + child.slug} className="chip">{child.title}</Link>)}
+    </nav>
     <CatalogShell>
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
       <section className="catalog-results" aria-labelledby="results-title">
