@@ -58,12 +58,12 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
     </div>
     <nav className="catalog-category-nav" aria-label="دسته‌بندی‌های محصولات">
       <Link href={allHref} className="chip" aria-current={!filters.category ? 'page' : undefined}>همه محصولات</Link>
-      {categories.map(item => <Link key={item.slug} href={categoryHref(item.slug)} className="chip"
+      {categories.map(item => <Link key={item.slug} href={categoryHref(item.slug)} prefetch={false} className="chip"
         aria-current={filters.category === item.slug ? 'page' : undefined}>{item.title}</Link>)}
     </nav>
     {fixedCategory && selectedGroup && selectedGroup.children.length > 0 && <nav className="catalog-subcategory-nav" aria-label="زیرگروه‌های این دسته">
       <Link href={'/category/' + selectedGroup.slug} className="chip" aria-current="page">همه {selectedGroup.title}</Link>
-      {selectedGroup.children.map(child => <Link key={child.slug} href={'/category/' + child.slug} className="chip">{child.title}</Link>)}
+      {selectedGroup.children.map(child => <Link key={child.slug} href={'/category/' + child.slug} prefetch={false} className="chip">{child.title}</Link>)}
     </nav>}
     <CatalogShell>
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
