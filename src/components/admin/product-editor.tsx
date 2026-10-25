@@ -6,11 +6,13 @@ import { ArrowLeft, ArrowRight, ImagePlus, Star, Trash2 } from 'lucide-react';
 import { adminApi, AdminApiError, errorMessage } from '@/components/admin/admin-api';
 import { digitsOnly, formatNumber, PRODUCT_STATUS } from '@/components/admin/labels';
 import { Badge, Loading, Notice } from '@/components/admin/ui';
+import { categories } from '@/data/facets';
+import type { CategorySlug } from '@/types/store';
 
 type Color = { id: string; name: string; hex: string; familyId?: string };
 type Variant = { colorId: string; size: string; stock: number };
 type CatalogProduct = {
-  id: string; slug: string; name: string; category: 'shomiz' | 'manto' | 'tshirt';
+  id: string; slug: string; name: string; category: CategorySlug;
   description: string; price: number; compareAt: number | null; images: string[];
   colors: Color[]; sizes: string[]; variants: Variant[];
   material: string; fit: string; care: string; featured: boolean;
@@ -21,7 +23,7 @@ const MAX_IMAGES = 8;
 const IDENT = /^[a-z0-9][a-z0-9-]{1,78}$/;
 export const UNSAVED_CHANGES = 'تغییرات ذخیره‌نشده فرم محصول از بین می‌رود. ادامه می‌دهید؟';
 const empty = (): CatalogProduct => ({
-  id: '', slug: '', name: '', category: 'shomiz', description: '',
+  id: '', slug: '', name: '', category: 'womens-clothing', description: '',
   price: 0, compareAt: null, images: [], colors: [{ id: 'black', name: 'مشکی', hex: '#000000' }],
   sizes: ['M'], variants: [{ colorId: 'black', size: 'M', stock: 0 }],
   material: '', fit: '', care: '', featured: false
@@ -231,9 +233,12 @@ export function ProductEditor({ productId, copyOf, permissions, done, onUnsaved 
           <Field title="نام محصول">
             <input required minLength={2} maxLength={200} value={item.name} onChange={event => edit('name', event.target.value)}/>
           </Field>
-          <Field title="دسته‌بندی">
-            <select value={item.category} onChange={event => edit('category', event.target.value as CatalogProduct['category'])}>
-              <option value="shomiz">شومیز</option><option value="manto">مانتو</option><option value="tshirt">تیشرت</option>
+          <Field title="دسته‌بندی" hint="زیرگروه دقیق را انتخاب کنید؛ اگر محصول زیرگروه مشخصی ندارد، دسته اصلی را انتخاب کنید.">
+            <select value={item.category} onChange={event => edit('category', event.target.value as CategorySlug)}>
+              {categories.map(group => <optgroup key={group.slug} label={group.title}>
+                <option value={group.slug}>{group.title}{group.children.length ? ' (عمومی)' : ''}</option>
+                {group.children.map(child => <option key={child.slug} value={child.slug}>↳ {child.title}</option>)}
+              </optgroup>)}
             </select>
           </Field>
           <Field title="قیمت فروش (تومان)" hint={priceLock ?? (status === 'active' ? undefined : 'برای انتشار، قیمت باید بیشتر از صفر باشد.')}>
