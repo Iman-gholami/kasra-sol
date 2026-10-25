@@ -16,6 +16,16 @@ const box = async (locator: Locator) => { await locator.waitFor(); return (await
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
+  test('studio photo variants are served for cards and hero', async ({ page }) => {
+    await page.goto('/');
+    const card = await page.request.get('/images/lookbook-brand/shomiz-cream.webp');
+    const hero = await page.request.get('/images/lookbook-brand/hero-shomiz-cream.webp');
+    expect(card.ok()).toBeTruthy();
+    expect(hero.ok()).toBeTruthy();
+    expect(card.headers()['content-type']).toContain('image/webp');
+  });
+
+
   test('palette B is applied to shared chrome and discounted products', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.announcement')).toHaveCSS('background-color', 'rgb(181, 31, 43)');

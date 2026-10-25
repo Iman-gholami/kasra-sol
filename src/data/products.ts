@@ -7,9 +7,9 @@ import { categories, palette, standardSizes } from '@/data/facets';
  * Reused across mock listings ONLY to evaluate storefront visual design.
  * Do not treat the pictured clothing as verified photos of individual SKUs. */
 const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
-  shomiz: ['/images/lookbook/shomiz-cream.avif', '/images/lookbook/shomiz-rose.avif'],
-  manto: ['/images/lookbook/manto-black.avif', '/images/lookbook/manto-sage.avif'],
-  tshirt: ['/images/lookbook/tshirt-white.avif', '/images/lookbook/tshirt-blue.avif']
+  shomiz: ['/images/lookbook-brand/shomiz-cream.webp', '/images/lookbook-brand/shomiz-rose.webp'],
+  manto: ['/images/lookbook-brand/manto-black.webp', '/images/lookbook-brand/manto-sage.webp'],
+  tshirt: ['/images/lookbook-brand/tshirt-white.webp', '/images/lookbook-brand/tshirt-blue.webp']
 };
 
 const collections: {

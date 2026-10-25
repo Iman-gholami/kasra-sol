@@ -15,6 +15,10 @@ const roomFigureSizes = '(max-width: 600px) 52vw, (max-width: 1080px) 40vw, (max
 
 // The cover figure takes about three quarters of the sand room on phones and a third of the page on wide screens.
 const slideSizes = '(max-width: 820px) 76vw, (max-width: 1520px) 34vw, 520px';
+// Apply the hero variant only to bundled sample images, never customer photos.
+const heroPhoto = (src: string) => src.startsWith('/images/lookbook-brand/')
+  ? src.replace('/images/lookbook-brand/', '/images/lookbook-brand/hero-')
+  : src;
 /** The cover slides: the owner's pick from the admin panel. Without one, up to five discounted products, newest first,
  * leading with different photos so consecutive slides look different; failing that, the three newest products. */
 function coverSlides(picked: Product[], newest: Product[]) {
@@ -33,7 +37,7 @@ export default async function HomePage() {
   const newest = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const arrivals = newest.slice(0, 4);
   const slides = coverSlides(picked, newest).map(({ id, slug, name, images, price, compareAt }) =>
-    ({ id, slug, name, image: images[0], price, compareAt }));
+    ({ id, slug, name, image: heroPhoto(images[0]), price, compareAt }));
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
   const colors = getShopByColorResults(products);
 
@@ -59,7 +63,7 @@ export default async function HomePage() {
       <ul className="category-grid">
         {categories.map(category => <li key={category.slug}>
           <Link href={'/category/' + category.slug} prefetch={demoPrefetch} className="category-tile">
-            <span className="category-figure"><Image src={collectionPhotos[category.slug]} alt="" fill sizes={roomFigureSizes}/></span>
+            <span className="category-figure"><Image src={heroPhoto(collectionPhotos[category.slug])} alt="" fill sizes={roomFigureSizes}/></span>
             <span className="category-description"><span className="category-name">{category.title}</span><span>{category.description}</span></span>
             <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
           </Link>
@@ -80,7 +84,7 @@ export default async function HomePage() {
 
     <section className="container wide-editorial editorial-band" aria-labelledby="edit-title">
       <div className="editorial-art">
-        <Image src="/images/lookbook/manto-black.avif" alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 600px) 86vw, 460px"/>
+        <Image src="/images/lookbook-brand/hero-manto-black.webp" alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 600px) 86vw, 460px"/>
       </div>
       <div className="editorial-copy">
         <p className="editorial-super" dir="ltr">THE KASRA EDIT</p>
@@ -105,7 +109,7 @@ export default async function HomePage() {
     </nav>
 
     <section className="container newsletter" aria-labelledby="closing-title">
-      <span className="newsletter-figure"><Image src="/images/lookbook/tshirt-white.avif" alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>
+      <span className="newsletter-figure"><Image src="/images/lookbook-brand/hero-tshirt-white.webp" alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>
       <div className="newsletter-copy"><h2 id="closing-title">یک انتخاب برای امروز، یک استایل به سبک تو.</h2><p>لباس‌های موردعلاقه‌ات را پیدا کن و با علامت قلب برای بعد نگه دار.</p></div>
       <Link href="/shop" className="btn btn-primary">دیدن همه لباس‌ها <ArrowLeft size={18} aria-hidden="true"/></Link>
     </section>

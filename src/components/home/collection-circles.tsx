@@ -5,9 +5,9 @@ import type { CategorySlug } from '@/types/store';
 
 /** One model photo per collection: the circles below, and the sand rooms further down the home page. */
 export const collectionPhotos: Record<CategorySlug, string> = {
-  shomiz: '/images/lookbook/shomiz-rose.avif',
-  manto: '/images/lookbook/manto-sage.avif',
-  tshirt: '/images/lookbook/tshirt-blue.avif'
+  shomiz: '/images/lookbook-brand/shomiz-rose.webp',
+  manto: '/images/lookbook-brand/manto-sage.webp',
+  tshirt: '/images/lookbook-brand/tshirt-blue.webp'
 };
 
 /** The collections as story-style circles: a model on the studio sand inside an oxblood ring, the name below.
