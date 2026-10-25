@@ -14,6 +14,9 @@ const categoryPhotos: Record<string, string> = {
 };
 const OPEN_DELAY = 150;
 const CLOSE_DELAY = 250;
+// Only prefetch entire dynamic catalog pages in the backend-free demo;
+// live stock must continue to be requested on navigation.
+const demoPrefetch = process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true' ? undefined : true;
 
 /** Desktop navigation (≥ 1081px). "همه محصولات" stays a direct link; the adjacent toggle opens a
  * disclosure panel (WAI-ARIA disclosure navigation pattern, not a menu role). */
@@ -86,7 +89,7 @@ export function PrimaryNav() {
     onBlur={event => { if (open && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false); }}>
     <ul>
       <li className="nav-shop" onPointerEnter={() => schedule(true)} onPointerLeave={() => schedule(false)}>
-        <Link href="/shop" aria-current={current('/shop') ? 'page' : undefined}>همه محصولات</Link>
+        <Link href="/shop" prefetch={demoPrefetch} aria-current={current('/shop') ? 'page' : undefined}>همه محصولات</Link>
         <button ref={toggle} type="button" className="nav-toggle" aria-expanded={open} aria-controls={panelId}
           aria-label="نمایش راهنمای فروشگاه" onClick={() => { window.clearTimeout(timer.current); setOpen(value => !value); }}
           onKeyDown={onToggleKey}>
@@ -98,7 +101,7 @@ export function PrimaryNav() {
               <p className="nav-panel-title">کالکشن‌ها</p>
               <ul>
                 {categories.map(category => <li key={category.slug}>
-                  <Link href={'/category/' + category.slug} className="nav-panel-card" onClick={close}>
+                  <Link href={'/category/' + category.slug} prefetch={demoPrefetch} className="nav-panel-card" onClick={close}>
                     <span className="nav-panel-photo"><Image src={categoryPhotos[category.slug]} alt="" fill sizes="96px"/></span>
                     <span><strong>{category.title}</strong><small>{category.description}</small></span>
                   </Link>
@@ -129,7 +132,7 @@ export function PrimaryNav() {
         </div>
       </li>
       {categories.map(item => <li key={item.slug}>
-        <Link href={'/category/' + item.slug} aria-current={current('/category/' + item.slug) ? 'page' : undefined}>{item.title}</Link>
+        <Link href={'/category/' + item.slug} prefetch={demoPrefetch} aria-current={current('/category/' + item.slug) ? 'page' : undefined}>{item.title}</Link>
       </li>)}
       <li><Link href="/about" aria-current={current('/about') ? 'page' : undefined}>درباره کسری</Link></li>
     </ul>
