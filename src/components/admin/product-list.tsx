@@ -6,6 +6,7 @@ import { Archive, ChevronDown, ChevronUp, Copy, ImageIcon, PackageSearch, Pencil
 import { adminApi, AdminApiError, errorMessage } from '@/components/admin/admin-api';
 import { CATEGORY, digitsOnly, formatNumber, formatToman, PRODUCT_STATUS } from '@/components/admin/labels';
 import { Badge, Loading, Notice, Pager } from '@/components/admin/ui';
+import { categories } from '@/data/facets';
 
 export type ProductRow = {
   id: string; name: string; slug: string; category: string; price: number; compareAt: number | null;
@@ -154,6 +155,7 @@ export function ProductList({ permissions, edit, create, duplicate, initialQuery
   const [search, setSearch] = useState(initialQuery.trim());
   const [status, setStatus] = useState('all');
   const [stock, setStock] = useState('all');
+  const [category, setCategory] = useState('');
   const [page, setPage] = useState(1);
   const [version, setVersion] = useState(0);
   const [data, setData] = useState<ProductPage | null>(null);
@@ -161,20 +163,20 @@ export function ProductList({ permissions, edit, create, duplicate, initialQuery
   const [error, setError] = useState('');
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams({ status, stock, page: String(page), limit: '20', ...(search ? { q: search } : {}) });
+    const params = new URLSearchParams({ status, stock, page: String(page), limit: '20', ...(search ? { q: search } : {}), ...(category ? { category } : {}) });
     adminApi<ProductPage>('products?' + params, { signal: controller.signal })
       .then(result => { setData(result); setError(''); })
       .catch(cause => { if (!controller.signal.aborted) setError(errorMessage(cause)); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [search, status, stock, page, version]);
+  }, [search, status, stock, category, page, version]);
   const reload = () => setVersion(v => v + 1);
   const canCreate = ['products:write', 'products:price'].every(p => permissions.includes(p));
   function submit(event: FormEvent) {
     event.preventDefault();
     setLoading(true); setPage(1); setSearch(query.trim());
   }
-  const filtered = Boolean(search) || status !== 'all' || stock !== 'all';
+  const filtered = Boolean(search) || status !== 'all' || stock !== 'all' || Boolean(category);
   return <div className="admin-stack">
     <div className="admin-toolbar">
       <div>
@@ -206,6 +208,15 @@ export function ProductList({ permissions, edit, create, duplicate, initialQuery
               <option value="draft">پیش‌نویس</option><option value="archived">آرشیوشده</option>
             </select>
           </label>
+          <label className="admin-inline-field"><span className="sr-only">فیلتر دسته‌بندی</span>
+            <select value={category} onChange={event => { setLoading(true); setPage(1); setCategory(event.target.value); }}>
+              <option value="">همه دسته‌ها</option>
+              {categories.map(group => <optgroup key={group.slug} label={group.title}>
+                <option value={group.slug}>{group.title}</option>
+                {group.children.map(child => <option key={child.slug} value={child.slug}>↳ {child.title}</option>)}
+              </optgroup>)}
+            </select>
+          </label>
           <label className="admin-inline-field"><span className="sr-only">فیلتر موجودی</span>
             <select value={stock} onChange={event => { setLoading(true); setPage(1); setStock(event.target.value); }}>
               <option value="all">همه موجودی‌ها</option><option value="low">کم‌موجود (۱ تا ۳)</option>
@@ -234,7 +245,7 @@ export function ProductList({ permissions, edit, create, duplicate, initialQuery
         </div> : <div className="admin-empty"><PackageSearch size={31} aria-hidden="true"/>
           <p>{filtered ? 'محصولی با این مشخصات پیدا نشد.' : 'هنوز محصولی ثبت نشده است.'}</p>
           {filtered && <button type="button" className="admin-btn admin-btn-outline"
-            onClick={() => { setLoading(true); setQuery(''); setSearch(''); setStatus('all'); setStock('all'); setPage(1); }}>
+            onClick={() => { setLoading(true); setQuery(''); setSearch(''); setStatus('all'); setStock('all'); setCategory(''); setPage(1); }}>
             حذف فیلترها</button>}
         </div>}
     </section>
