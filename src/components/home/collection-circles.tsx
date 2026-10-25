@@ -18,7 +18,7 @@ export function CollectionCircles() {
   return <ul className="collection-circles">
     {categories.map(category => <li key={category.slug}>
       <Link href={'/category/' + category.slug} prefetch={demoPrefetch}>
-        <span className="collection-circle" aria-hidden="true">
+        <span className="collection-circle collection-circle-mockup" aria-hidden="true">
           <span><Image src={collectionPhotos[category.slug]} alt="" fill sizes="(max-width: 600px) 96px, 132px"/></span>
         </span>
         {category.title}
