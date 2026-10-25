@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
-import { categories } from '@/data/products';
+import { categories, demoPhotos } from '@/data/products';
 import { getCatalogProducts, getHomeSlides } from '@/lib/backend-products';
 import { ProductGrid } from '@/components/products/product-grid';
 import { ShopByColor } from '@/components/home/shop-by-color';
@@ -65,7 +65,7 @@ export default async function HomePage() {
           </Link>
         </li>)}
       </ul>
-      <p className="demo-photo-note"><Info size={15} aria-hidden="true"/> تصاویر این نسخه با هوش مصنوعی ساخته شده‌اند و برای نمایش حال‌وهوای فروشگاه هستند.</p>
+      <p className="demo-photo-note"><Info size={15} aria-hidden="true"/> عکس‌ها صرفاً نمونه نمایشی هستند و مربوط به کالاهای واقعی فروشگاه نیستند.</p>
     </section>
 
     <ShopByColor options={colors}/>
@@ -80,7 +80,7 @@ export default async function HomePage() {
 
     <section className="container wide-editorial editorial-band" aria-labelledby="edit-title">
       <div className="editorial-art">
-        <Image src="/images/lookbook/manto-black.avif" alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 600px) 86vw, 460px"/>
+        <Image src={demoPhotos.manto[0]} alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 600px) 86vw, 460px"/>
       </div>
       <div className="editorial-copy">
         <p className="editorial-super" dir="ltr">THE KASRA EDIT</p>
@@ -105,7 +105,7 @@ export default async function HomePage() {
     </nav>
 
     <section className="container newsletter" aria-labelledby="closing-title">
-      <span className="newsletter-figure"><Image src="/images/lookbook/tshirt-white.avif" alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>
+      <span className="newsletter-figure"><Image src={demoPhotos.tshirt[0]} alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>
       <div className="newsletter-copy"><h2 id="closing-title">یک انتخاب برای امروز، یک استایل به سبک تو.</h2><p>لباس‌های موردعلاقه‌ات را پیدا کن و با علامت قلب برای بعد نگه دار.</p></div>
       <Link href="/shop" className="btn btn-primary">دیدن همه لباس‌ها <ArrowLeft size={18} aria-hidden="true"/></Link>
     </section>

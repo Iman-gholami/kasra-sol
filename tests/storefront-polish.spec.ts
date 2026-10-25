@@ -16,6 +16,20 @@ const box = async (locator: Locator) => { await locator.waitFor(); return (await
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
+  test('demo storefront serves curated HD references, never the old 3 KB placeholder photos', async ({ page }) => {
+    await page.goto('/');
+    const hero = page.locator('.hero-slide').first().locator('img');
+    const heroURL = await hero.getAttribute('src');
+    expect(heroURL).toContain('/_next/image');
+    const cards = page.locator('.product-card img');
+    const cardURL = await cards.first().getAttribute('src');
+    expect(cardURL).toContain('/_next/image');
+    const imageURL = await cards.first().getAttribute('src');
+    expect(imageURL).toContain('images.unsplash.com');
+    await expect(page.locator('.demo-photo-note')).toContainText('نمونه نمایشی');
+  });
+
+
   test('palette B is applied to shared chrome and discounted products', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.announcement')).toHaveCSS('background-color', 'rgb(181, 31, 43)');

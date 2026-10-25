@@ -1,6 +1,6 @@
 /* Homepage sections: hero, collections, shop by color, editorial band, service links, closing CTA. */
 
-/* Hero: a magazine cover in one sand room. The headline, lede and calls to action sit on the start side; the slider
+/* Hero: a magazine cover in one cool-gray room. The headline, lede and calls to action sit on the start side; the slider
    (`components/home/hero-slider.tsx`) fills the other side with one feathered model at a time and a shoppable tag.
    Phones stack the same markup: headline and button over the room, the lede and «تازه‌ترین‌ها» below it. The
    collections follow as circles. Motion stays small: the headline lines rise out of their masks and the rule draws
@@ -92,7 +92,7 @@
 .hero-line > span { animation: hero-rise var(--duration-reveal) var(--ease-editorial) 60ms both; }
 .hero h1 em > span { animation-delay: 170ms; }
 
-/* Collections: three sand rooms. The photographs share one studio backdrop, so each model is feathered into a panel
+/* Collections: three light-gray rooms. Each editorial model photo sits inside a softly feathered panel
    of that sand (--color-studio) and seems to stand in the page; the name, a line and a round arrow sit beside her. */
 .category-section { padding-block-start: var(--space-6); }
 .category-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin: 0; padding: 0; list-style: none; }

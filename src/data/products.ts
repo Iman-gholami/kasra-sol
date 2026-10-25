@@ -3,13 +3,15 @@ import type { CategorySlug, Product } from '@/types/store';
 export { categories, palette, standardSizes } from '@/data/facets';
 import { categories, palette, standardSizes } from '@/data/facets';
 
-/** Six locally optimized AI-generated fashion photographs.
- * Reused across mock listings ONLY to evaluate storefront visual design.
- * Do not treat the pictured clothing as verified photos of individual SKUs. */
-const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
-  shomiz: ['/images/lookbook/shomiz-cream.avif', '/images/lookbook/shomiz-rose.avif'],
-  manto: ['/images/lookbook/manto-black.avif', '/images/lookbook/manto-sage.avif'],
-  tshirt: ['/images/lookbook/tshirt-white.avif', '/images/lookbook/tshirt-blue.avif']
+/** High-resolution, licensed *reference imagery* for the public demo only.
+ * These are NOT photographs of Kasra merchandise, and must never be attached to real SKUs.
+ * The six heavily compressed original AI sample AVIF files are preserved in public/images/lookbook.
+ * Each URL is a verified Unsplash-hosted image from a freely downloadable photo page.
+ * Before launch use brand-owned or appropriately model-released images of actual garments. */
+export const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
+  shomiz: ['https://images.unsplash.com/photo-1635269847729-0b8e67f1f92e?auto=format&fit=crop&w=1600&q=85', 'https://images.unsplash.com/photo-1625726060119-83ad31838aca?auto=format&fit=crop&w=1600&q=85'],
+  manto: ['https://images.unsplash.com/photo-1616065297556-f05bc00c9a3e?auto=format&fit=crop&w=1600&q=85', 'https://images.unsplash.com/photo-1776273920142-f30bceff0cf3?auto=format&fit=crop&w=1600&q=85'],
+  tshirt: ['https://images.unsplash.com/photo-1591454976155-0aeb64ae1fd4?auto=format&fit=crop&w=1600&q=85', 'https://images.unsplash.com/photo-1611205060882-c1ceca4f8256?auto=format&fit=crop&w=1600&q=85']
 };
 
 const collections: {
