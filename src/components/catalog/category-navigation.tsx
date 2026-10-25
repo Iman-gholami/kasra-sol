@@ -21,7 +21,7 @@ export type CategoryRail = {
 
 /** Two deliberately shallow, independently scrollable rows; never wrap categories.
  * RTL scroll origins are zero at the right edge in modern browsers. */
-function Rail({ label, accessibleName, items }: CategoryRail) {
+function Rail({ label, accessibleName, items }: Omit<CategoryRail, 'key'>) {
   const track = useRef<HTMLElement>(null);
   const [limits, setLimits] = useState({ previous: false, next: false });
 
@@ -89,6 +89,6 @@ function Rail({ label, accessibleName, items }: CategoryRail) {
 
 export function CategoryNavigation({ rails }: { rails: CategoryRail[] }) {
   return <div className="catalog-taxonomy" aria-label="مرور دسته‌بندی‌ها">
-    {rails.map(rail => <Rail key={rail.key} {...rail}/>)}
+    {rails.map(({ key, ...rail }) => <Rail key={key} {...rail}/>)}
   </div>;
 }
