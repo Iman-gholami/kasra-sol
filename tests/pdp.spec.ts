@@ -101,6 +101,30 @@ test('PDP sticky mobile action prompts and focuses missing selection, then hides
   await expect(sticky.getByRole('link',{name:'مشاهده سبد'})).toBeVisible();
 });
 
+test('compact size guide sits by the color-and-size CTA without crowding small phones',async ({page})=>{
+  for (const width of [320,375,390,768,1440]) {
+    await page.setViewportSize({width,height:844});
+    await page.goto('/product/shomiz-01');
+    const row = page.locator('.purchase-row');
+    const primary = row.getByRole('button',{name:'رنگ و سایز رو انتخاب کن'});
+    const guide = row.getByRole('button',{name:'راهنمای سایز'});
+    await expect(primary).toBeVisible();
+    await expect(guide).toBeVisible();
+    await expect(guide).toHaveAttribute('aria-haspopup','dialog');
+    const cta = await primary.boundingBox(), card = await guide.boundingBox();
+    expect(cta).not.toBeNull();
+    expect(card).not.toBeNull();
+    expect(Math.abs(cta!.y-card!.y)).toBeLessThanOrEqual(1);
+    // Direction is RTL: the first purchase-row element must appear physically to the right.
+    expect(card!.x).toBeGreaterThan(cta!.x + cta!.width - 1);
+    await expect(guide).toHaveCSS('background-color','rgb(249, 235, 237)');
+    await expect(guide).toHaveCSS('border-top-color','rgb(214, 139, 147)');
+    expect(card!.width).toBeLessThanOrEqual(75);
+    expect(card!.height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+1);
+  }
+});
+
 test('PDP size guide uses no unverified measurements and restores keyboard focus',async ({page})=>{
   await page.setViewportSize({width:375,height:812});
   await page.goto('/product/shomiz-01');

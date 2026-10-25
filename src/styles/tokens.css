@@ -1,35 +1,40 @@
 /* KASRA design tokens — single source for color, space, type, shape, depth, layering and motion.
-   Direction «مجله کسری» (Kasra Journal): warm paper, near-black ink, one oxblood accent, Estedad's light weights for
-   display, soft rounded boxes; the sand of the photographs is the only other colour. See DESIGN.md.
+   Palette B: clean white canvas, cool-gray sections, charcoal ink and Kasra red. The editorial
+   grid, Estedad typography and product photography remain in place.
    Theme tokens are declared through Tailwind 4 `@theme`, so they exist as CSS variables and as
    utilities; component CSS reads them with var(). Breakpoints used in media queries:
    600px (phone) · 820px (tablet) · 1080px (small laptop) · 1440px (wide). */
 
 @theme {
-  /* Color roles (contrast ratios measured against surface-muted, the darkest text background) */
-  --color-surface: #f5f0e8;          /* page canvas: warm paper */
-  --color-surface-raised: #ffffff;   /* cards, inputs, sheets */
-  --color-surface-muted: #ece5da;    /* bands, summaries, notices */
-  --color-surface-sunken: #ddd0bf;   /* image placeholders, close to the photos' studio sand */
-  --color-studio: #c9ab8f;           /* the photographs' seamless backdrop: panels models are feathered into; ink text 7.9:1 */
-  --color-text: #1b1714;             /* ink, 14.2:1 */
-  --color-text-muted: #5e554d;       /* 5.8:1 */
-  --color-text-subtle: #675d54;      /* 5.1:1 */
-  --color-accent: #6b2a22;           /* oxblood, 8.5:1, links and emphasis */
-  --color-accent-soft: #b07a70;      /* decorative only — never text */
-  --color-accent-wash: #f2e4df;
-  --color-border: #ddd4c8;           /* hairline dividers */
-  --color-border-strong: #8c8178;    /* form controls and chips, 3.0:1 on surface-muted, 3.8:1 on white */
-  --color-outline-soft: rgb(27 23 20 / 0.28); /* rings around colour swatches, inactive indicator dots and tracks */
-  --color-success: #2e6b4c;
-  --color-success-wash: #e8f1ec;
-  --color-warning: #865a0f;
-  --color-warning-wash: #f8efdf;
-  --color-danger: #9b2f2a;
-  --color-danger-wash: #fbeeec;
-  --color-focus: #7d453f;
-  --color-inverse: #ffffff;
-  --color-scrim: rgb(28 24 21 / 0.48);
+  /* Kasra Wear palette B — semantic UI colors shared throughout the storefront.
+     Brand on white has a 6.57:1 contrast ratio; admin retains its independent theme. */
+  --color-brand: #B51F2B;
+  --color-brand-hover: #981A24;
+  --color-brand-active: #7E1520;
+  --color-surface: #FFFFFF;        /* canvas and header */
+  --color-surface-raised: #FFFFFF; /* menus, inputs and cards */
+  --color-surface-muted: #F1F2F4;  /* sections, summaries, soft pills */
+  --color-surface-sunken: #E5E7EB; /* pressed states and placeholders */
+  --color-studio: #EAECF0;          /* cool-gray studio panels paired with mockup photo crops */
+  --color-text: #181818;
+  --color-text-muted: #62666D;
+  --color-text-subtle: #62666D;
+  --color-accent: var(--color-brand);
+  --color-accent-soft: #D77A84;    /* decorative only */
+  --color-accent-wash: #F9EBED;
+  --color-border: #E5E7EB;
+  --color-border-strong: #858A93;
+  --color-outline-soft: rgb(24 24 24 / 0.28);
+  --color-success: #2E6B4C;
+  --color-success-wash: #E8F1EC;
+  --color-warning: #865A0F;
+  --color-warning-wash: #F8EFDF;
+  --color-danger: #9B2F2A;
+  --color-danger-wash: #FBEEEC;
+  --color-focus: #B51F2B;
+  --color-inverse: #FFFFFF;
+  --color-footer-muted: #D1D5DB;
+  --color-scrim: rgb(24 24 24 / 0.48);
 
   /* Type: one family, Estedad, for everything. Large headings speak in its extra-light weight, with medium for the
      emphasised words: the contrast in weight is the display voice. */
@@ -83,8 +88,8 @@
 
 :root {
   color-scheme: light;
-  /* The canvas as channels, for translucent bars that must match it exactly. */
-  --color-surface-rgb: 245 240 232;
+  /* The white canvas as channels, for translucent bars that must match it exactly. */
+  --color-surface-rgb: 255 255 255;
 
   /* Spacing scale */
   --space-1: 4px;

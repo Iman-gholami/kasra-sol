@@ -1,6 +1,6 @@
 /* Homepage sections: hero, collections, shop by color, editorial band, service links, closing CTA. */
 
-/* Hero: a magazine cover in one sand room. The headline, lede and calls to action sit on the start side; the slider
+/* Hero: a magazine cover in one cool-gray room. The headline, lede and calls to action sit on the start side; the slider
    (`components/home/hero-slider.tsx`) fills the other side with one feathered model at a time and a shoppable tag.
    Phones stack the same markup: headline and button over the room, the lede and «تازه‌ترین‌ها» below it. The
    collections follow as circles. Motion stays small: the headline lines rise out of their masks and the rule draws
@@ -69,6 +69,14 @@
   mask-composite: intersect;
   transition: transform 900ms var(--ease-editorial);
 }
+/* The approved mockup crop already contains its own studio shadow and feathered floor.
+   Keep the complete subject opaque; blend only the outermost perimeter into the gray room. */
+.hero-figure-mockup {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 94%, transparent),
+    linear-gradient(to bottom, #000, #000 96%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 94%, transparent),
+    linear-gradient(to bottom, #000, #000 96%, transparent);
+}
 .hero-slide:not([data-active]) .hero-figure { transform: scale(1.04); }
 .hero-figure img { object-fit: cover; object-position: 50% 0; }
 .hero-tag {
@@ -92,7 +100,7 @@
 .hero-line > span { animation: hero-rise var(--duration-reveal) var(--ease-editorial) 60ms both; }
 .hero h1 em > span { animation-delay: 170ms; }
 
-/* Collections: three sand rooms. The photographs share one studio backdrop, so each model is feathered into a panel
+/* Collections: three light-gray rooms. Each editorial model photo sits inside a softly feathered panel
    of that sand (--color-studio) and seems to stand in the page; the name, a line and a round arrow sit beside her. */
 .category-section { padding-block-start: var(--space-6); }
 .category-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin: 0; padding: 0; list-style: none; }

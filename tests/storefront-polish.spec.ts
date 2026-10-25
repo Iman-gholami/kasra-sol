@@ -16,6 +16,32 @@ const box = async (locator: Locator) => { await locator.waitFor(); return (await
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
+  test('the approved mockup portrait and category photos replace remote Unsplash imagery', async ({ page }) => {
+    await page.goto('/');
+    const hero = page.locator('.hero-slide[data-active] img').first();
+    await expect(hero).toHaveAttribute('src', /brand-preview%2Fhero-model\.avif/);
+    const categoryPhoto = page.locator('.collection-circle img').first();
+    await expect(categoryPhoto).toHaveAttribute('src', /brand-preview%2F/);
+    await expect(page.locator('.demo-photo-note')).toContainText('ماکاپ تأییدشده');
+    const image = await page.request.get('/images/brand-preview/hero-model.avif');
+    expect(image.ok()).toBeTruthy();
+    expect(image.headers()['content-type']).toContain('image/avif');
+  });
+
+  test('palette B is applied to shared chrome and discounted products', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.announcement')).toHaveCSS('background-color', 'rgb(181, 31, 43)');
+    await expect(page.locator('.site-header')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    await expect(page.locator('.brand-type strong')).toHaveCSS('color', 'rgb(181, 31, 43)');
+    await expect(page.locator('.footer-grid')).toHaveCSS('background-color', 'rgb(24, 24, 24)');
+    await expect(page.locator('.footer nav a').first()).toHaveCSS('color', 'rgb(209, 213, 219)');
+    await page.goto('/shop');
+    await expect(page.locator('.product-card .discount-tag').first()).toHaveCSS('background-color', 'rgb(181, 31, 43)');
+    await expect(page.locator('.product-card .discount-tag').first()).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(page.locator('.product-card .price-line:has(del) > strong').first()).toHaveCSS('color', 'rgb(181, 31, 43)');
+  });
+
+
   test('header, sections and editorial rows share one page width on common laptop screens', async ({ page }) => {
     for (const width of [1440, 1512]) {
       await page.setViewportSize({ width, height: 900 });
@@ -29,12 +55,12 @@ test.describe('desktop', () => {
     }
   });
 
-  test('primary buttons still take the accent on mouse hover', async ({ page }) => {
+  test('primary buttons use Kasra red and darken on mouse hover', async ({ page }) => {
     await page.goto('/');
     const cta = page.getByRole('link', { name: 'کالکشن رو ببین' });
-    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(27, 23, 20)');
+    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(181, 31, 43)');
     await cta.hover();
-    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(107, 42, 34)');
+    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(152, 26, 36)');
   });
 
   test('cart line keeps quantity and actions beside the photo', async ({ page }) => {
@@ -61,7 +87,7 @@ test.describe('phone', () => {
     await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
     await expect(page.getByRole('heading', { name: 'بازبینی و پرداخت' })).toBeVisible();
     const pay = page.getByRole('button', { name: /^پرداخت/ });
-    await expect.poll(() => pay.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(27, 23, 20)');
+    await expect.poll(() => pay.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(181, 31, 43)');
   });
 
   test('filter sheet title keeps one line with the drag handle on its own row', async ({ page }) => {

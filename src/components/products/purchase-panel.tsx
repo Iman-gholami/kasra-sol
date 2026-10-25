@@ -129,9 +129,6 @@ export function PurchasePanel({ product }: { product: Product }) {
       <div className="variant-group">
         <div className="variant-label">
           <span id="pdp-size-label">سایز <span className="variant-value">{size ? <span dir="ltr">{size}</span> : 'انتخاب کن'}</span></span>
-          <button type="button" className="size-guide-trigger" onClick={() => setGuideOpen(true)}>
-            <Ruler size={16} aria-hidden="true"/> راهنمای سایز
-          </button>
         </div>
         <div className="size-list" dir="ltr" ref={sizeOptions} role="group" aria-labelledby="pdp-size-label">
           {product.sizes.map(entry => {
@@ -161,6 +158,11 @@ export function PurchasePanel({ product }: { product: Product }) {
         </span>}
       </div>}
       <div className="purchase-row">
+        <button type="button" className="size-guide-trigger" aria-label="راهنمای سایز"
+          aria-haspopup="dialog" aria-expanded={guideOpen} onClick={() => setGuideOpen(true)}>
+          <Ruler size={19} strokeWidth={1.8} aria-hidden="true"/>
+          <span>راهنمای سایز</span>
+        </button>
         <button ref={buyButton} type="button" className="btn btn-primary btn-dark btn-lg" onClick={add}>
           <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : allInCart ? 'همه موجودی در سبد خریدت' : 'رنگ و سایز رو انتخاب کن'}
         </button>

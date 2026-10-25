@@ -3,13 +3,20 @@ import type { CategorySlug, Product } from '@/types/store';
 export { categories, palette, standardSizes } from '@/data/facets';
 import { categories, palette, standardSizes } from '@/data/facets';
 
-/** Six locally optimized AI-generated fashion photographs.
- * Reused across mock listings ONLY to evaluate storefront visual design.
- * Do not treat the pictured clothing as verified photos of individual SKUs. */
-const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
-  shomiz: ['/images/lookbook/shomiz-cream.avif', '/images/lookbook/shomiz-rose.avif'],
-  manto: ['/images/lookbook/manto-black.avif', '/images/lookbook/manto-sage.avif'],
-  tshirt: ['/images/lookbook/tshirt-white.avif', '/images/lookbook/tshirt-blue.avif']
+/** Exactly the models/outfits cropped from Kasra's previously approved mockup.
+ * They are locally hosted prototype-only assets, not photographs of actual inventory.
+ * The hero portrait is 458×597; category photos are 94×94, so don't advertise them as HD. */
+export const brandMockupPhotos = {
+  hero: '/images/brand-preview/hero-model.avif',
+  shomiz: '/images/brand-preview/shomiz-blue.avif',
+  manto: '/images/brand-preview/manto-cream.avif',
+  tshirt: '/images/brand-preview/tshirt-blue.avif'
+} as const;
+
+export const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
+  shomiz: [brandMockupPhotos.hero, '/images/brand-preview/shomiz-blue.avif'],
+  manto: [brandMockupPhotos.manto, '/images/brand-preview/manto-pink.avif'],
+  tshirt: [brandMockupPhotos.tshirt, '/images/brand-preview/shomiz-cream.avif']
 };
 
 const collections: {
