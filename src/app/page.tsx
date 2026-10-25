@@ -66,7 +66,7 @@ export default async function HomePage() {
         </li>)}
       </ul>
       <nav className="all-category-links" aria-label="همه دسته‌بندی‌های لباس زنانه">
-        {categories.map(category => <Link key={category.slug} href={'/category/' + category.slug} prefetch={demoPrefetch}>{category.title}</Link>)}
+        {categories.map(category => <Link key={category.slug} href={'/category/' + category.slug} prefetch={false}>{category.title}</Link>)}
       </nav>
       <p className="demo-photo-note"><Info size={15} aria-hidden="true"/> تصاویر این نسخه با هوش مصنوعی ساخته شده‌اند و برای نمایش حال‌وهوای فروشگاه هستند.</p>
     </section>
