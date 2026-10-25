@@ -16,19 +16,17 @@ const box = async (locator: Locator) => { await locator.waitFor(); return (await
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test('demo storefront serves curated HD references, never the old 3 KB placeholder photos', async ({ page }) => {
+  test('the approved mockup portrait and category photos replace remote Unsplash imagery', async ({ page }) => {
     await page.goto('/');
-    const hero = page.locator('.hero-slide').first().locator('img');
-    const heroURL = await hero.getAttribute('src');
-    expect(heroURL).toContain('/_next/image');
-    const cards = page.locator('.product-card img');
-    const cardURL = await cards.first().getAttribute('src');
-    expect(cardURL).toContain('/_next/image');
-    const imageURL = await cards.first().getAttribute('src');
-    expect(imageURL).toContain('images.unsplash.com');
-    await expect(page.locator('.demo-photo-note')).toContainText('نمونه نمایشی');
+    const hero = page.locator('.hero-slide[data-active] img').first();
+    await expect(hero).toHaveAttribute('src', /brand-preview%2Fhero-model\.avif/);
+    const categoryPhoto = page.locator('.collection-circle img').first();
+    await expect(categoryPhoto).toHaveAttribute('src', /brand-preview%2F/);
+    await expect(page.locator('.demo-photo-note')).toContainText('ماکاپ تأییدشده');
+    const image = await page.request.get('/images/brand-preview/hero-model.avif');
+    expect(image.ok()).toBeTruthy();
+    expect(image.headers()['content-type']).toContain('image/avif');
   });
-
 
   test('palette B is applied to shared chrome and discounted products', async ({ page }) => {
     await page.goto('/');

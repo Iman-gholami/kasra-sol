@@ -1,14 +1,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { categories } from '@/data/facets';
-import { demoPhotos } from '@/data/products';
+import { brandMockupPhotos } from '@/data/products';
 import type { CategorySlug } from '@/types/store';
 
-/** One model photo per collection: the circles below, and the sand rooms further down the home page. */
+/** Crops of the exact circular category photographs in the approved Kasra mockup. */
 export const collectionPhotos: Record<CategorySlug, string> = {
-  shomiz: demoPhotos.shomiz[1],
-  manto: demoPhotos.manto[1],
-  tshirt: demoPhotos.tshirt[1]
+  shomiz: brandMockupPhotos.shomiz,
+  manto: brandMockupPhotos.manto,
+  tshirt: brandMockupPhotos.tshirt
 };
 
 /** The collections as story-style circles: a model on the studio sand inside an oxblood ring, the name below.

@@ -3,15 +3,20 @@ import type { CategorySlug, Product } from '@/types/store';
 export { categories, palette, standardSizes } from '@/data/facets';
 import { categories, palette, standardSizes } from '@/data/facets';
 
-/** High-resolution, licensed *reference imagery* for the public demo only.
- * These are NOT photographs of Kasra merchandise, and must never be attached to real SKUs.
- * The six heavily compressed original AI sample AVIF files are preserved in public/images/lookbook.
- * Each URL is a verified Unsplash-hosted image from a freely downloadable photo page.
- * Before launch use brand-owned or appropriately model-released images of actual garments. */
+/** Exactly the models/outfits cropped from Kasra's previously approved mockup.
+ * They are locally hosted prototype-only assets, not photographs of actual inventory.
+ * The hero portrait is 458×597; category photos are 94×94, so don't advertise them as HD. */
+export const brandMockupPhotos = {
+  hero: '/images/brand-preview/hero-model.avif',
+  shomiz: '/images/brand-preview/shomiz-blue.avif',
+  manto: '/images/brand-preview/manto-cream.avif',
+  tshirt: '/images/brand-preview/tshirt-blue.avif'
+} as const;
+
 export const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
-  shomiz: ['https://images.unsplash.com/photo-1635269847729-0b8e67f1f92e?auto=format&fit=crop&w=1600&q=85', 'https://images.unsplash.com/photo-1625726060119-83ad31838aca?auto=format&fit=crop&w=1600&q=85'],
-  manto: ['https://images.unsplash.com/photo-1616065297556-f05bc00c9a3e?auto=format&fit=crop&w=1600&q=85', 'https://images.unsplash.com/photo-1776273920142-f30bceff0cf3?auto=format&fit=crop&w=1600&q=85'],
-  tshirt: ['https://images.unsplash.com/photo-1591454976155-0aeb64ae1fd4?auto=format&fit=crop&w=1600&q=85', 'https://images.unsplash.com/photo-1611205060882-c1ceca4f8256?auto=format&fit=crop&w=1600&q=85']
+  shomiz: [brandMockupPhotos.hero, '/images/brand-preview/shomiz-blue.avif'],
+  manto: [brandMockupPhotos.manto, '/images/brand-preview/manto-pink.avif'],
+  tshirt: [brandMockupPhotos.tshirt, '/images/brand-preview/shomiz-cream.avif']
 };
 
 const collections: {
