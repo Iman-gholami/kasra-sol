@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isCategorySlug } from '../../../src/data/facets';
 
 const ident = z.string().regex(/^[a-z0-9][a-z0-9-]{1,78}$/);
 const size = z.string().trim().min(1).max(20);
@@ -18,7 +19,7 @@ export const productInput = z.object({
   id: ident,
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,99}$/),
   name: z.string().trim().min(2).max(200),
-  category: z.enum(['shomiz', 'manto', 'tshirt']),
+  category: z.string().refine(isCategorySlug),
   description: z.string().trim().min(10).max(4000),
   price: z.number().int().min(0).max(1_000_000_000),
   compareAt: z.number().int().min(0).max(1_000_000_000).nullable(),
