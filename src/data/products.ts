@@ -1,8 +1,8 @@
-import type { CategorySlug, Product } from '@/types/store';
+import type { Product } from '@/types/store';
 
 export { categories, palette, standardSizes } from '@/data/facets';
 import { allCategories } from '@/data/facets';
-import { categories, palette, standardSizes } from '@/data/facets';
+import { palette, standardSizes } from '@/data/facets';
 
 /** Six locally optimized AI-generated fashion photographs.
  * Reused across mock listings ONLY to evaluate storefront visual design.
