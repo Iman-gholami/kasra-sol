@@ -13,7 +13,7 @@ import { analyticsRoutes } from './analytics';
 import { DomainError } from './pricing';
 import { normalizeSearch } from './search';
 import { assertProductionDatabaseUrl, isUsableSecret, requireSecret, trustProxySetting } from './config';
-import { categories } from '../../src/data/facets';
+import { categories, allCategories } from '../../src/data/facets';
 
 // Receipt tokens are HMACs of this secret; refuse to start rather than fail (or sign with a public value) later.
 requireSecret('ORDER_TOKEN_SECRET', process.env.ORDER_TOKEN_SECRET);
@@ -104,10 +104,10 @@ app.get('/v1/search/suggestions', async (req, reply) => {
   const q = normalizeSearch(query.data.q);
   if (!q) return { products: [], categories: [], count: 0 };
   const matches = await listProducts({ q, page: 1, limit: 4, sort: 'featured' });
-  const matchingCategories = categories.filter(c => normalizeSearch(c.title).includes(q) || q.includes(normalizeSearch(c.title)));
+  const matchingCategories = allCategories.filter(c => normalizeSearch(c.title).includes(q) || q.includes(normalizeSearch(c.title)));
   return {
     products: matches.items.slice(0, 4).map(p => ({
-      id: p.id, name: p.name, category: categories.find(c => c.slug === p.category)?.title ?? '',
+      id: p.id, name: p.name, category: allCategories.find(c => c.slug === p.category)?.title ?? '',
       image: p.images[0], price: p.price, href: '/product/' + p.slug
     })),
     categories: matchingCategories.slice(0, 3).map(c => ({ slug: c.slug, title: c.title, href: '/category/' + c.slug })),
