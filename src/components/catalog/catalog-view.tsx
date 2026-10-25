@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, ImageIcon, X } from 'lucide-react';
 import { CatalogFilters, SortForm } from '@/components/catalog/catalog-filters';
 import { CatalogShell } from '@/components/catalog/catalog-shell';
+import { CategoryNavigation, type CategoryRail } from '@/components/catalog/category-navigation';
 import { ProductGrid } from '@/components/products/product-grid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { allCategories, categories, palette } from '@/data/facets';
@@ -42,7 +43,35 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   const categoryHref = (slug: string) => action === '/search'
     ? makeUrl({ category: slug, page: null })
     : '/category/' + slug + makeUrl({ category: null, page: null }).slice(action.length);
-  const selectedGroup = categories.find(group => group.slug === filters.category);
+  // A leaf keeps its parent selected in the first rail; the second rail
+  // lists only that parent's models, instead of a second multi-line chip wall.
+  const selectedGroup = categories.find(group =>
+    group.slug === filters.category || group.children.some(child => child.slug === filters.category));
+  const rails: CategoryRail[] = [
+    {
+      key: 'parents', label: 'دسته‌ها', accessibleName: 'دسته‌بندی‌های محصولات',
+      items: [
+        { slug: 'all', title: 'همه محصولات', href: allHref,
+          active: !filters.category, current: !filters.category },
+        ...categories.map(group => ({
+          slug: group.slug, title: group.title, href: categoryHref(group.slug),
+          active: selectedGroup?.slug === group.slug, current: filters.category === group.slug
+        }))
+      ]
+    },
+    ...(selectedGroup && selectedGroup.children.length > 0 ? [{
+      key: 'children', label: 'مدل‌ها', accessibleName: 'زیرگروه‌های این دسته',
+      items: [
+        { slug: selectedGroup.slug, title: 'همه ' + selectedGroup.title,
+          href: categoryHref(selectedGroup.slug),
+          active: filters.category === selectedGroup.slug, current: filters.category === selectedGroup.slug },
+        ...selectedGroup.children.map(child => ({
+          slug: child.slug, title: child.title, href: categoryHref(child.slug),
+          active: filters.category === child.slug, current: filters.category === child.slug
+        }))
+      ]
+    }] : [])
+  ];
   const from = (data.page - 1) * 12 + 1;
   const to = from + data.items.length - 1;
 
@@ -56,15 +85,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
       </div>
       <p className="catalog-count" aria-live="polite"><strong>{formatNumber(data.total)}</strong> مدل</p>
     </div>
-    <nav className="catalog-category-nav" aria-label="دسته‌بندی‌های محصولات">
-      <Link href={allHref} className="chip" aria-current={!filters.category ? 'page' : undefined}>همه محصولات</Link>
-      {categories.map(item => <Link key={item.slug} href={categoryHref(item.slug)} prefetch={false} className="chip"
-        aria-current={filters.category === item.slug ? 'page' : undefined}>{item.title}</Link>)}
-    </nav>
-    {fixedCategory && selectedGroup && selectedGroup.children.length > 0 && <nav className="catalog-subcategory-nav" aria-label="زیرگروه‌های این دسته">
-      <Link href={'/category/' + selectedGroup.slug} className="chip" aria-current="page">همه {selectedGroup.title}</Link>
-      {selectedGroup.children.map(child => <Link key={child.slug} href={'/category/' + child.slug} prefetch={false} className="chip">{child.title}</Link>)}
-    </nav>}
+    <CategoryNavigation rails={rails}/>
     <CatalogShell>
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
       <section className="catalog-results" aria-labelledby="results-title">
