@@ -59,17 +59,27 @@
 .sale-badge { padding: 2px 10px; border-radius: var(--radius-pill); background: var(--color-accent-wash); color: var(--color-accent); font-size: var(--text-xs); font-weight: var(--font-weight-bold); }
 /* The buy box is a soft panel. Options inside it are paper; the chosen colour is ringed in ink, the chosen size is
    ink. Unavailable options lose their fill and take a dashed outline. */
-.buy-panel { padding: var(--space-5); border-radius: var(--radius-lg); background: var(--color-surface-muted); }
+/* Layout decisions for the CTA depend on the buy box's width, not the viewport (the desktop buy column is narrow). */
+.buy-panel { container-type: inline-size; padding: var(--space-5); border-radius: var(--radius-lg); background: var(--color-surface-muted); }
 .variant-group { margin-block-end: var(--space-4); }
 .variant-label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-block-end: var(--space-2); font-size: var(--text-sm); font-weight: var(--font-weight-bold); }
 .variant-value { color: var(--color-text-muted); font-weight: var(--font-weight-regular); }
 .variant-value::before { content: "· " / ""; color: var(--color-border-strong); }
+/* Secondary action alongside checkout: a quiet, rounded paper pill, not the old underlined link. */
 .size-guide-trigger {
-  display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: var(--touch); margin-inline-start: auto; padding: 0 2px;
-  border: 0; background: transparent; color: var(--color-accent); font-size: var(--text-sm); font-weight: var(--font-weight-semibold);
-  text-decoration: underline; text-underline-offset: 5px;
+  --btn-bg: var(--color-surface-raised);
+  --btn-border: var(--color-border-strong);
+  --btn-fg: var(--color-text);
+  padding-inline: var(--space-3);
+  min-inline-size: 0;
+  white-space: nowrap;
 }
-.size-guide-trigger:hover { color: var(--color-text); }
+@media (hover: hover) {
+  .size-guide-trigger:hover:not(:disabled) {
+    --btn-bg: var(--color-surface);
+    --btn-border: var(--color-text);
+  }
+}
 .swatch-list, .size-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .swatch {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
@@ -100,8 +110,16 @@
 .purchase-feedback { justify-content: flex-start; }
 .purchase-feedback-actions { display: inline-flex; flex-wrap: wrap; gap: 0 var(--space-3); margin-inline-start: auto; }
 .purchase-feedback .link-button { color: inherit; font-weight: var(--font-weight-bold); }
-.purchase-row { display: flex; gap: var(--space-2); }
-.purchase-row .btn-primary { flex: 1; min-inline-size: 0; padding-inline: var(--space-4); }
+/* RTL DOM order: size guide (right) / buy (center) / wishlist (left). */
+.purchase-row { display: grid; grid-template-columns: max-content minmax(0, 1fr) 56px; align-items: stretch; gap: var(--space-2); }
+.purchase-row .btn-primary { min-inline-size: 0; padding-inline: var(--space-3); white-space: normal; }
+/* If the card is too narrow for three legible controls, keep buy+wishlist together and the labelled guide just beneath. */
+@container (max-width: 370px) {
+  .purchase-row { grid-template-columns: minmax(0, 1fr) 52px; }
+  .purchase-row .btn-primary { grid-column: 1; grid-row: 1; }
+  .purchase-row .pdp-wishlist { grid-column: 2; grid-row: 1; inline-size: 52px; }
+  .purchase-row .size-guide-trigger { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+}
 .pdp-wishlist { --btn-bg: var(--color-surface); --btn-border: transparent; inline-size: 56px; padding: 0; flex-shrink: 0; }
 .pdp-wishlist:active:not(:disabled) { --btn-bg: var(--color-surface-sunken); }
 .pdp-wishlist.is-liked { color: var(--color-accent); }

@@ -104,8 +104,14 @@ test('PDP sticky mobile action prompts and focuses missing selection, then hides
 test('PDP size guide uses no unverified measurements and restores keyboard focus',async ({page})=>{
   await page.setViewportSize({width:375,height:812});
   await page.goto('/product/shomiz-01');
-  const trigger=page.getByRole('button',{name:'راهنمای سایز'});
+  const actions=page.locator('.purchase-row');
+  const trigger=actions.getByRole('button',{name:'راهنمای سایز'});
+  await expect(trigger).toHaveCount(1);
+  await expect(page.locator('.variant-group .size-guide-trigger')).toHaveCount(0);
+  await expect(trigger).toHaveAttribute('aria-haspopup','dialog');
+  await expect(trigger).toHaveAttribute('aria-expanded','false');
   await trigger.click();
+  await expect(trigger).toHaveAttribute('aria-expanded','true');
   const guide=page.getByRole('dialog',{name:'راهنمای سایز نمونه'});
   await expect(guide).toBeVisible();
   await expect(guide).toContainText('اندازه‌گیری اختصاصی این کالا هنوز ثبت نشده است');
@@ -117,6 +123,32 @@ test('PDP size guide uses no unverified measurements and restores keyboard focus
   await page.keyboard.press('Escape');
   await expect(guide).toBeHidden();
   await expect(trigger).toBeFocused();
+});
+
+test('PDP purchase actions keep size guide next to buy on wide cards and wrap cleanly on narrow cards',async ({page})=>{
+  for(const width of [320,375,1440]){
+    await page.setViewportSize({width,height:844});
+    await page.goto('/product/shomiz-01');
+    await page.evaluate(async()=>{await document.fonts.ready;});
+    const guide=page.locator('.purchase-row .size-guide-trigger');
+    const buy=page.locator('.purchase-row .btn-primary');
+    const favorite=page.locator('.purchase-row .pdp-wishlist');
+    await expect(guide).toBeVisible();
+    const [g,b,f]=await Promise.all([guide.boundingBox(),buy.boundingBox(),favorite.boundingBox()]);
+    expect(g).not.toBeNull();
+    expect(b).not.toBeNull();
+    expect(f).not.toBeNull();
+    expect(g!.x).toBeGreaterThanOrEqual(0);
+    expect(g!.x+g!.width).toBeLessThanOrEqual(width+1);
+    if(width===1440) {
+      expect(Math.abs(g!.y-b!.y)).toBeLessThan(2);
+      expect(g!.x).toBeGreaterThan(b!.x);
+      expect(b!.x).toBeGreaterThan(f!.x);
+    } else {
+      expect(g!.y).toBeGreaterThanOrEqual(b!.y+b!.height-1);
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+1);
+  }
 });
 
 test('PDP compact gallery, safe-area purchase and RTL do not overflow tested viewports',async ({page})=>{
