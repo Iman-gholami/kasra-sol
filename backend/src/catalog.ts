@@ -4,6 +4,7 @@ import { db } from './db/connection';
 import { products, variants } from './db/schema';
 import { normalizeSearch } from './search';
 import { categoryFamily, isCategorySlug } from '../../src/data/facets';
+import type { CategorySlug } from '../../src/data/facets';
 
 export const filters = z.object({
   category: z.string().refine(isCategorySlug).optional(),
@@ -37,7 +38,7 @@ export async function listProducts(query: z.infer<typeof filters>) {
     query.stock === '1' ? gte(variants.stock, 1) : undefined);
   const where = and(
     eq(products.active, true),
-    query.category ? inArray(products.category, categoryFamily(query.category)) : undefined,
+    query.category ? inArray(products.category, categoryFamily(query.category as CategorySlug)) : undefined,
     query.q ? ilike(products.searchText, '%' + normalizeSearch(query.q).replace(/[%_\\]/g, '\\$&') + '%') : undefined,
     query.min !== undefined ? gte(products.price, query.min) : undefined,
     query.max !== undefined ? lte(products.price, query.max) : undefined,
