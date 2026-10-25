@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { connection } from 'next/server';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ProductDetail } from '@/components/products/product-detail';
@@ -16,6 +17,8 @@ export function generateStaticParams() {
   return process.env.BACKEND_INTERNAL_URL ? [] : demoProducts.map(({ slug }) => ({ slug }));
 }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // Live product information and stock must never be served from a static route.
+  if (process.env.BACKEND_INTERNAL_URL) await connection();
   const product = await getProductBySlug((await params).slug);
   return { title: product?.name ?? 'محصول ناموجود', description: product?.description,
     openGraph: product ? { images: [product.images[0]] } : undefined };
@@ -33,6 +36,8 @@ async function RelatedProducts({ product }: { product: NonNullable<Awaited<Retur
 }
 
 export default async function ProductPage({ params }: Props) {
+  // Demo pages prerender and prefetch; backend-powered products render per request.
+  if (process.env.BACKEND_INTERNAL_URL) await connection();
   const product = await getProductBySlug((await params).slug);
   if (!product) notFound();
   const category = categories.find(item => item.slug === product.category);
