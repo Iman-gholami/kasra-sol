@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { adminApi, errorMessage } from '@/components/admin/admin-api';
 import {
-  AUDIT_ACTION, AUDIT_GROUP, formatDateTime, formatNumber, PERMISSION, PRODUCT_FIELD, ROLE, statusLabel
+  AUDIT_ACTION, AUDIT_GROUP, formatDateTime, formatNumber, PERMISSION, PRODUCT_FIELD, ROLE, statusLabel, STORE_PAYMENT
 } from '@/components/admin/labels';
 import { Loading, Notice } from '@/components/admin/ui';
 
@@ -46,6 +46,11 @@ function summary(entry: Entry): string {
       ].filter(Boolean).join(' · ');
     }
     case 'orders.exported': return num(d.count) + ' سفارش';
+    case 'inventory.received': return 'رسید ' + num(Number(entry.target)) + ' · ' + num(d.units) + ' عدد به موجودی افزوده شد';
+    case 'sales.recorded': return 'فاکتور ' + num(Number(entry.target)) + ' · ' + num(d.units) + ' عدد · ' + num(d.total) + ' تومان · ' +
+      (STORE_PAYMENT[String(d.payment)] ?? '');
+    case 'sales.voided': return 'فاکتور ' + num(Number(entry.target)) + ' · ' + num(d.restocked) + ' عدد به موجودی برگشت' +
+      (typeof d.reason === 'string' ? ' · ' + d.reason : '');
     case 'products.home_slider': return Array.isArray(d.to)
       ? (d.to.length ? num(d.to.length) + ' محصول به ترتیب انتخاب‌شده' : 'خالی؛ محصولات تخفیف‌دار نمایش داده می‌شوند') : '';
     case 'media.uploaded': return typeof d.bytes === 'number' ? formatNumber(Math.ceil(d.bytes / 1024)) + ' کیلوبایت' : '';

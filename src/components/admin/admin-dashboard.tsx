@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Activity, ClipboardList, ExternalLink, GalleryHorizontal, LayoutDashboard, LogOut, Package, ScrollText, UserCog, UsersRound } from 'lucide-react';
+import { Activity, ClipboardList, ExternalLink, GalleryHorizontal, LayoutDashboard, LogOut, Package, PackagePlus, ScanBarcode, ScrollText,
+  UserCog, UsersRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/components/admin/admin-api';
 import { formatNumber, ROLE } from '@/components/admin/labels';
@@ -15,17 +16,22 @@ import { StaffManager } from '@/components/admin/staff-manager';
 import { AuditLog } from '@/components/admin/audit-log';
 import { AccountSettings } from '@/components/admin/account-settings';
 import { HomeSliderManager } from '@/components/admin/home-slider-manager';
+import { StoreCounter } from '@/components/admin/store-counter';
+import { StockReceiving } from '@/components/admin/stock-receiving';
 import { Notice } from '@/components/admin/ui';
 
 export type AdminUser = {
   id: string; username: string; displayName: string; role: 'owner' | 'manager' | 'staff';
   active: boolean; grants: string[]; revokes: string[]; permissions: string[];
 };
-export type Section = 'overview' | 'traffic' | 'products' | 'home' | 'orders' | 'staff' | 'audit' | 'account';
+export type Section = 'overview' | 'traffic' | 'pos' | 'receiving' | 'products' | 'home' | 'orders' | 'staff' | 'audit' | 'account';
 // The menu mirrors the API's permissions; the API still enforces every one of them on each request.
 const SECTIONS: { id: Section; label: string; title: string; permission: string | null; icon: typeof Package }[] = [
   { id: 'overview', label: 'داشبورد', title: 'داشبورد فروشگاه', permission: 'reports:read', icon: LayoutDashboard },
   { id: 'traffic', label: 'آمار بازدید', title: 'آمار بازدید', permission: 'reports:read', icon: Activity },
+  // Before the products list, so shop staff open the panel on the counter.
+  { id: 'pos', label: 'صندوق فروش', title: 'صندوق فروش حضوری', permission: 'sales:pos', icon: ScanBarcode },
+  { id: 'receiving', label: 'ورود کالا و برچسب', title: 'ورود کالا و چاپ برچسب', permission: 'inventory:write', icon: PackagePlus },
   { id: 'products', label: 'محصولات و موجودی', title: 'محصولات و موجودی', permission: 'products:read', icon: Package },
   { id: 'home', label: 'اسلایدر صفحه اول', title: 'اسلایدر صفحه اول', permission: 'products:write', icon: GalleryHorizontal },
   { id: 'orders', label: 'سفارش‌ها', title: 'مدیریت سفارش‌ها', permission: 'orders:read', icon: ClipboardList },
@@ -183,6 +189,8 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
         {view.section === 'overview' && <SalesOverview
           openProduct={can('products:read') ? id => go('products', id) : undefined}/>}
         {view.section === 'traffic' && <TrafficOverview/>}
+        {view.section === 'pos' && <StoreCounter permissions={user.permissions} onUnsaved={setUnsaved}/>}
+        {view.section === 'receiving' && <StockReceiving onUnsaved={setUnsaved}/>}
         {view.section === 'products' && (editor !== null
           ? <ProductEditor key={editor} permissions={user.permissions} onUnsaved={setUnsaved} done={closeEditor}
             productId={editor === 'new' || editor.startsWith('copy:') ? undefined : editor}

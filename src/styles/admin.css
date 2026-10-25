@@ -4,7 +4,7 @@
 .site-shell[data-admin="true"] #main-content { background: #f3f5f8; }
 html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 
-.admin-app, .admin-login {
+.admin-app, .admin-login, .admin-labels {
   /* Text colors keep at least 4.5:1 contrast on white and on the page background. */
   --admin-ink: #1f2f3d;
   --admin-muted: #556574;
@@ -20,9 +20,9 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 .admin-app {
   display: grid; grid-template-columns: 252px minmax(0, 1fr); min-block-size: 100svh; background: var(--admin-soft);
 }
-.admin-app *, .admin-login * { box-sizing: border-box; }
+.admin-app *, .admin-login *, .admin-labels * { box-sizing: border-box; }
 .admin-app h2, .admin-app h3 { margin: 0; }
-.admin-app :focus-visible, .admin-login :focus-visible { outline: 3px solid #1d6fd6; outline-offset: 2px; }
+.admin-app :focus-visible, .admin-login :focus-visible, .admin-labels :focus-visible { outline: 3px solid #1d6fd6; outline-offset: 2px; }
 
 /* Sidebar */
 .admin-app .admin-sidebar {
@@ -154,14 +154,15 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 
 /* Forms */
 /* :where keeps this base rule's specificity low, so component rules below can size inputs. */
-.admin-app :where(input, select, textarea):not([type="checkbox"], [type="color"], [type="file"]), .admin-login input {
+.admin-app :where(input, select, textarea):not([type="checkbox"], [type="color"], [type="file"]), .admin-login input,
+.admin-labels :where(input, select):not([type="checkbox"]) {
   background: #fff; border: 1px solid #c9d3dd; border-radius: 10px; color: var(--admin-ink);
   min-height: 44px; padding: 9px 12px; font-size: 14px; width: 100%;
 }
 .admin-app input:disabled, .admin-app select:disabled, .admin-app textarea:disabled { background: #f1f4f7; color: #55636f; }
 .admin-app input:focus-visible, .admin-app textarea:focus-visible, .admin-app select:focus-visible,
-.admin-login input:focus-visible { border-color: var(--admin-green); box-shadow: 0 0 0 3px #0f6e6026; outline: none; }
-.admin-app input[type="checkbox"] { accent-color: var(--admin-green); width: 18px; height: 18px; flex-shrink: 0; }
+.admin-login input:focus-visible, .admin-labels input:focus-visible, .admin-labels select:focus-visible { border-color: var(--admin-green); box-shadow: 0 0 0 3px #0f6e6026; outline: none; }
+.admin-app input[type="checkbox"], .admin-labels input[type="checkbox"] { accent-color: var(--admin-green); width: 18px; height: 18px; flex-shrink: 0; }
 .admin-app input[type="color"] { width: 100%; height: 44px; border: 1px solid #c9d3dd; border-radius: 10px; padding: 3px; background: #fff; }
 .admin-form { display: grid; gap: 20px; }
 .admin-form-grid { display: grid; gap: 14px 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -455,6 +456,87 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .tr-ranked li { grid-template-columns: minmax(0, 1fr) auto; }
   .tr-ranked-bar { grid-column: 1 / -1; grid-row: 2; }
   .tr-hours { height: 120px; gap: 2px; }
+}
+
+/* Shop counter and goods receiving. The scan field is large: it is aimed at from across the counter. */
+.admin-scan { display: flex; gap: 8px; align-items: flex-start; }
+.admin-scan .admin-field { flex: 1; min-width: 0; }
+.admin-scan > .admin-btn { margin-top: 30px; }
+.admin-scan-label { display: inline-flex; align-items: center; gap: 6px; }
+.admin-app .admin-scan input { min-height: 52px; font-size: 20px; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.admin-counter { display: grid; gap: 18px; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); align-items: start; }
+.admin-counter-pay { position: sticky; top: 16px; }
+.admin-counter-submit { min-height: 52px; font-size: 15px; }
+.admin-cart { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.admin-cart-line { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--admin-line);
+  border-radius: 12px; background: #fff; }
+.admin-cart-info { display: grid; gap: 1px; flex: 1; min-width: 0; font-size: 13px; }
+.admin-cart-info strong { font-size: 14px; overflow-wrap: anywhere; }
+.admin-cart-info span { color: var(--admin-muted); font-size: 12px; }
+.admin-cart-qty { display: flex; align-items: center; gap: 6px; }
+.admin-cart-qty output { min-width: 28px; text-align: center; font-weight: 800; font-size: 15px; }
+.admin-cart-total { min-width: 110px; text-align: left; white-space: nowrap; }
+.admin-app .admin-cart-count input { width: 84px; min-height: 38px; }
+.admin-segmented { display: flex; flex-wrap: wrap; gap: 6px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.admin-segmented legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+.admin-segmented label { position: relative; flex: 1; min-width: 88px; cursor: pointer; }
+.admin-app .admin-segmented input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; opacity: 0; cursor: pointer; }
+.admin-segmented span { display: grid; place-items: center; min-height: 44px; padding: 8px 10px; border: 1px solid #cdd7e0;
+  border-radius: 10px; background: #fff; font-size: 13px; font-weight: 700; }
+.admin-segmented input:checked + span { background: #153b39; border-color: #153b39; color: #fff; }
+.admin-segmented input:focus-visible + span { outline: 3px solid #1d6fd6; outline-offset: 2px; }
+.admin-counter-totals { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.admin-counter-totals p { display: grid; gap: 2px; margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--admin-soft); }
+.admin-counter-totals span { color: var(--admin-muted); font-size: 12px; }
+.admin-counter-totals strong { font-size: 17px; }
+.admin-plain-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+@media (max-width: 1080px) {
+  .admin-counter { grid-template-columns: 1fr; }
+  .admin-counter-pay { position: static; }
+}
+@media (max-width: 760px) {
+  .admin-counter-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-cart-line { flex-wrap: wrap; }
+  .admin-cart-info { flex-basis: 100%; }
+  .admin-cart-total { margin-inline-start: auto; }
+  .admin-scan > .admin-btn { display: none; }
+}
+
+/* Barcode labels (/admin/labels): sizes are real millimetres. The tools show on screen only, so the print holds
+   nothing but labels: one per page on a label printer roll, or 65 per A4 sheet. */
+.admin-labels { max-width: 1100px; margin: 0 auto; padding: 24px clamp(16px, 3vw, 32px) 48px; }
+.label-tools { display: grid; gap: 16px; margin-bottom: 24px; }
+.admin-labels .label-count { width: 76px; min-height: 36px; }
+.label-preview { display: flex; flex-wrap: wrap; gap: 10px; }
+.label-sheet { display: contents; }
+.label { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;
+  background: #fff; color: #000; text-align: center; line-height: 1.2; border: 1px dashed #b5c4cf; }
+.admin-labels[data-format="roll-40x30"] .label { width: 40mm; height: 30mm; padding: 1.2mm 1.5mm; }
+.admin-labels[data-format="roll-50x25"] .label { width: 50mm; height: 25mm; padding: 1mm 1.5mm; }
+.admin-labels[data-format="a4-65"] .label { width: 38.1mm; height: 21.2mm; padding: .7mm 1mm; }
+.label-brand { font: 600 2.3mm/1.1 Georgia, serif; letter-spacing: .3mm; direction: ltr; }
+.label-name, .label-meta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.label-name { font-size: 2.7mm; font-weight: 800; }
+.label-meta { font-size: 2.4mm; }
+.label-price { font-size: 2.9mm; font-weight: 800; }
+.label-bars { display: block; flex-shrink: 0; margin-block: .5mm .3mm; fill: #000; }
+.label-code { font: 2.2mm/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .25mm; }
+.admin-labels[data-format="a4-65"] .label-name { font-size: 2.3mm; }
+.admin-labels[data-format="a4-65"] .label-meta { font-size: 2mm; }
+.admin-labels[data-format="a4-65"] .label-code { font-size: 1.9mm; }
+.label-blank { border-style: dotted; opacity: .5; }
+@media print {
+  html, body, .site-shell, .site-shell[data-admin="true"] #main-content { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+  .admin-labels { max-width: none; margin: 0; padding: 0; }
+  .label-tools { display: none !important; }
+  .label-preview { display: block; }
+  .label { border: 0; }
+  .label-blank { visibility: hidden; }
+  .admin-labels[data-format^="roll"] .label { break-after: page; }
+  .admin-labels[data-format^="roll"] .label-sheet:last-child .label { break-after: auto; }
+  .admin-labels[data-format="a4-65"] .label-sheet { display: grid; grid-template-columns: repeat(5, 38.1mm); grid-auto-rows: 21.2mm;
+    column-gap: 2.5mm; break-after: page; }
+  .admin-labels[data-format="a4-65"] .label-sheet:last-child { break-after: auto; }
 }
 
 /* Order slip: the order detail prints as one sheet of customer, address, items and amounts, without the panel chrome,

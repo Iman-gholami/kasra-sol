@@ -5,11 +5,14 @@ export const dynamic = 'force-dynamic';
 type Ctx = { params: Promise<{ path: string[] }> };
 const PRODUCT = '[a-z0-9][a-z0-9-]{1,78}';
 const UUID = '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
+const SERIAL = '[1-9][0-9]{0,15}';
 // Only these admin endpoints are reachable from the browser; the API checks the session's permissions on each.
 const ROUTES: Record<string, RegExp> = {
   GET: new RegExp('^(auth/me|reports/overview|reports/traffic|products|products/' + PRODUCT + '|products/' + PRODUCT + '/variants|' +
-    'orders|orders/export|orders/' + UUID + '|staff|audit|home-slider)$'),
-  POST: /^(auth\/logout|auth\/password|staff|products)$/,
+    'orders|orders/export|orders/' + UUID + '|staff|audit|home-slider|barcodes/[0-9]{13}|stock-receipts|stock-receipts/' + SERIAL +
+    '|store-sales)$'),
+  POST: new RegExp('^(auth/logout|auth/password|staff|products|products/' + PRODUCT + '/barcodes|stock-receipts|store-sales|' +
+    'store-sales/' + SERIAL + '/void)$'),
   PATCH: new RegExp('^(staff/' + UUID + '|products/' + PRODUCT + '/(price|visibility)|variants/' + UUID + '/stock|' +
     'orders/' + UUID + '/status)$'),
   PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password|home-slider)$')
@@ -18,7 +21,7 @@ const ROUTES: Record<string, RegExp> = {
 const QUERY: Record<string, string[]> = {
   products: ['q', 'status', 'stock', 'page', 'limit'], orders: ['q', 'status', 'period', 'page', 'limit'],
   'orders/export': ['q', 'status', 'period'], audit: ['before', 'group', 'actor'],
-  'reports/traffic': ['days']
+  'reports/traffic': ['days'], 'stock-receipts': ['page'], 'store-sales': ['date']
 };
 
 async function handle(request: NextRequest, context: Ctx) {

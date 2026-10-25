@@ -34,7 +34,16 @@ const MESSAGES: Record<string, string> = {
   unsupported_media_type: 'فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود.',
   image_too_large: 'حجم هر تصویر باید حداکثر ۲ مگابایت باشد.',
   slide_unavailable: 'یکی از محصولات انتخاب‌شده منتشر نیست یا آرشیو شده است؛ آن را از اسلایدر بردارید و دوباره ذخیره کنید.',
-  export_too_large: 'تعداد سفارش‌ها برای یک فایل بیش از ۵۰۰۰ است؛ بازه زمانی یا وضعیت را محدودتر کنید.'
+  export_too_large: 'تعداد سفارش‌ها برای یک فایل بیش از ۵۰۰۰ است؛ بازه زمانی یا وضعیت را محدودتر کنید.',
+  invalid_barcode: 'این بارکد معتبر نیست (۱۳ رقم با رقم کنترل درست). دوباره اسکن کنید یا عدد زیر بارکد را با دقت تایپ کنید.',
+  barcode_not_found: 'این بارکد در فروشگاه ثبت نشده است. برچسب را از بخش «ورود کالا و برچسب» یا «محصولات و موجودی» چاپ کنید.',
+  variant_removed: 'این رنگ یا سایز از مشخصات محصول حذف شده است؛ ابتدا آن را در ویرایش محصول برگردانید.',
+  variant_not_found: 'یکی از رنگ‌ها یا سایزها در مشخصات محصول تعریف نشده است؛ رسید ثبت نشد و موجودی تغییر نکرد.',
+  price_missing: 'قیمت فروش این کالا ثبت نشده است؛ پیش از فروش، قیمت آن را در بخش محصولات وارد کنید.',
+  insufficient_stock: 'موجودی سیستم برای بعضی اقلام کافی نیست؛ فروش ثبت نشد.',
+  discount_too_large: 'تخفیف نمی‌تواند از جمع خرید بیشتر باشد.',
+  sale_too_large: 'جمع این فاکتور بیش از حد مجاز است؛ آن را در دو فاکتور ثبت کنید.',
+  sale_already_voided: 'این فروش قبلاً باطل شده است.'
 };
 
 export class AdminApiError extends Error {
@@ -43,6 +52,16 @@ export class AdminApiError extends Error {
       : status === 413 ? MESSAGES.payload_too_large : status === 429 ? MESSAGES.rate_limited
         : 'عملیات انجام نشد (کد ' + status + '). دوباره تلاش کنید.'));
   }
+}
+
+/** A random v4 UUID that makes a submission safe to retry: the API records each one once. `crypto.randomUUID` exists only on
+ * HTTPS pages and localhost, so a shop computer opening the panel by a LAN address could not use it. */
+export function newClientRef() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
 }
 
 /** Message for any thrown value, for showing in an alert. */

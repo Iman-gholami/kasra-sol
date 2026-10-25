@@ -9,6 +9,7 @@ import { mediaRoutes } from './media';
 import { reportRoutes } from './reports';
 import { trafficRoutes } from './traffic';
 import { homeAdminRoutes } from './home-routes';
+import { storeRoutes } from './store-routes';
 import { recordAudit } from './audit';
 import type { Identity } from './identity';
 import { PERMISSIONS, assignable, effectivePermissions, may, type Permission } from './permissions';
@@ -22,7 +23,7 @@ const username = z.string().regex(/^[a-z0-9][a-z0-9_.-]{2,63}$/);
 const password = z.string().min(12).max(256);
 const roleSchema = z.enum(['manager', 'staff']);
 const permissions = z.array(z.enum(PERMISSIONS)).max(PERMISSIONS.length).refine(assignable, 'Owner-only permissions cannot be delegated');
-const AUDIT_GROUPS = ['auth', 'staff', 'products', 'inventory', 'orders', 'media'] as const;
+const AUDIT_GROUPS = ['auth', 'staff', 'products', 'inventory', 'orders', 'sales', 'media'] as const;
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const tokenFrom = (req: FastifyRequest) => {
   const match = /^Bearer ([a-f0-9]{64})$/i.exec(req.headers.authorization ?? '');
@@ -226,6 +227,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
   await reportRoutes(app, requirePermission);
   await trafficRoutes(app, requirePermission);
   await homeAdminRoutes(app, requirePermission, opts);
+  await storeRoutes(app, requirePermission, opts);
 
   // Newest first, 100 per page. `group` is the part of the action before the dot; `actor` is an account id.
   // `targetName` names the account or product an entry is about, so the owner does not have to read ids.

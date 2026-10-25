@@ -9,7 +9,8 @@ import type { AdminUser } from '@/components/admin/admin-dashboard';
 
 type Member = AdminUser & { lockedUntil?: string | null };
 // Owner-only permissions (staff management, payment settings) are never offered: the API refuses them too.
-const ADJUSTABLE = ['products:write', 'products:price', 'inventory:write', 'orders:fulfill', 'orders:export', 'reports:read'] as const;
+const ADJUSTABLE = ['sales:pos', 'products:write', 'products:price', 'inventory:write', 'orders:fulfill', 'orders:export',
+  'reports:read'] as const;
 
 /** A readable random password for handing to an employee once; they should change it after signing in. */
 function generatePassword() {
