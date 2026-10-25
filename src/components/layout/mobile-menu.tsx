@@ -34,16 +34,21 @@ export function MobileMenu() {
           <button type="button" className="icon-button" aria-label="بستن منو" onClick={close}><X size={22} aria-hidden="true"/></button>
         </div>
         <nav className="sheet-body menu-body" aria-label="منوی موبایل">
-          <p className="menu-group-title">کالکشن‌ها</p>
+          <p className="menu-group-title">دسته‌بندی لباس زنانه</p>
           <ul className="menu-list menu-list-display">
             <li style={order(0)}><Link href="/shop" prefetch={demoPrefetch} aria-current={current('/shop')} onClick={close}>
               همه محصولات<ArrowLeft size={20} aria-hidden="true"/>
             </Link></li>
-            {categories.map((item, i) => <li key={item.slug} style={order(i + 1)}>
-              <Link href={'/category/' + item.slug} prefetch={demoPrefetch} aria-current={current('/category/' + item.slug)} onClick={close}>
-                <span className="menu-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
-                {item.title}<ArrowLeft size={20} aria-hidden="true"/>
-              </Link>
+            {categories.map((item, i) => <li key={item.slug} style={order(i + 1)} className="mobile-category-group">
+              {item.children.length ? <details className="mobile-category-details">
+                <summary><span className="menu-no" aria-hidden="true">{editorialNumber(i + 1)}</span>{item.title}<span className="mobile-category-chevron" aria-hidden="true">⌄</span></summary>
+                <ul className="mobile-category-children">
+                  <li><Link href={'/category/' + item.slug} prefetch={demoPrefetch} onClick={close}>مشاهده همه {item.title}</Link></li>
+                  {item.children.map(child => <li key={child.slug}><Link href={'/category/' + child.slug} prefetch={demoPrefetch} onClick={close}>{child.title}</Link></li>)}
+                </ul>
+              </details> : <Link href={'/category/' + item.slug} prefetch={demoPrefetch} aria-current={current('/category/' + item.slug)} onClick={close}>
+                <span className="menu-no" aria-hidden="true">{editorialNumber(i + 1)}</span>{item.title}<ArrowLeft size={20} aria-hidden="true"/>
+              </Link>}
             </li>)}
           </ul>
           <p className="menu-group-title">خرید بر اساس رنگ</p>
