@@ -85,7 +85,7 @@ export function PrimaryNav() {
       <li className="nav-shop" onPointerEnter={() => schedule(true)} onPointerLeave={() => schedule(false)}>
         <Link href="/shop" prefetch={demoPrefetch} aria-current={current('/shop') ? 'page' : undefined}>همه محصولات</Link>
         <button ref={toggle} type="button" className="nav-toggle" aria-expanded={open} aria-controls={panelId}
-          aria-label="نمایش همه دسته‌بندی‌های فروشگاه" onClick={() => { window.clearTimeout(timer.current); setOpen(value => !value); }}
+          aria-label="نمایش راهنمای فروشگاه" onClick={() => { window.clearTimeout(timer.current); setOpen(value => !value); }}
           onKeyDown={onToggleKey}>
           <ChevronDown size={16} aria-hidden="true"/>
         </button>
