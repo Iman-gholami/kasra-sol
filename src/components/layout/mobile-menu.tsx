@@ -10,6 +10,7 @@ import { editorialNumber } from '@/lib/format';
 
 /** Stagger position for the opening reveal (see .menu-list-display in layout.css). */
 const order = (i: number) => ({ '--i': i }) as CSSProperties;
+const demoPrefetch = process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true' ? undefined : true;
 
 /** Full-screen navigation for ≤ 1080px: slides from the inline-start edge, swipe toward that edge to close.
  * The collections are set large and numbered like a contents page. */
@@ -35,11 +36,11 @@ export function MobileMenu() {
         <nav className="sheet-body menu-body" aria-label="منوی موبایل">
           <p className="menu-group-title">کالکشن‌ها</p>
           <ul className="menu-list menu-list-display">
-            <li style={order(0)}><Link href="/shop" aria-current={current('/shop')} onClick={close}>
+            <li style={order(0)}><Link href="/shop" prefetch={demoPrefetch} aria-current={current('/shop')} onClick={close}>
               همه محصولات<ArrowLeft size={20} aria-hidden="true"/>
             </Link></li>
             {categories.map((item, i) => <li key={item.slug} style={order(i + 1)}>
-              <Link href={'/category/' + item.slug} aria-current={current('/category/' + item.slug)} onClick={close}>
+              <Link href={'/category/' + item.slug} prefetch={demoPrefetch} aria-current={current('/category/' + item.slug)} onClick={close}>
                 <span className="menu-no" aria-hidden="true">{editorialNumber(i + 1)}</span>
                 {item.title}<ArrowLeft size={20} aria-hidden="true"/>
               </Link>
