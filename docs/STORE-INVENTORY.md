@@ -42,11 +42,14 @@ Printed from the browser; the page holds nothing but labels when printed, in rea
 
 | Type | Size | Notes |
 |---|---|---|
-| Label printer roll | 40 × 30 mm | One label per page. Bars of 0.25 mm = 2 dots on a 203 dpi printer. |
-| Label printer roll | 50 × 25 mm | Bars of 0.375 mm = 3 dots. |
+| Label printer roll (default) | 50 × 25 mm | The size of the sticker the shop already puts on its hang tags. One label per page. |
+| Label printer roll | 40 × 30 mm | |
+| Label printer roll | any size, 25–100 × 15–80 mm | «اندازه دلخواه», for other sticker rolls. |
 | A4 sheet, 65 labels | 38.1 × 21.2 mm (5 × 13) | «چند خانه اول خالی بماند» reuses a partly used sheet. |
 
-Each label shows the product name, color, size, price (optional) and the barcode with its digits. In the print dialog choose the
+Like the shop's current sticker, each label has the barcode with its digits on top, then the product name, color and size, and the
+price (optional); the hang tag itself carries the shop's name and address. The narrowest bar is 0.375 mm (3 dots on a 203 dpi
+printer) on labels at least 46 mm wide and 0.25 mm (2 dots) on narrower ones, and the bars take the height the text leaves. In the print dialog choose the
 label printer, margins **None** and scale **100%**; for a roll, set the same label size in the printer driver. The price printed is
 the price at printing time; the counter always charges the current catalog price.
 
@@ -103,7 +106,7 @@ counter sales, receipts, online orders and full product edits neither deadlock n
 - `backend/tests/integration/store.integration.mjs` (real PostgreSQL): receipts applied once and atomically, barcodes stable
   across a removed/restored size, sales at catalog price, all-or-nothing refusal, discount permission, **counter and website racing
   for the last 3 units sell exactly 3**, a cancelled online order's unit sold at the counter, void once with correct day totals.
-- `tests-admin/admin-panel.spec.ts`: receive → print (3 labels, one 40 × 30 mm PDF page each) → staff scan with Persian digits →
+- `tests-admin/admin-panel.spec.ts`: receive → print (3 labels, one 50 × 25 mm PDF page each, and a custom size) → staff scan with Persian digits →
   sale → website stock follows → manager voids; staff menu and permissions; axe checks of the new screens; phone layouts.
 
 The EAN-13 drawing was also checked by decoding the generated symbols with ZXing (not part of the repository's tests).
@@ -113,7 +116,7 @@ The EAN-13 drawing was also checked by decoding the generated symbols with ZXing
 - Scanning with a phone camera (works today with any USB/Bluetooth scanner, or by typing the digits).
 - A printed customer receipt from the counter, and counter sales in the dashboard reports (the counter shows the day's totals).
 - Stock counting (انبارگردانی) and partial returns of one line of a sale (void returns the whole sale).
-- Existing manufacturer barcodes on goods; every color/size gets the shop's own code.
+- Reading the barcodes already on the shop's stickers: goods are relabelled with the site's labels, which every color/size gets.
 
 ---
 

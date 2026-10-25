@@ -510,20 +510,19 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 .label-preview { display: flex; flex-wrap: wrap; gap: 10px; }
 .label-sheet { display: contents; }
 .label { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;
-  background: #fff; color: #000; text-align: center; line-height: 1.2; border: 1px dashed #b5c4cf; }
-.admin-labels[data-format="roll-40x30"] .label { width: 40mm; height: 30mm; padding: 1.2mm 1.5mm; }
-.admin-labels[data-format="roll-50x25"] .label { width: 50mm; height: 25mm; padding: 1mm 1.5mm; }
-.admin-labels[data-format="a4-65"] .label { width: 38.1mm; height: 21.2mm; padding: .7mm 1mm; }
-.label-brand { font: 600 2.3mm/1.1 Georgia, serif; letter-spacing: .3mm; direction: ltr; }
+  padding: 1.2mm 1.5mm; background: #fff; color: #000; text-align: center; line-height: 1.2; border: 1px dashed #b5c4cf; }
 .label-name, .label-meta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .label-name { font-size: 2.7mm; font-weight: 800; }
 .label-meta { font-size: 2.4mm; }
-.label-price { font-size: 2.9mm; font-weight: 800; }
-.label-bars { display: block; flex-shrink: 0; margin-block: .5mm .3mm; fill: #000; }
-.label-code { font: 2.2mm/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .25mm; }
-.admin-labels[data-format="a4-65"] .label-name { font-size: 2.3mm; }
-.admin-labels[data-format="a4-65"] .label-meta { font-size: 2mm; }
-.admin-labels[data-format="a4-65"] .label-code { font-size: 1.9mm; }
+.label-price { font-size: 3mm; font-weight: 800; }
+/* The bars take the height the text leaves, within limits a scanner reads well. */
+.label-bars { display: block; flex: 1 1 0; min-height: 4mm; max-height: 16mm; fill: #000; }
+.label-code { margin-block: .4mm .5mm; font: 2.2mm/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .25mm; }
+.admin-labels[data-compact] .label { padding: .7mm 1mm; }
+.admin-labels[data-compact] .label-name { font-size: 2.3mm; }
+.admin-labels[data-compact] .label-meta { font-size: 2mm; }
+.admin-labels[data-compact] .label-price { font-size: 2.4mm; }
+.admin-labels[data-compact] .label-code { font-size: 1.9mm; }
 .label-blank { border-style: dotted; opacity: .5; }
 @media print {
   html, body, .site-shell, .site-shell[data-admin="true"] #main-content { background: #fff !important; margin: 0 !important; padding: 0 !important; }

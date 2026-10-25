@@ -300,15 +300,15 @@ test('goods arrive with barcode labels, the counter sells them by scan, and the 
   await expect(labels.locator('.label').first()).toContainText('۶۴۰٬۰۰۰ تومان');
   expect(await accessibilityViolations(labels, '.label-tools')).toEqual([]);
   await shot(labels, 'labels-desktop');
-  // The print holds labels only, one 40 × 30 mm page each.
+  // The print holds labels only, one 50 × 25 mm page each (the size of the shop's current stickers).
   await labels.emulateMedia({ media: 'print' });
   await expect(labels.locator('.label-tools')).toBeHidden();
   const pdf = (await labels.pdf({ preferCSSPageSize: true })).toString('latin1');
   expect(pdf.match(/\/Type\s*\/Page(?!s)/g)).toHaveLength(3);
   // Points; Chromium rounds the page to whole CSS pixels.
   const [width, height] = pdf.match(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)\s*\]/)!.slice(1).map(Number);
-  expect(Math.abs(width - 40 / 25.4 * 72)).toBeLessThan(1);
-  expect(Math.abs(height - 30 / 25.4 * 72)).toBeLessThan(1);
+  expect(Math.abs(width - 50 / 25.4 * 72)).toBeLessThan(1);
+  expect(Math.abs(height - 25 / 25.4 * 72)).toBeLessThan(1);
   await labels.close();
 
   // Staff sell two at the counter; the scanner types Persian digits on a Persian keyboard layout.
@@ -361,6 +361,12 @@ test('goods arrive with barcode labels, the counter sells them by scan, and the 
   await expect(reprint.locator('.label')).toHaveCount(2);
   await reprint.getByRole('button', { name: 'هر کدام به تعداد موجودی' }).click();
   await expect(reprint.locator('.label')).toHaveCount(3);
+  // A label printer with other stickers: any size in millimetres.
+  await reprint.getByLabel('نوع برچسب').selectOption('roll-custom');
+  await reprint.getByLabel('عرض').fill('۴۰');
+  await reprint.getByLabel('ارتفاع').fill('20');
+  const custom = (await reprint.locator('.label').first().boundingBox())!;
+  expect([Math.round(custom.width / 96 * 25.4), Math.round(custom.height / 96 * 25.4)]).toEqual([40, 20]);
   await reprint.getByLabel('نوع برچسب').selectOption('a4-65');
   await reprint.getByLabel('چند خانه اول برگه خالی بماند؟').fill('۴');
   await expect(reprint.locator('.label-blank')).toHaveCount(4);
