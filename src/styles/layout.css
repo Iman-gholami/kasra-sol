@@ -65,7 +65,7 @@
 .nav-panel-card strong { display: block; font-size: var(--text-md); }
 .nav-panel-card small { display: block; color: var(--color-text-muted); font-size: var(--text-xs); line-height: 1.7; font-weight: var(--font-weight-regular); }
 /* Full taxonomy replaces the former three photographed collection cards. */
-.nav-panel { max-block-size: min(74vh, 650px); overflow-y: auto; overscroll-behavior: contain; }
+.nav-panel { max-block-size: min(55vh, 460px); overflow-y: auto; overscroll-behavior: contain; }
 .nav-panel-inner { grid-template-columns: minmax(0, 3.4fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr); }
 .nav-panel-categories > ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
 .nav-panel .nav-category-parent { min-block-size: 30px; font-weight: var(--font-weight-semibold); color: var(--color-text); }
