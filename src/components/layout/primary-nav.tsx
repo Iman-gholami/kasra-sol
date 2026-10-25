@@ -95,10 +95,10 @@ export function PrimaryNav() {
               <p className="nav-panel-title">دسته‌بندی لباس زنانه</p>
               <ul>
                 {categories.map(category => <li key={category.slug} className="nav-category-group">
-                  <Link href={'/category/' + category.slug} prefetch={demoPrefetch} className="nav-category-parent" onClick={close}>{category.title}</Link>
+                  <Link href={'/category/' + category.slug} prefetch={false} className="nav-category-parent" onClick={close}>{category.title}</Link>
                   {category.children.length > 0 && <ul className="nav-category-children">
                     {category.children.map(child => <li key={child.slug}>
-                      <Link href={'/category/' + child.slug} prefetch={demoPrefetch} onClick={close}>{child.title}</Link>
+                      <Link href={'/category/' + child.slug} prefetch={false} onClick={close}>{child.title}</Link>
                     </li>)}
                   </ul>}
                 </li>)}
