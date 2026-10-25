@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { categories } from '@/data/facets';
+import { allCategories } from '@/data/facets';
 import { WishlistButton } from '@/components/products/wishlist-button';
 import { Price } from '@/components/products/price';
 import { discountPercent, formatNumber, formatPercent } from '@/lib/format';
@@ -20,7 +20,7 @@ export type CardImageLoading = 'lcp' | 'eager' | 'lazy';
  * screens (a CSS scroll-snap track with a scroll-driven position bar; no client JavaScript). */
 export function ProductCard({ product, loading = 'lazy', sizes = SIZES }: { product: ProductCardData; loading?: CardImageLoading; sizes?: string }) {
   const discount = discountPercent(product.price, product.compareAt);
-  const category = categories.find(item => item.slug === product.category)?.title ?? '';
+  const category = allCategories.find(item => item.slug === product.category)?.title ?? '';
   const soldOut = product.variants ? !product.variants.some(variant => variant.stock > 0) : false;
   const href = '/product/' + product.slug;
   const [photo, alternate] = product.images;
