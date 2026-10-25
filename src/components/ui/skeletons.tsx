@@ -1,17 +1,10 @@
-/** Route skeletons that mirror the real layout so streaming in the page does not shift anything. */
-export function CatalogSkeleton() {
-  return <div className="container catalog-layout" role="status" aria-label="در حال بارگذاری محصولات">
-    <div className="catalog-skeleton-head" aria-hidden="true"><span className="skeleton"/><span className="skeleton"/></div>
-    <div className="catalog-body" aria-hidden="true">
-      <div className="filters-panel filters-skeleton">{[0, 1, 2, 3].map(i => <span key={i} className="skeleton"/>)}</div>
-      <div className="catalog-results">
-        <span className="skeleton catalog-toolbar-skeleton"/>
-        <div className="product-grid">
-          {Array.from({ length: 8 }, (_, i) => <div key={i} className="product-card-skeleton">
-            <span className="skeleton"/><span className="skeleton"/><span className="skeleton"/>
-          </div>)}
-        </div>
-      </div>
+/** A calm route fallback: avoid the distracting eight-card loading grid. */
+export function CatalogLoadingHint() {
+  return <div className="container catalog-loading" role="status" aria-label="در حال آماده‌سازی محصولات">
+    <div className="catalog-loading-inner">
+      <span className="catalog-loading-icon" aria-hidden="true">K</span>
+      <span className="catalog-loading-copy">در حال آماده‌سازی کالکشن…</span>
+      <span className="catalog-loading-track" aria-hidden="true"><span/></span>
     </div>
   </div>;
 }
