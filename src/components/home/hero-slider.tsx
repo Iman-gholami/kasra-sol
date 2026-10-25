@@ -85,7 +85,7 @@ export function HeroSlider({ slides, sizes }: { slides: HeroSlide[]; sizes: stri
         return <div key={slide.id} className="hero-slide" data-active={i === index || undefined} role="group" aria-roledescription="اسلاید"
           aria-label={formatNumber(i + 1) + ' از ' + formatNumber(count)} aria-hidden={i !== index || undefined} inert={i !== index}>
           {/* Like product cards: the photo repeats the name link, so it stays out of the tab order and the accessibility tree. */}
-          <Link href={'/product/' + slide.slug} className={'hero-figure' + (i === 0 ? ' hero-visual' : '')} tabIndex={-1} aria-hidden="true">
+          <Link href={'/product/' + slide.slug} className={'hero-figure' + (i === 0 ? ' hero-visual' : '') + (slide.image.startsWith('/images/brand-preview/') ? ' hero-figure-mockup' : '')} tabIndex={-1} aria-hidden="true">
             {(i === 0 || rest) && <Image src={slide.image} alt="" fill sizes={sizes} preload={i === 0}
               fetchPriority={i === 0 ? 'high' : 'low'}/>}
           </Link>
