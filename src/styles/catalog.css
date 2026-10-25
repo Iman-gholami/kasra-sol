@@ -1,3 +1,22 @@
+/* The old full-page catalog skeleton was visually jarring between collections.
+   Show a small, on-brand transition only when navigation truly has to wait. */
+.catalog-loading {
+  display: grid; place-items: start center; min-block-size: 180px;
+  padding-block: clamp(40px, 5vw, 72px) var(--space-6);
+}
+.catalog-loading-inner { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center;
+  gap: 8px 12px; inline-size: min(100%, 260px); color: var(--color-text-muted); }
+.catalog-loading-icon { display: grid; place-items: center; inline-size: 32px; block-size: 32px;
+  border-radius: var(--radius-sm); background: var(--color-text); color: var(--color-inverse);
+  font: 700 20px/1 Georgia, serif; }
+.catalog-loading-copy { font-size: var(--text-sm); }
+.catalog-loading-track { grid-column: 1 / -1; block-size: 3px; border-radius: var(--radius-pill);
+  background: var(--color-border); overflow: hidden; }
+.catalog-loading-track span { display: block; inline-size: 35%; block-size: 100%;
+  border-radius: inherit; background: var(--color-accent); animation: catalog-pending 1.25s ease-in-out infinite alternate; }
+@keyframes catalog-pending { from { transform: translateX(0); } to { transform: translateX(-175%); } }
+@media (prefers-reduced-motion: reduce) { .catalog-loading-track span { animation: none; inline-size: 100%; } }
+
 /* Product cards, grids, catalog (sidebar/sheet filters, toolbar, chips, pagination) and search. */
 
 /* ---------- Product grid and card ---------- */
