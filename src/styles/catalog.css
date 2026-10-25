@@ -1,3 +1,6 @@
+.catalog-subcategory-nav { display: flex; flex-wrap: wrap; gap: var(--space-2); padding-block: var(--space-2) var(--space-3); margin-block: 0 var(--space-3); }
+.catalog-subcategory-nav .chip { font-size: var(--text-sm); }
+
 /* The old full-page catalog skeleton was visually jarring between collections.
    Show a small, on-brand transition only when navigation truly has to wait. */
 .catalog-loading {
