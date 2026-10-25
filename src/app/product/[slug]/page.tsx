@@ -1,5 +1,4 @@
 import { Suspense } from 'react';
-import { connection } from 'next/server';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ProductDetail } from '@/components/products/product-detail';
@@ -9,17 +8,11 @@ import { categories, products as demoProducts } from '@/data/products';
 import { getHomeProducts, getProductBySlug } from '@/lib/backend-products';
 
 type Props = { params: Promise<{ slug: string }> };
-// The backend-enabled flag is available at BUILD time, while BACKEND_INTERNAL_URL may
-// only be injected at runtime (e.g. Playwright or container deployments).
-// Never prerender demo SKUs into backend-enabled builds or cache stock across requests.
-export const dynamicParams = true;
-export function generateStaticParams() {
-  const liveCatalog = process.env.NEXT_PUBLIC_BACKEND_ENABLED === 'true' || Boolean(process.env.BACKEND_INTERNAL_URL);
-  return liveCatalog ? [] : demoProducts.map(({ slug }) => ({ slug }));
-}
+// The inventory/price source can change independently of deployment.
+// Keep product routes dynamic until static demo and live API catalogs have separate route contracts.
+export const dynamic = 'force-dynamic';
+export function generateStaticParams() { return demoProducts.map(({ slug }) => ({ slug })); }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  // Live product information and stock must never be served from a static route.
-  if (process.env.BACKEND_INTERNAL_URL) await connection();
   const product = await getProductBySlug((await params).slug);
   return { title: product?.name ?? 'محصول ناموجود', description: product?.description,
     openGraph: product ? { images: [product.images[0]] } : undefined };
@@ -37,8 +30,6 @@ async function RelatedProducts({ product }: { product: NonNullable<Awaited<Retur
 }
 
 export default async function ProductPage({ params }: Props) {
-  // Demo pages prerender and prefetch; backend-powered products render per request.
-  if (process.env.BACKEND_INTERNAL_URL) await connection();
   const product = await getProductBySlug((await params).slug);
   if (!product) notFound();
   const category = categories.find(item => item.slug === product.category);
