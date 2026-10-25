@@ -27,6 +27,7 @@ function coverSlides(picked: Product[], newest: Product[]) {
 
 export const dynamic = 'force-dynamic';
 export default async function HomePage() {
+  const demoPrefetch = process.env.BACKEND_INTERNAL_URL ? undefined : true;
   // With the API enabled every section reflects published products only: archived ones disappear and new ones appear.
   const [products, picked] = await Promise.all([getCatalogProducts(), getHomeSlides()]);
   const newest = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -43,7 +44,7 @@ export default async function HomePage() {
       <h1 id="hero-title"><span className="hero-line"><span>استایل هر روزت،</span></span> <em className="hero-line"><span>به سبک خودت.</span></em></h1>
       <p className="hero-lede">از یک شومیز دوست‌داشتنی تا مانتویی که هر روز سراغش می‌ری؛ انتخاب‌های ساده برای سلیقه تو.</p>
       <div className="hero-actions">
-        <Link href="/shop" className="btn btn-primary btn-lg">کالکشن رو ببین <ArrowLeft size={19} aria-hidden="true"/></Link>
+        <Link href="/shop" prefetch={demoPrefetch} className="btn btn-primary btn-lg">کالکشن رو ببین <ArrowLeft size={19} aria-hidden="true"/></Link>
         <Link href="/shop?sort=newest" className="text-link">تازه‌ترین‌ها</Link>
       </div>
       {slides.length > 0 && <HeroSlider slides={slides} sizes={slideSizes}/>}
@@ -57,7 +58,7 @@ export default async function HomePage() {
       </div>
       <ul className="category-grid">
         {categories.map(category => <li key={category.slug}>
-          <Link href={'/category/' + category.slug} className="category-tile">
+          <Link href={'/category/' + category.slug} prefetch={demoPrefetch} className="category-tile">
             <span className="category-figure"><Image src={collectionPhotos[category.slug]} alt="" fill sizes={roomFigureSizes}/></span>
             <span className="category-description"><span className="category-name">{category.title}</span><span>{category.description}</span></span>
             <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
