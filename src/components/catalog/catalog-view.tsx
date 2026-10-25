@@ -4,7 +4,7 @@ import { CatalogFilters, SortForm } from '@/components/catalog/catalog-filters';
 import { CatalogShell } from '@/components/catalog/catalog-shell';
 import { ProductGrid } from '@/components/products/product-grid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
-import { categories, palette } from '@/data/facets';
+import { allCategories, categories, palette } from '@/data/facets';
 import { catalogHref, sortLabels } from '@/lib/catalog-url';
 import { formatNumber } from '@/lib/format';
 import type { CatalogFilters as Filters, Product } from '@/types/store';
@@ -27,7 +27,7 @@ type Props = {
 export function CatalogView({ title, intro, action, filters, data, fixedCategory, compactHeading, titleLabel, number }: Props) {
   const makeUrl = (overrides: Record<string, string | null>) => catalogHref(action, filters, fixedCategory, overrides);
   const chips: { key: string; label: string }[] = [];
-  if (filters.category && !fixedCategory) chips.push({ key: 'category', label: categories.find(c => c.slug === filters.category)?.title || '' });
+  if (filters.category && !fixedCategory) chips.push({ key: 'category', label: allCategories.find(c => c.slug === filters.category)?.title || '' });
   if (filters.size) chips.push({ key: 'size', label: 'سایز ' + filters.size });
   if (filters.color) chips.push({ key: 'color', label: palette.find(c => c.id === filters.color)?.name || filters.color });
   if (filters.min !== undefined) chips.push({ key: 'min', label: 'از ' + formatNumber(filters.min) + ' تومان' });
@@ -60,6 +60,10 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
       {categories.map(item => <Link key={item.slug} href={categoryHref(item.slug)} className="chip"
         aria-current={filters.category === item.slug ? 'page' : undefined}>{item.title}</Link>)}
     </nav>
+    {fixedCategory && categories.find(group => group.slug === filters.category)?.children.map(child => child).length ? <nav className="catalog-subcategory-nav" aria-label="زیرگروه‌های این دسته">
+      {categories.find(group => group.slug === filters.category)?.children.map(child =>
+        <Link key={child.slug} href={'/category/' + child.slug} className="chip">{child.title}</Link>)}
+    </nav> : null}
     <CatalogShell>
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
       <section className="catalog-results" aria-labelledby="results-title">
