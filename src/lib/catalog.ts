@@ -1,7 +1,7 @@
 import { products } from '@/data/products';
 import { toLatinDigits } from '@/lib/format';
 import { rankProduct } from '@/lib/search';
-import { categories } from '@/data/products';
+import { categoryFamily, isCategorySlug } from '@/data/facets';
 import { variantMatchesColorFamily } from '@/lib/shop-by-color';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
 import { visitorHeaders } from '@/lib/backend-products';
@@ -21,7 +21,7 @@ export const parseFilters = (params: SearchParams, category?: CategorySlug): Cat
   const requestedCategory = one(params.category);
   const sort = one(params.sort);
   return {
-    category: category ?? (categories.some(c => c.slug === requestedCategory) ? requestedCategory as CategorySlug : undefined),
+    category: category ?? (requestedCategory && isCategorySlug(requestedCategory) ? requestedCategory : undefined),
     q: one(params.q)?.trim().slice(0, 100),
     // Live catalog values are not restricted to the original demo products.
     size: process.env.BACKEND_INTERNAL_URL
@@ -59,7 +59,7 @@ export async function queryProducts(filters: CatalogFilters): Promise<{ items: P
     return response.json() as Promise<{ items: Product[]; total: number; page: number; pages: number }>;
   }
   let result = products.filter((product) => {
-    if (filters.category && product.category !== filters.category) return false;
+    if (filters.category && !categoryFamily(filters.category).includes(product.category)) return false;
     if (filters.q && rankProduct(product, filters.q) === null) return false;
     if (filters.min !== undefined && product.price < filters.min) return false;
     if (filters.max !== undefined && product.price > filters.max) return false;

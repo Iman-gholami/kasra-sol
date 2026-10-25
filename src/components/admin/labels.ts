@@ -1,3 +1,5 @@
+import { categories } from '@/data/facets';
+
 export type OrderStatus = 'pending_payment' | 'confirmed_cod' | 'preparing' | 'shipped' | 'delivered' | 'cancelled';
 export type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 
@@ -30,7 +32,10 @@ export const PRODUCT_STATUS: Record<string, { label: string; tone: Tone }> = {
   draft: { label: 'پیش‌نویس', tone: 'warning' },
   archived: { label: 'آرشیوشده', tone: 'neutral' }
 };
-export const CATEGORY: Record<string, string> = { manto: 'مانتو', shomiz: 'شومیز', tshirt: 'تیشرت' };
+export const CATEGORY: Record<string, string> = Object.fromEntries(categories.flatMap(group => [
+  [group.slug, group.title],
+  ...group.children.map(child => [child.slug, group.title + ' / ' + child.title])
+]));
 export const ROLE: Record<string, string> = { owner: 'صاحب فروشگاه', manager: 'مدیر فروشگاه', staff: 'کارمند فروشگاه' };
 
 export const PERMISSION: Record<string, { label: string; hint: string }> = {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { products, categories } from '@/data/products';
+import { products } from '@/data/products';
+import { allCategories } from '@/data/facets';
 import { rankProduct } from '@/lib/search';
 import { normalizePersian } from '@/lib/format';
 import { forwardedFor } from '@/lib/backend-proxy';
@@ -26,13 +27,13 @@ export async function GET(request: NextRequest) {
     const score = rankProduct(product, q);
     return score === null ? [] : [{ product, score }];
   }).sort((a,b) => a.score - b.score || a.product.name.localeCompare(b.product.name, 'fa'));
-  const matchingCategories = categories.filter(c =>
+  const matchingCategories = allCategories.filter(c =>
     normalizePersian(c.title).includes(normalizePersian(q)) ||
     normalizePersian(q).includes(normalizePersian(c.title))
   );
   return NextResponse.json({
     products: ranked.slice(0, 4).map(({product}) => ({
-      id: product.id, name: product.name, category: categories.find(c => c.slug === product.category)?.title ?? '',
+      id: product.id, name: product.name, category: allCategories.find(c => c.slug === product.category)?.title ?? '',
       image: product.images[0], price: product.price, href: '/product/' + product.slug
     })),
     categories: matchingCategories.slice(0, 3).map(c => ({

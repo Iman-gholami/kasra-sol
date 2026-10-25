@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import { ProductDetail } from '@/components/products/product-detail';
 import { ProductGrid } from '@/components/products/product-grid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
-import { categories, products as demoProducts } from '@/data/products';
+import { products as demoProducts } from '@/data/products';
+import { allCategories } from '@/data/facets';
 import { getHomeProducts, getProductBySlug } from '@/lib/backend-products';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -32,7 +33,7 @@ async function RelatedProducts({ product }: { product: NonNullable<Awaited<Retur
 export default async function ProductPage({ params }: Props) {
   const product = await getProductBySlug((await params).slug);
   if (!product) notFound();
-  const category = categories.find(item => item.slug === product.category);
+  const category = allCategories.find(item => item.slug === product.category);
   return <div className="container">
     <Breadcrumbs items={[{ label: 'خانه', href: '/' }, { label: category?.title ?? 'محصولات', href: '/category/' + product.category }, { label: product.name }]}/>
     <ProductDetail product={product}/>

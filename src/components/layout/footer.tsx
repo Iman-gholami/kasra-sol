@@ -15,7 +15,7 @@ export function Footer() {
         <h2 id="footer-collections">کالکشن‌ها</h2>
         <ul>
           <li><Link href="/shop">همه محصولات</Link></li>
-          {categories.map(item => <li key={item.slug}><Link href={'/category/' + item.slug}>{item.title}</Link></li>)}
+          {categories.map(item => <li key={item.slug}><Link href={'/category/' + item.slug} prefetch={false}>{item.title}</Link></li>)}
         </ul>
       </nav>
       <nav aria-labelledby="footer-help">

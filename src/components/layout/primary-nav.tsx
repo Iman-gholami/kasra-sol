@@ -1,17 +1,11 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { categories, palette } from '@/data/facets';
 
-const categoryPhotos: Record<string, string> = {
-  shomiz: '/images/lookbook/shomiz-rose.avif',
-  manto: '/images/lookbook/manto-sage.avif',
-  tshirt: '/images/lookbook/tshirt-blue.avif'
-};
 const OPEN_DELAY = 150;
 const CLOSE_DELAY = 250;
 // Only prefetch entire dynamic catalog pages in the backend-free demo;
@@ -98,13 +92,15 @@ export function PrimaryNav() {
         <div id={panelId} ref={panel} className="nav-panel" hidden={!open} onKeyDown={onPanelKey}>
           {open && <div className="container nav-panel-inner">
             <div className="nav-panel-categories">
-              <p className="nav-panel-title">کالکشن‌ها</p>
+              <p className="nav-panel-title">دسته‌بندی لباس زنانه</p>
               <ul>
-                {categories.map(category => <li key={category.slug}>
-                  <Link href={'/category/' + category.slug} prefetch={demoPrefetch} className="nav-panel-card" onClick={close}>
-                    <span className="nav-panel-photo"><Image src={categoryPhotos[category.slug]} alt="" fill sizes="96px"/></span>
-                    <span><strong>{category.title}</strong><small>{category.description}</small></span>
-                  </Link>
+                {categories.map(category => <li key={category.slug} className="nav-category-group">
+                  <Link href={'/category/' + category.slug} prefetch={false} className="nav-category-parent" onClick={close}>{category.title}</Link>
+                  {category.children.length > 0 && <ul className="nav-category-children">
+                    {category.children.map(child => <li key={child.slug}>
+                      <Link href={'/category/' + child.slug} prefetch={false} onClick={close}>{child.title}</Link>
+                    </li>)}
+                  </ul>}
                 </li>)}
               </ul>
             </div>
@@ -131,7 +127,7 @@ export function PrimaryNav() {
           </div>}
         </div>
       </li>
-      {categories.map(item => <li key={item.slug}>
+      {categories.filter(item => ['pants', 'manto', 'shomiz-vest'].includes(item.slug)).map(item => <li key={item.slug}>
         <Link href={'/category/' + item.slug} prefetch={demoPrefetch} aria-current={current('/category/' + item.slug) ? 'page' : undefined}>{item.title}</Link>
       </li>)}
       <li><Link href="/about" aria-current={current('/about') ? 'page' : undefined}>درباره کسری</Link></li>

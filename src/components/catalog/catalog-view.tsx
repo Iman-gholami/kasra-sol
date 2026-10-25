@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, ImageIcon, X } from 'lucide-react';
 import { CatalogFilters, SortForm } from '@/components/catalog/catalog-filters';
 import { CatalogShell } from '@/components/catalog/catalog-shell';
+import { CategoryNavigation, type CategoryRail } from '@/components/catalog/category-navigation';
 import { ProductGrid } from '@/components/products/product-grid';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
-import { categories, palette } from '@/data/facets';
+import { allCategories, categories, palette } from '@/data/facets';
 import { catalogHref, sortLabels } from '@/lib/catalog-url';
 import { formatNumber } from '@/lib/format';
 import type { CatalogFilters as Filters, Product } from '@/types/store';
@@ -27,7 +28,7 @@ type Props = {
 export function CatalogView({ title, intro, action, filters, data, fixedCategory, compactHeading, titleLabel, number }: Props) {
   const makeUrl = (overrides: Record<string, string | null>) => catalogHref(action, filters, fixedCategory, overrides);
   const chips: { key: string; label: string }[] = [];
-  if (filters.category && !fixedCategory) chips.push({ key: 'category', label: categories.find(c => c.slug === filters.category)?.title || '' });
+  if (filters.category && !fixedCategory) chips.push({ key: 'category', label: allCategories.find(c => c.slug === filters.category)?.title || '' });
   if (filters.size) chips.push({ key: 'size', label: 'سایز ' + filters.size });
   if (filters.color) chips.push({ key: 'color', label: palette.find(c => c.id === filters.color)?.name || filters.color });
   if (filters.min !== undefined) chips.push({ key: 'min', label: 'از ' + formatNumber(filters.min) + ' تومان' });
@@ -42,6 +43,35 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   const categoryHref = (slug: string) => action === '/search'
     ? makeUrl({ category: slug, page: null })
     : '/category/' + slug + makeUrl({ category: null, page: null }).slice(action.length);
+  // A leaf keeps its parent selected in the first rail; the second rail
+  // lists only that parent's models, instead of a second multi-line chip wall.
+  const selectedGroup = categories.find(group =>
+    group.slug === filters.category || group.children.some(child => child.slug === filters.category));
+  const rails: CategoryRail[] = [
+    {
+      key: 'parents', label: 'دسته‌ها', accessibleName: 'دسته‌بندی‌های محصولات',
+      items: [
+        { slug: 'all', title: 'همه محصولات', href: allHref,
+          active: !filters.category, current: !filters.category },
+        ...categories.map(group => ({
+          slug: group.slug, title: group.title, href: categoryHref(group.slug),
+          active: selectedGroup?.slug === group.slug, current: filters.category === group.slug
+        }))
+      ]
+    },
+    ...(selectedGroup && selectedGroup.children.length > 0 ? [{
+      key: 'children', label: 'مدل‌ها', accessibleName: 'زیرگروه‌های این دسته',
+      items: [
+        { slug: selectedGroup.slug, title: 'همه ' + selectedGroup.title,
+          href: categoryHref(selectedGroup.slug),
+          active: filters.category === selectedGroup.slug, current: filters.category === selectedGroup.slug },
+        ...selectedGroup.children.map(child => ({
+          slug: child.slug, title: child.title, href: categoryHref(child.slug),
+          active: filters.category === child.slug, current: filters.category === child.slug
+        }))
+      ]
+    }] : [])
+  ];
   const from = (data.page - 1) * 12 + 1;
   const to = from + data.items.length - 1;
 
@@ -55,11 +85,7 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
       </div>
       <p className="catalog-count" aria-live="polite"><strong>{formatNumber(data.total)}</strong> مدل</p>
     </div>
-    <nav className="catalog-category-nav" aria-label="دسته‌بندی‌های محصولات">
-      <Link href={allHref} className="chip" aria-current={!filters.category ? 'page' : undefined}>همه محصولات</Link>
-      {categories.map(item => <Link key={item.slug} href={categoryHref(item.slug)} className="chip"
-        aria-current={filters.category === item.slug ? 'page' : undefined}>{item.title}</Link>)}
-    </nav>
+    <CategoryNavigation rails={rails}/>
     <CatalogShell>
       <CatalogFilters action={action} filters={filters} fixedCategory={fixedCategory} count={data.total}/>
       <section className="catalog-results" aria-labelledby="results-title">

@@ -1,4 +1,5 @@
-export type CategorySlug = 'shomiz' | 'manto' | 'tshirt';
+import type { CategorySlug } from '@/data/facets';
+export type { CategorySlug } from '@/data/facets';
 
 export type ProductColor = { id: string; name: string; hex: string; familyId?: string };
 export type ProductVariant = { colorId: string; size: string; stock: number };

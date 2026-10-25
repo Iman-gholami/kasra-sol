@@ -6,6 +6,8 @@ import { productIdentity, productInput, type ProductInput } from './product-sche
 import { recordAudit } from './audit';
 import { can, type Guard } from './identity';
 import { z } from 'zod';
+import { categoryFamily, isCategorySlug } from '../../../src/data/facets';
+import type { CategorySlug } from '../../../src/data/facets';
 
 type Client = { query: (text: string, values?: unknown[]) => Promise<unknown> };
 type VariantRow = { colorId: string; size: string; stock: number };
@@ -65,6 +67,7 @@ const listQuery = z.object({
   q: z.string().trim().max(100).optional(),
   status: z.enum(['all', 'active', 'draft', 'archived']).default('all'),
   stock: z.enum(['all', 'low', 'out']).default('all'),
+  category: z.string().refine(isCategorySlug).optional(),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25)
 });
@@ -77,13 +80,17 @@ export async function productAdminRoutes(app: FastifyInstance, check: Guard,
     if (!await check(req, reply, 'products:read')) return;
     const query = listQuery.safeParse(req.query);
     if (!query.success) return reply.code(400).send({ error: 'invalid_query' });
-    const { q, status, stock, page, limit } = query.data;
+    const { q, status, stock, category, page, limit } = query.data;
     const where: string[] = [];
     const values: unknown[] = [];
     if (q) {
       values.push('%' + normalizeSearch(q).replace(/[%_\\]/g, '\\$&') + '%');
       where.push('(p.search_text ILIKE $' + values.length + ' OR p.id ILIKE $' + values.length +
         ' OR p.slug ILIKE $' + values.length + ')');
+    }
+    if (category) {
+      values.push(categoryFamily(category as CategorySlug));
+      where.push('p.category = ANY($' + values.length + '::text[])');
     }
     if (status === 'active') where.push('p.active');
     if (status === 'draft') where.push('NOT p.active AND p.archived_at IS NULL');

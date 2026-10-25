@@ -1,13 +1,13 @@
 import type { Product } from '@/types/store';
 import { normalizePersian } from '@/lib/format';
-import { categories } from '@/data/products';
+import { allCategories } from '@/data/facets';
 
 /** Pure, server-side catalog search: replace its data source with a search API later. */
 export function rankProduct(product: Product, rawQuery: string): number | null {
   const query = normalizePersian(rawQuery);
   if (!query) return null;
   const name = normalizePersian(product.name);
-  const category = normalizePersian(categories.find(c => c.slug === product.category)?.title ?? '');
+  const category = normalizePersian(allCategories.find(c => c.slug === product.category)?.title ?? '');
   const colors = normalizePersian(product.colors.map(c => c.name).join(' '));
   const metadata = normalizePersian([product.material, product.fit, product.description].join(' '));
   const searchable = [name, category, colors, metadata].join(' ');
