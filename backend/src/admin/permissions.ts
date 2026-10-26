@@ -1,7 +1,7 @@
 export const PERMISSIONS = [
   'products:read', 'products:write', 'products:price',
   'inventory:read', 'inventory:write',
-  'orders:read', 'orders:fulfill', 'orders:export', 'reports:read',
+  'orders:read', 'orders:fulfill', 'orders:export', 'reports:read', 'sales:pos',
   'staff:manage', 'payments:configure'
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
@@ -9,9 +9,10 @@ export type Role = 'owner' | 'manager' | 'staff';
 
 const DEFAULTS: Record<Exclude<Role, 'owner'>, Permission[]> = {
   manager: ['products:read', 'products:write', 'products:price', 'inventory:read', 'inventory:write',
-    'orders:read', 'orders:fulfill', 'orders:export', 'reports:read'],
+    'orders:read', 'orders:fulfill', 'orders:export', 'reports:read', 'sales:pos'],
   // Staff see one order at a time; a bulk file of customer phones and addresses needs an explicit grant.
-  staff: ['products:read', 'inventory:read', 'orders:read']
+  // They run the shop counter, but receiving goods (inventory:write) and discounts (products:price) need a grant.
+  staff: ['products:read', 'inventory:read', 'orders:read', 'sales:pos']
 };
 const OWNER_ONLY: Permission[] = ['staff:manage', 'payments:configure'];
 

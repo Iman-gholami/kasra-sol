@@ -115,9 +115,11 @@ Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`,
 `/products` (`?q&status&stock&page&limit`), `/products/:id`, `/products/:id/price`, `/products/:id/variants`,
 `/products/:id/visibility`, `/variants/:id/stock`, `/orders` (`?status&q&period&page&limit`), `/orders/export`
 (`?status&q&period`, CSV), `/orders/:id`, `/orders/:id/status`, `/staff`, `/staff/:id`, `/staff/:id/password`, `/media`,
-`/reports/overview`, `/audit` (`?before&group&actor`), `/home-slider` (GET, PUT).
+`/reports/overview`, `/audit` (`?before&group&actor`), `/home-slider` (GET, PUT), `/products/:id/barcodes` (POST),
+`/barcodes/:code`, `/stock-receipts` (`?page`; GET, POST), `/stock-receipts/:id`, `/store-sales` (`?date`; GET, POST),
+`/store-sales/:id/void` (POST), `/store-holds` (GET, POST), `/store-holds/:id/resume` (POST), `/store-holds/:id` (DELETE).
 
-`/audit` filters by event group (`auth`, `staff`, `products`, `inventory`, `orders`, `media`: the part of the action
+`/audit` filters by event group (`auth`, `staff`, `products`, `inventory`, `orders`, `sales`, `media`: the part of the action
 before the dot) and by acting account id, and adds `targetName` (the account or product an entry is about).
 
 Accounts and sessions:
@@ -128,6 +130,16 @@ Accounts and sessions:
   sessions, clears a lock). Any role/permission/activation change ends the employee's sessions at once.
 - Logins (also failed and locked attempts), logouts, password events, uploads and every change of
   price, stock, product, order status and staff access are written to `admin_audit_log`.
+
+## Shop counter, goods receipts and barcodes (migration 008)
+
+The shop and the website share `product_variants.stock`. `POST /stock-receipts` (`inventory:write`) adds received units and gives
+each product/color/size a shop-internal EAN-13 code (prefix `20`, stored in `variant_barcodes`). `POST /store-sales` (`sales:pos`,
+a new permission that staff and managers have by default) sells scanned codes at the current catalog price, locking like COD
+checkout and refusing the whole sale with `409 insufficient_stock` when a unit is gone; a discount needs `products:price`.
+`POST /store-sales/:id/void` (`inventory:write`) returns a sale's units once. Receipts and sales take a client `clientRef` UUID and
+are applied once per reference. Held counter carts (`/store-holds`, migration 009) reserve no stock and are taken back by
+one cashier only (the row is deleted on resume). Details, labels and the counter flow: [docs/STORE-INVENTORY.md](../docs/STORE-INVENTORY.md).
 
 ## Product catalog editing and media (PR #7)
 

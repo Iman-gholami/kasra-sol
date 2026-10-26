@@ -92,6 +92,14 @@ Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx
 
 Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
+## Shop and website stock: barcodes, receiving and the counter
+
+The physical shop and the website sell from one stock. Goods that arrive are received in the back office («ورود کالا و برچسب»),
+which adds them to the stock and prints an EAN-13 barcode label per unit (label printer roll or A4 sheet). Sales in the shop scan
+those labels at «صندوق فروش» and take the units from the same stock in one transaction, so the last unit cannot be sold both at the
+counter and online. Staff open the panel on the counter; receiving goods, voids and discounts are manager permissions. See
+[One stock for the shop and the website](docs/STORE-INVENTORY.md), which ends with a short Persian guide for the shop.
+
 ## Cart & Checkout 10.0
 
 The purchase flow now behaves like a real store while staying simulated: an add-to-cart confirmation sheet (bottom sheet on phones, panel under the cart icon on desktop), stock-aware adding, a free-shipping meter and "save for later" in the cart, a two-step checkout (address + shipping method → review and payment method) addressed by `?step=payment` so Back works, a simulated gateway with success, failure and cancel paths (no card data is ever asked for), and a confirmation page with the order summary. Sample rules live in `src/lib/checkout.ts`; the draft and the demo order are kept only in the tab's `sessionStorage`. On phones (10.1) the flow follows benedito.ir's pattern in Kasra's style: a short confirmation sheet with stacked actions, a focused back-and-logo header with an icon stepper on cart and checkout, and the discount code inside the cart. See [Cart & Checkout 10.0](docs/CHECKOUT-V10.md).
@@ -150,6 +158,9 @@ docker compose up --build -d
 curl -f http://127.0.0.1:4000/health/ready
 curl -f 'http://127.0.0.1:4000/v1/products?limit=12'
 ```
+
+If the image build stalls at `npm install` (registry.npmjs.org is often slow or unreachable from Iran), set `NPM_REGISTRY` in
+`.env` to an npm mirror that answers from your network and run the build again.
 
 Backend checkout prices and stock are authoritative, COD inventory decrement is transactional,
 and online orders are stored as **unpaid** (no stock reservation) until a real PSP is integrated.
