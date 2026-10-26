@@ -159,6 +159,9 @@ curl -f http://127.0.0.1:4000/health/ready
 curl -f 'http://127.0.0.1:4000/v1/products?limit=12'
 ```
 
+If the image build stalls at `npm install` (registry.npmjs.org is often slow or unreachable from Iran), set `NPM_REGISTRY` in
+`.env` to an npm mirror that answers from your network and run the build again.
+
 Backend checkout prices and stock are authoritative, COD inventory decrement is transactional,
 and online orders are stored as **unpaid** (no stock reservation) until a real PSP is integrated.
 Products, policies, photos and checkout UX still include demo content: this foundation is
