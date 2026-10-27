@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { KeyRound, Lock, UserPlus } from 'lucide-react';
+import { KeyRound, Lock, Trash2, UserPlus } from 'lucide-react';
 import { adminApi, errorMessage } from '@/components/admin/admin-api';
 import { formatDateTime, PERMISSION, ROLE } from '@/components/admin/labels';
 import { Badge, Loading, Notice } from '@/components/admin/ui';
@@ -73,6 +73,18 @@ function StaffItem({ member, roles, refresh }: { member: Member; roles: CustomRo
     catch (cause) { setError(errorMessage(cause)); return false; }
     finally { setBusy(false); }
   }
+  async function archive() {
+    if (!window.confirm('حساب «' + member.displayName + '» از فهرست کارکنان حذف شود؟ دسترسی ورود فوراً قطع می‌شود، اما سوابق فروش و فعالیت برای گزارش‌ها حفظ می‌شوند.')) return;
+    setBusy(true); setError('');
+    try {
+      await adminApi('staff/' + member.id, { method: 'DELETE' });
+      refresh();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
   function toggle(permission: string) {
     const enabled = member.permissions.includes(permission);
     const grants = member.grants.filter(item => item !== permission);
@@ -110,6 +122,10 @@ function StaffItem({ member, roles, refresh }: { member: Member; roles: CustomRo
         {member.active ? 'غیرفعال‌کردن حساب' : 'فعال‌کردن حساب'}
       </button>
       <PasswordReset member={member}/>
+      <button type="button" className="admin-btn admin-btn-danger admin-btn-small" disabled={busy}
+        onClick={() => void archive()} aria-label={'حذف کارمند ' + member.displayName}>
+        <Trash2 size={14} aria-hidden="true"/> حذف کارمند
+      </button>
     </div>
     {nameOpen && <form className="admin-actions" onSubmit={event => {
       event.preventDefault();
