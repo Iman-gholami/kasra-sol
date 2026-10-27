@@ -94,6 +94,9 @@ test('owner creates a draft with photos, publishes it, and it reaches the storef
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
   const row = page.getByRole('row', { name: new RegExp(PRODUCT_NAME) });
   await expect(row.getByText('پیش‌نویس')).toBeVisible();
+  const repeatedSearch = page.waitForResponse(response => response.url().includes('/api/admin/products?') && response.request().method() === 'GET');
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  expect((await repeatedSearch).status()).toBe(200);
   await row.getByRole('button', { name: 'انتشار ' + PRODUCT_NAME }).click();
   await expect(page.getByRole('row', { name: new RegExp(PRODUCT_NAME) }).getByText('منتشرشده')).toBeVisible();
   await shot(page, 'products-desktop');
@@ -402,7 +405,7 @@ test('product editor: unsaved changes are guarded, Back moves between screens, a
   await openTab(page, 'محصولات و موجودی');
   await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
-  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
   await expect(page.getByRole('heading', { name: /ویرایش محصول/ })).toBeFocused();
   await expect(page).toHaveURL(/edit=e2e-linen-manto/);
   await page.getByLabel('نام محصول').fill('نام ذخیره‌نشده');
@@ -447,6 +450,9 @@ test('orders: period filter, Excel export of the filtered list, and a printable 
   await page.getByLabel('فیلتر وضعیت سفارش').selectOption('all');
   await page.getByLabel('بازه زمانی ثبت سفارش').selectOption('today');
   await expect(page.getByRole('row').filter({ hasText: 'مهمان نمایشی' }).first()).toBeVisible();
+  const repeatedSearch = page.waitForResponse(response => response.url().includes('/api/admin/orders?') && response.request().method() === 'GET');
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  expect((await repeatedSearch).status()).toBe(200);
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /خروجی Excel/ }).click()]);
   expect(download.suggestedFilename()).toMatch(/^kasra-orders-\d{4}-\d{2}-\d{2}\.csv$/);
   const file = readFileSync(await download.path());
@@ -537,6 +543,7 @@ test('owner manages an employee: new account, own password change, permission gr
   await expect(employee.getByText('رمز عبور تغییر کرد', { exact: false })).toBeVisible();
 
   const card = page.locator('.admin-member', { hasText: 'همکار موقت' });
+  await card.getByText('نمایش و ویرایش مجوزها').click();
   await card.getByRole('checkbox', { name: /تغییر قیمت/ }).check();
   await expect(page.locator('.admin-member', { hasText: 'همکار موقت' }).getByRole('checkbox', { name: /تغییر قیمت/ })).toBeChecked();
   await employee.reload();
@@ -653,4 +660,51 @@ test('audit viewport matrix keeps admin sections within the viewport', async ({ 
       if (width === 390 || width === 768 || width === 1440) await shot(page, name + '-audit-' + width);
     }
   }
+});
+
+test('owner manages a custom role and cannot remove it while assigned', async ({ page }) => {
+  page.on('dialog', dialog => void dialog.accept());
+  await signIn(page, accounts().owner);
+  await openTab(page, 'کارکنان و مجوزها');
+  const roles = page.getByRole('region', { name: 'نقش‌های دلخواه' });
+  await roles.getByLabel('نام نقش').fill('مسئول سفارش تست');
+  await roles.getByRole('checkbox', { name: /مشاهده سفارش‌ها/ }).check();
+  await roles.getByRole('button', { name: 'ایجاد نقش' }).click();
+  await expect(roles.getByText('نقش جدید ساخته شد.')).toBeVisible();
+  const form = page.getByRole('form', { name: 'ایجاد حساب کارمند' });
+  await form.getByLabel('نام کاربری (لاتین)').fill('roles_e2e');
+  await form.getByLabel('نام نمایشی').fill('همکار نقش تست');
+  await form.getByLabel('رمز عبور اولیه (حداقل ۱۲ نویسه)').fill('test-roles-password-1');
+  await expect(form.getByLabel('نقش').getByText('مسئول سفارش تست')).toHaveCount(1);
+  await form.getByLabel('نقش').selectOption({ label: 'مسئول سفارش تست' });
+  await form.getByRole('button', { name: 'ساخت حساب مستقل' }).click();
+  await expect(page.getByText('حساب «همکار نقش تست» ساخته شد', { exact: false })).toBeVisible();
+  const member = page.locator('.admin-member').filter({ hasText: 'همکار نقش تست' });
+  await expect(member).toBeVisible();
+  await roles.getByRole('button', { name: 'حذف نقش مسئول سفارش تست' }).click();
+  await expect(roles.getByRole('alert')).toContainText('ابتدا نقش آن حساب‌ها را تغییر دهید');
+  await member.getByLabel('نقش').selectOption('staff');
+  await expect(roles.locator('.admin-member').filter({ hasText: 'مسئول سفارش تست' })).toContainText('۰ حساب');
+  await roles.getByRole('button', { name: 'حذف نقش مسئول سفارش تست' }).click();
+  await expect(roles.getByText('نقش «مسئول سفارش تست» حذف شد.')).toBeVisible();
+});
+
+test('product photo removal can be undone before saving and persists after saving', async ({ page }) => {
+  await signIn(page, accounts().owner);
+  await openTab(page, 'محصولات و موجودی');
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(2);
+  await page.getByRole('button', { name: 'حذف تصویر ۲ از محصول' }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
+  await page.getByRole('button', { name: 'بازگرداندن تصویر' }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(2);
+  await page.getByRole('button', { name: 'حذف تصویر ۲ از محصول' }).click();
+  await page.getByRole('button', { name: 'ذخیره تغییرات محصول' }).click();
+  await expect(page.getByText('محصول ذخیره شد.')).toBeVisible();
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
 });

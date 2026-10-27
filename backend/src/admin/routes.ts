@@ -10,6 +10,7 @@ import { reportRoutes } from './reports';
 import { trafficRoutes } from './traffic';
 import { homeAdminRoutes } from './home-routes';
 import { storeRoutes } from './store-routes';
+import { roleRoutes } from './role-routes';
 import { recordAudit } from './audit';
 import type { Identity } from './identity';
 import { PERMISSIONS, assignable, effectivePermissions, may, type Permission } from './permissions';
@@ -31,16 +32,19 @@ const tokenFrom = (req: FastifyRequest) => {
 };
 const publicUser = (user: Identity & { locked_until?: Date | null }) => ({
   id: user.id, username: user.username, displayName: user.display_name, role: user.role,
+  customRoleId: user.custom_role_id ?? null, customRoleName: user.custom_role_name ?? null,
   active: user.active, grants: user.grants, revokes: user.revokes,
-  permissions: effectivePermissions(user.role, user.grants, user.revokes),
+  permissions: effectivePermissions(user.role, user.grants, user.revokes, user.custom_permissions),
   lockedUntil: user.locked_until && new Date(user.locked_until) > new Date() ? user.locked_until : null
 });
 async function currentUser(req: FastifyRequest): Promise<Identity | null> {
   const token = tokenFrom(req);
   if (!token) return null;
   const found = await pool.query(
-    'SELECT u.id,u.username,u.display_name,u.role,u.grants,u.revokes,u.active ' +
+    'SELECT u.id,u.username,u.display_name,u.role,u.grants,u.revokes,u.active,' +
+    'u.custom_role_id,r.name AS custom_role_name,r.permissions AS custom_permissions ' +
     'FROM admin_sessions s JOIN admin_users u ON u.id=s.user_id ' +
+    'LEFT JOIN admin_custom_roles r ON r.id=u.custom_role_id ' +
     'WHERE s.token_hash=$1 AND s.expires_at > now() AND u.active=true LIMIT 1',
     [sha256(token)]);
   return (found.rows[0] as Identity | undefined) ?? null;
@@ -48,7 +52,7 @@ async function currentUser(req: FastifyRequest): Promise<Identity | null> {
 export async function requirePermission(req: FastifyRequest, reply: FastifyReply, needed: Permission): Promise<Identity | null> {
   const user = await currentUser(req);
   if (!user) { await reply.code(401).send({ error: 'unauthorized' }); return null; }
-  if (!may(user.role, user.grants, user.revokes, needed)) {
+  if (!may(user.role, user.grants, user.revokes, needed, user.custom_permissions)) {
     await reply.code(403).send({ error: 'forbidden' }); return null;
   }
   return user;
@@ -58,7 +62,9 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     const input = z.object({ username, password }).safeParse(req.body);
     if (!input.success) return reply.code(400).send({ error: 'invalid_credentials' });
     const name = input.data.username.toLowerCase();
-    const match = await pool.query('SELECT * FROM admin_users WHERE username=$1 LIMIT 1', [name]);
+    const match = await pool.query(
+      'SELECT u.*,r.name AS custom_role_name,r.permissions AS custom_permissions ' +
+      'FROM admin_users u LEFT JOIN admin_custom_roles r ON r.id=u.custom_role_id WHERE u.username=$1 LIMIT 1', [name]);
     const user = match.rows[0] as AdminRow | undefined;
     const locked = Boolean(user?.locked_until && new Date(user.locked_until) > new Date());
     // scrypt always runs, so timing does not reveal whether the account exists, is disabled or is locked.
@@ -124,7 +130,9 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
   app.get('/v1/admin/staff', async (req, reply) => {
     if (!await requirePermission(req, reply, 'staff:manage')) return;
     const result = await pool.query(
-      'SELECT id,username,display_name,role,grants,revokes,active,locked_until,created_at FROM admin_users ORDER BY created_at');
+      'SELECT u.id,u.username,u.display_name,u.role,u.grants,u.revokes,u.active,u.locked_until,u.created_at,' +
+      'u.custom_role_id,r.name AS custom_role_name,r.permissions AS custom_permissions ' +
+      'FROM admin_users u LEFT JOIN admin_custom_roles r ON r.id=u.custom_role_id ORDER BY u.created_at');
     return reply.header('Cache-Control', 'no-store').send({
       items: (result.rows as Identity[]).map(publicUser)
     });
@@ -135,23 +143,31 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     if (!actor) return;
     const input = z.object({
       username, displayName: z.string().trim().min(2).max(100), password, role: roleSchema,
-      grants: permissions.default([]), revokes: permissions.default([])
+      grants: permissions.default([]), revokes: permissions.default([]), customRoleId: z.string().uuid().nullable().optional()
     }).strict().safeParse(req.body);
-    if (!input.success) return reply.code(400).send({ error: 'invalid_payload' });
+    if (!input.success || (input.data.customRoleId && input.data.role !== 'staff'))
+      return reply.code(400).send({ error: 'invalid_payload' });
     const passHash = await hashPassword(input.data.password);
     let result;
     try {
       result = await pool.query(
-        'INSERT INTO admin_users(username,display_name,password_hash,role,grants,revokes) ' +
-        'VALUES($1,$2,$3,$4,$5::jsonb,$6::jsonb) RETURNING id,username,display_name,role,grants,revokes,active',
+        'INSERT INTO admin_users(username,display_name,password_hash,role,grants,revokes,custom_role_id) ' +
+        'VALUES($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7) RETURNING id,username,display_name,role,grants,revokes,active,custom_role_id',
         [input.data.username, input.data.displayName, passHash, input.data.role,
-          JSON.stringify(input.data.grants), JSON.stringify(input.data.revokes)]);
+          JSON.stringify(input.data.grants), JSON.stringify(input.data.revokes), input.data.customRoleId ?? null]);
     } catch (error) {
       if ((error as { code?: string }).code === '23505') return reply.code(409).send({ error: 'username_taken' });
+      if ((error as { code?: string }).code === '23503') return reply.code(404).send({ error: 'role_not_found' });
       throw error;
     }
     const user = result.rows[0] as Identity;
+    if (user.custom_role_id) {
+      const role = await pool.query('SELECT name,permissions FROM admin_custom_roles WHERE id=$1', [user.custom_role_id]);
+      user.custom_role_name = role.rows[0]?.name;
+      user.custom_permissions = role.rows[0]?.permissions;
+    }
     await recordAudit(pool, actor.id, 'staff.created', user.id, { username: user.username, role: user.role,
+      customRoleId: user.custom_role_id, customRoleName: user.custom_role_name,
       grants: input.data.grants, revokes: input.data.revokes });
     return reply.code(201).header('Cache-Control', 'no-store').send({ user: publicUser(user) });
   });
@@ -162,14 +178,23 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     const id = z.string().uuid().safeParse((req.params as { id: string }).id);
     const input = z.object({
       role: roleSchema.optional(), grants: permissions.optional(), revokes: permissions.optional(),
-      active: z.boolean().optional(), displayName: z.string().trim().min(2).max(100).optional()
+      active: z.boolean().optional(), displayName: z.string().trim().min(2).max(100).optional(),
+      customRoleId: z.string().uuid().nullable().optional()
     }).strict().refine(v => Object.keys(v).length > 0).safeParse(req.body);
     if (!id.success || !input.success) return reply.code(400).send({ error: 'invalid_payload' });
+    if (input.data.customRoleId && input.data.role && input.data.role !== 'staff')
+      return reply.code(400).send({ error: 'invalid_payload' });
     if (actor.id === id.data) return reply.code(403).send({ error: 'cannot_modify_self' });
     const client = await pool.connect();
     let user: Identity | undefined;
     try {
       await client.query('BEGIN');
+      const switchRole = input.data.role !== undefined || input.data.customRoleId !== undefined;
+      const customRoleId = input.data.customRoleId ?? null;
+      if (customRoleId) {
+        const role = await client.query('SELECT id FROM admin_custom_roles WHERE id=$1 FOR KEY SHARE', [customRoleId]);
+        if (!role.rowCount) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'role_not_found' }); }
+      }
       const existing = await client.query('SELECT id,role FROM admin_users WHERE id=$1 FOR UPDATE', [id.data]);
       if (!existing.rowCount) {
         await client.query('ROLLBACK');
@@ -182,13 +207,21 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
       const updated = await client.query(
         'UPDATE admin_users SET role=COALESCE($1,role),grants=COALESCE($2::jsonb,grants),' +
         'revokes=COALESCE($3::jsonb,revokes),active=COALESCE($4,active),display_name=COALESCE($6,display_name),' +
-        'updated_at=now() WHERE id=$5 RETURNING id,username,display_name,role,grants,revokes,active,locked_until',
-        [input.data.role ?? null, input.data.grants ? JSON.stringify(input.data.grants) : null,
-          input.data.revokes ? JSON.stringify(input.data.revokes) : null, input.data.active ?? null, id.data,
-          input.data.displayName ?? null]);
+        'custom_role_id=CASE WHEN $7 THEN $8::uuid ELSE custom_role_id END,' +
+        'updated_at=now() WHERE id=$5 RETURNING id,username,display_name,role,grants,revokes,active,locked_until,custom_role_id',
+        [customRoleId ? 'staff' : input.data.role ?? null,
+          input.data.grants ? JSON.stringify(input.data.grants) : switchRole ? '[]' : null,
+          input.data.revokes ? JSON.stringify(input.data.revokes) : switchRole ? '[]' : null,
+          input.data.active ?? null, id.data, input.data.displayName ?? null, switchRole, customRoleId]);
       user = updated.rows[0] as Identity;
-      // Any change of access (or deactivation) ends the employee's sessions immediately.
-      await client.query('DELETE FROM admin_sessions WHERE user_id=$1', [id.data]);
+      if (user.custom_role_id) {
+        const role = await client.query('SELECT name,permissions FROM admin_custom_roles WHERE id=$1', [user.custom_role_id]);
+        user.custom_role_name = role.rows[0]?.name;
+        user.custom_permissions = role.rows[0]?.permissions;
+      }
+      // A display-name-only edit should not interrupt the employee's work; access changes still end sessions.
+      if (switchRole || input.data.grants !== undefined || input.data.revokes !== undefined || input.data.active !== undefined)
+        await client.query('DELETE FROM admin_sessions WHERE user_id=$1', [id.data]);
       await recordAudit(client, actor.id, 'staff.updated', id.data, input.data);
       await client.query('COMMIT');
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
@@ -228,6 +261,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
   await trafficRoutes(app, requirePermission);
   await homeAdminRoutes(app, requirePermission, opts);
   await storeRoutes(app, requirePermission, opts);
+  await roleRoutes(app, requirePermission);
 
   // Newest first, 100 per page. `group` is the part of the action before the dot; `actor` is an account id.
   // `targetName` names the account or product an entry is about, so the owner does not have to read ids.

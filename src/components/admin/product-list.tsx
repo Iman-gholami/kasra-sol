@@ -175,7 +175,7 @@ export function ProductList({ permissions, edit, create, duplicate, initialQuery
   const canCreate = ['products:write', 'products:price'].every(p => permissions.includes(p));
   function submit(event: FormEvent) {
     event.preventDefault();
-    setLoading(true); setPage(1); setSearch(query.trim());
+    setLoading(true); setPage(1); setSearch(query.trim()); setVersion(v => v + 1);
   }
   const filtered = Boolean(search) || status !== 'all' || stock !== 'all';
   return <div className="admin-stack">

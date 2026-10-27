@@ -71,6 +71,7 @@ export function ProductEditor({ productId, copyOf, permissions, done, onUnsaved 
   const [stale, setStale] = useState(false);
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [removedImage, setRemovedImage] = useState<{ src: string; index: number } | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
   const fetchProduct = useCallback(() => adminApi<Loaded>('products/' + source), [source]);
@@ -82,7 +83,7 @@ export function ProductEditor({ productId, copyOf, permissions, done, onUnsaved 
       name: product.name + ' (کپی)', variants: product.variants.map(v => ({ ...v, stock: 0 }))
     } : { ...empty(), ...product };
     const text = next.sizes.join(', ');
-    setItem(next); setSizeText(text); setBaseline(fingerprint(next, text));
+    setItem(next); setSizeText(text); setBaseline(fingerprint(next, text)); setRemovedImage(null);
     setStatus(copyOf ? 'draft' : loaded);
     setRevision(copyOf ? '' : data.revision);
   }, [copyOf]);
@@ -117,6 +118,17 @@ export function ProductEditor({ productId, copyOf, permissions, done, onUnsaved 
     images.splice(to, 0, moved);
     return { ...prev, images };
   });
+  const removeImage = (index: number) => {
+    setRemovedImage({ src: item.images[index], index });
+    edit('images', item.images.filter((_, i) => i !== index));
+  };
+  const undoImageRemoval = () => {
+    if (!removedImage || item.images.length >= MAX_IMAGES) return;
+    const images = [...item.images];
+    images.splice(Math.min(removedImage.index, images.length), 0, removedImage.src);
+    edit('images', images);
+    setRemovedImage(null);
+  };
   const editColor = (index: number, patch: Partial<Color>) =>
     setItem(prev => ({ ...prev, colors: prev.colors.map((c, j) => j === index ? { ...c, ...patch } : c) }));
   // Stock is stored per color id, so it moves with a renamed color, unless another color shares either id
@@ -264,7 +276,7 @@ export function ProductEditor({ productId, copyOf, permissions, done, onUnsaved 
 
       <fieldset className="admin-fieldset">
         <legend>عکس‌های محصول</legend>
-        <p className="admin-hint">JPG، PNG یا WebP، هر کدام حداکثر ۲ مگابایت و حداکثر {formatNumber(MAX_IMAGES)} تصویر. تصویر اول، تصویر اصلی ویترین است.</p>
+        <p className="admin-hint">JPG، PNG یا WebP، هر کدام حداکثر ۲ مگابایت و حداکثر {formatNumber(MAX_IMAGES)} تصویر. تصویر اول، تصویر اصلی ویترین است. حذف یا جابه‌جایی عکس با ذخیره محصول اعمال می‌شود.</p>
         <label className={'admin-upload' + (uploading || item.images.length >= MAX_IMAGES ? ' is-disabled' : '')}>
           <ImagePlus size={20} aria-hidden="true"/>
           <span>{uploading ? 'در حال بارگذاری…' : 'انتخاب تصویر (امکان انتخاب چند فایل)'}</span>
@@ -284,14 +296,18 @@ export function ProductEditor({ productId, copyOf, permissions, done, onUnsaved 
               <button type="button" className="admin-icon-btn" disabled={idx === item.images.length - 1}
                 onClick={() => moveImage(idx, idx + 1)} aria-label={'انتقال تصویر ' + formatNumber(idx + 1) + ' به عقب'}>
                 <ArrowLeft size={15} aria-hidden="true"/></button>
-              <button type="button" className="admin-icon-btn admin-icon-danger"
-                onClick={() => edit('images', item.images.filter((_, i) => i !== idx))}
-                aria-label={'حذف تصویر ' + formatNumber(idx + 1) + ' از محصول'}><Trash2 size={15} aria-hidden="true"/></button>
+              <button type="button" className="admin-btn admin-btn-danger admin-btn-small"
+                onClick={() => removeImage(idx)}
+                aria-label={'حذف تصویر ' + formatNumber(idx + 1) + ' از محصول'}><Trash2 size={15} aria-hidden="true"/> حذف</button>
             </div>
           </li>)}
         </ol> : <Notice tone="warning">{status === 'active'
           ? 'این محصول منتشرشده است و بدون تصویر ذخیره نمی‌شود؛ دست‌کم یک تصویر اضافه کنید.'
           : 'این محصول هنوز تصویری ندارد؛ ذخیره پیش‌نویس ممکن است، اما انتشار بدون تصویر مجاز نیست.'}</Notice>}
+        {removedImage && <Notice tone="info">آخرین تصویر از این محصول برداشته شد؛ بعد از ذخیره اعمال می‌شود.
+          <button type="button" className="admin-btn admin-btn-outline admin-btn-small admin-notice-action"
+            disabled={uploading || item.images.length >= MAX_IMAGES} onClick={undoImageRemoval}>بازگرداندن تصویر</button>
+        </Notice>}
       </fieldset>
 
       <fieldset className="admin-fieldset" disabled={!canStock}>

@@ -26,7 +26,7 @@ export function AccountSettings({ user }: { user: AdminUser }) {
   return <div className="admin-stack admin-narrow">
     <section className="admin-panel" aria-labelledby="account-title">
       <div className="admin-panel-head"><div><h2 id="account-title">حساب من</h2>
-        <p>{user.displayName} · <bdi dir="ltr">{user.username}</bdi> · {ROLE[user.role]}</p></div></div>
+        <p>{user.displayName} · <bdi dir="ltr">{user.username}</bdi> · {user.customRoleName ?? ROLE[user.role]}</p></div></div>
       <div className="admin-panel-body">
         <h3 className="admin-section-title">دسترسی‌های این حساب</h3>
         <ul className="admin-chip-list">

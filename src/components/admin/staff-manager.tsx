@@ -5,12 +5,16 @@ import { KeyRound, Lock, UserPlus } from 'lucide-react';
 import { adminApi, errorMessage } from '@/components/admin/admin-api';
 import { formatDateTime, PERMISSION, ROLE } from '@/components/admin/labels';
 import { Badge, Loading, Notice } from '@/components/admin/ui';
+import { DELEGABLE, RoleManager, type CustomRole } from '@/components/admin/role-manager';
 import type { AdminUser } from '@/components/admin/admin-dashboard';
 
 type Member = AdminUser & { lockedUntil?: string | null };
 // Owner-only permissions (staff management, payment settings) are never offered: the API refuses them too.
-const ADJUSTABLE = ['sales:pos', 'products:write', 'products:price', 'inventory:write', 'orders:fulfill', 'orders:export',
-  'reports:read'] as const;
+const roleValue = (member: Member) => member.customRoleId ? 'custom:' + member.customRoleId : member.role;
+const roleName = (value: string, roles: CustomRole[]) => value.startsWith('custom:')
+  ? roles.find(role => role.id === value.slice(7))?.name ?? 'نقش دلخواه' : ROLE[value];
+const rolePatch = (value: string) => value.startsWith('custom:')
+  ? { role: 'staff', customRoleId: value.slice(7) } : { role: value, customRoleId: null };
 
 /** A readable random password for handing to an employee once; they should change it after signing in. */
 function generatePassword() {
@@ -50,9 +54,11 @@ function PasswordReset({ member }: { member: Member }) {
   </form>;
 }
 
-function StaffItem({ member, refresh }: { member: Member; refresh: () => void }) {
+function StaffItem({ member, roles, refresh }: { member: Member; roles: CustomRole[]; refresh: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [nameOpen, setNameOpen] = useState(false);
+  const [name, setName] = useState(member.displayName);
   // Checkboxes reflect a click at once; a failed save reverts them. A successful save remounts this card.
   const [pending, setPending] = useState<Record<string, boolean>>({});
   if (member.role === 'owner') return <article className="admin-member">
@@ -61,10 +67,10 @@ function StaffItem({ member, refresh }: { member: Member; refresh: () => void })
     <p className="admin-sub">دسترسی کامل؛ مدیریت کارکنان و تنظیمات پرداخت فقط برای این حساب است.</p>
   </article>;
   async function update(patch: Record<string, unknown>, question?: string) {
-    if (question && !window.confirm(question)) return;
+    if (question && !window.confirm(question)) return false;
     setBusy(true); setError('');
-    try { await adminApi('staff/' + member.id, { method: 'PATCH', body: patch }); refresh(); }
-    catch (cause) { setError(errorMessage(cause)); }
+    try { await adminApi('staff/' + member.id, { method: 'PATCH', body: patch }); refresh(); return true; }
+    catch (cause) { setError(errorMessage(cause)); return false; }
     finally { setBusy(false); }
   }
   function toggle(permission: string) {
@@ -90,11 +96,14 @@ function StaffItem({ member, refresh }: { member: Member; refresh: () => void })
     </div>
     <div className="admin-actions">
       <label className="admin-inline-field">نقش
-        <select disabled={busy} value={member.role} onChange={event => void update({ role: event.target.value },
-          'نقش «' + member.displayName + '» به «' + ROLE[event.target.value] + '» تغییر کند؟ نشست‌های فعال او بسته می‌شود.')}>
+        <select disabled={busy} value={roleValue(member)} onChange={event => void update(rolePatch(event.target.value),
+          'نقش «' + member.displayName + '» به «' + roleName(event.target.value, roles) + '» تغییر کند؟ دسترسی‌های اختصاصی قبلی پاک و نشست‌های فعال بسته می‌شود.')}>
           <option value="manager">{ROLE.manager}</option><option value="staff">{ROLE.staff}</option>
+          {roles.map(role => <option key={role.id} value={'custom:' + role.id}>{role.name}</option>)}
         </select>
       </label>
+      <button type="button" className="admin-btn admin-btn-outline admin-btn-small" disabled={busy}
+        onClick={() => { setName(member.displayName); setNameOpen(open => !open); }}>ویرایش نام</button>
       <button type="button" className={'admin-btn admin-btn-small ' + (member.active ? 'admin-btn-danger' : 'admin-btn-outline')} disabled={busy}
         onClick={() => void update({ active: !member.active }, member.active
           ? 'حساب «' + member.displayName + '» غیرفعال شود؟ همه نشست‌های فعال او فوراً بسته می‌شود.' : undefined)}>
@@ -102,19 +111,33 @@ function StaffItem({ member, refresh }: { member: Member; refresh: () => void })
       </button>
       <PasswordReset member={member}/>
     </div>
-    <fieldset className="admin-permissions" disabled={busy}>
-      <legend>مجوزهای قابل تنظیم <span className="admin-sub">(تغییر هر مورد، نشست‌های فعال کارمند را می‌بندد)</span></legend>
-      {ADJUSTABLE.map(permission => <label key={permission} className="admin-check">
-        <input type="checkbox" checked={pending[permission] ?? member.permissions.includes(permission)} onChange={() => toggle(permission)}/>
-        <span>{PERMISSION[permission].label}<small>{PERMISSION[permission].hint}</small></span>
-      </label>)}
-    </fieldset>
+    {nameOpen && <form className="admin-actions" onSubmit={event => {
+      event.preventDefault();
+      void update({ displayName: name.trim() }).then(saved => { if (saved) setNameOpen(false); });
+    }}>
+      <label className="admin-inline-field">نام نمایشی
+        <input required minLength={2} maxLength={100} value={name} onChange={event => setName(event.target.value)}/>
+      </label>
+      <button type="submit" disabled={busy} className="admin-btn admin-btn-primary admin-btn-small">ذخیره نام</button>
+      <button type="button" className="admin-btn admin-btn-outline admin-btn-small" onClick={() => setNameOpen(false)}>انصراف</button>
+    </form>}
+    <details className="admin-permission-details">
+      <summary>نمایش و ویرایش مجوزها</summary>
+      <fieldset className="admin-permissions" disabled={busy}>
+        <legend>مجوزهای قابل تنظیم <span className="admin-sub">(تغییر هر مورد، نشست‌های فعال کارمند را می‌بندد)</span></legend>
+        {DELEGABLE.map(permission => <label key={permission} className="admin-check">
+          <input type="checkbox" checked={pending[permission] ?? member.permissions.includes(permission)} onChange={() => toggle(permission)}/>
+          <span>{PERMISSION[permission].label}<small>{PERMISSION[permission].hint}</small></span>
+        </label>)}
+      </fieldset>
+    </details>
     {error && <Notice tone="error">{error}</Notice>}
   </article>;
 }
 
 export function StaffManager() {
   const [staff, setStaff] = useState<Member[] | null>(null);
+  const [roles, setRoles] = useState<CustomRole[]>([]);
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
   const [form, setForm] = useState({ username: '', displayName: '', password: '', role: 'staff' });
@@ -122,8 +145,10 @@ export function StaffManager() {
   const [created, setCreated] = useState('');
   useEffect(() => {
     const controller = new AbortController();
-    adminApi<{ items: Member[] }>('staff', { signal: controller.signal })
-      .then(result => { setStaff(result.items); setError(''); })
+    Promise.all([
+      adminApi<{ items: Member[] }>('staff', { signal: controller.signal }),
+      adminApi<{ items: CustomRole[] }>('roles', { signal: controller.signal })
+    ]).then(([members, customRoles]) => { setStaff(members.items); setRoles(customRoles.items); setError(''); })
       .catch(cause => { if (!controller.signal.aborted) setError(errorMessage(cause)); });
     return () => controller.abort();
   }, [version]);
@@ -131,7 +156,7 @@ export function StaffManager() {
   async function create(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError(''); setCreated('');
     try {
-      await adminApi('staff', { method: 'POST', body: { ...form, username: form.username.trim().toLowerCase() } });
+      await adminApi('staff', { method: 'POST', body: { ...form, ...rolePatch(form.role), username: form.username.trim().toLowerCase() } });
       setCreated('حساب «' + form.displayName + '» ساخته شد. نام کاربری و رمز را از راه امن تحویل دهید.');
       setForm({ username: '', displayName: '', password: '', role: 'staff' });
       refresh();
@@ -162,6 +187,7 @@ export function StaffManager() {
         <label className="admin-field">نقش
           <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
             <option value="staff">{ROLE.staff} (دسترسی محدود)</option><option value="manager">{ROLE.manager} (محصول، قیمت، موجودی، سفارش)</option>
+            {roles.map(role => <option key={role.id} value={'custom:' + role.id}>{role.name}</option>)}
           </select>
         </label>
         <div className="admin-field-wide admin-actions">
@@ -174,7 +200,8 @@ export function StaffManager() {
     <section aria-labelledby="staff-list-title" className="admin-stack">
       <h2 id="staff-list-title" className="admin-section-title">حساب‌ها</h2>
       {staff === null ? (!error && <Loading label="در حال دریافت حساب‌ها…"/>)
-        : staff.map(member => <StaffItem key={member.id + member.role + member.active + member.permissions.join()} member={member} refresh={refresh}/>)}
+        : staff.map(member => <StaffItem key={member.id} member={member} roles={roles} refresh={refresh}/>)}
     </section>
+    {staff && <RoleManager roles={roles} refresh={refresh}/>}
   </div>;
 }
