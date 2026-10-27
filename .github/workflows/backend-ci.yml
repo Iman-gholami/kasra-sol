@@ -2,9 +2,9 @@ name: Fastify Backend CI
 on:
   push:
     branches: [main]
-    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**"]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**", "src/lib/format.ts"]
   pull_request:
-    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**"]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**", "src/lib/format.ts"]
 jobs:
   backend:
     runs-on: ubuntu-latest

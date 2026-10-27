@@ -23,3 +23,20 @@ it('rejects the example database password', () => {
   assert.throws(() => assertProductionDatabaseUrl('postgres://kasra:change-me-to-strong-url-safe-password@postgres:5432/kasra'));
   assert.doesNotThrow(() => assertProductionDatabaseUrl('postgres://kasra:9f2c41d0b7e6a5c3@postgres:5432/kasra'));
 });
+
+it('returns a usable secret unchanged', () => {
+  const secret = '0f9c3a7e51d24b6a8c9e0f1a2b3c4d5e6f708192a3b4c5d6';
+  assert.equal(requireSecret('ORDER_TOKEN_SECRET', secret), secret);
+  assert.throws(() => requireSecret('ORDER_TOKEN_SECRET', undefined), /ORDER_TOKEN_SECRET/);
+});
+
+it('ignores a missing or unparsable database URL and decodes encoded passwords', () => {
+  assert.doesNotThrow(() => assertProductionDatabaseUrl(undefined));
+  assert.doesNotThrow(() => assertProductionDatabaseUrl('not a url'));
+  assert.throws(() => assertProductionDatabaseUrl('postgres://kasra:%63hange-me@db/kasra'));
+});
+
+it('trims the trusted proxy setting', () => {
+  assert.equal(trustProxySetting('  true '), true);
+  assert.equal(trustProxySetting('   '), false);
+});

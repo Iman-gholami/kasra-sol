@@ -25,6 +25,26 @@ npm run test:e2e
 
 Run Playwright against a built app. Do not use the development server for performance measurements.
 
+## Tests
+
+Run the fast suites before every push; they need no database or browser and finish in seconds:
+
+```bash
+npm install && npm --prefix backend install
+npm test                 # storefront unit + contract tests, then API unit tests
+```
+
+| Suite | Command | Covers |
+| --- | --- | --- |
+| Storefront unit | `npm run test:unit` | `src/lib` (catalog filters, search ranking, checkout totals, discount codes, formatting), demo data invariants, checkout form validation and storage, admin panel helpers, and every Next.js API route (admin proxy allow-list, CSRF and size limits, login cookie, demo fallbacks) |
+| Contracts | part of `npm run test:unit` (`tests-unit/contracts.test.ts`) | The storefront and the API agree: identical totals for every shipping/payment/code/address combination, address validation, catalog query parameters, demo products valid for the admin editor, every admin endpoint reachable through the proxy, and a Persian label for every error code, audit action, permission and order status |
+| API unit | `npm --prefix backend test` | Pricing, validation and product schemas, permissions, order status transitions, CSV export, analytics rules, migrations list, and the route handlers run with Fastify `inject()` against an in-memory database: the permission required by every admin endpoint, login, order input and page-view privacy |
+| API integration | see `.github/workflows/backend-ci.yml` | Real PostgreSQL: stock under concurrency, idempotency, payment safety, staff and order workflows |
+| Storefront E2E | `npm run build && npm run test:e2e` | Shopping flows in Chromium; `tests/smoke.spec.ts` opens every page, crawls internal links and checks the sitemap |
+| Admin E2E | see `.github/workflows/admin-e2e.yml` | The back office against the real API |
+
+When you add a feature, a failing test usually names the place to update: a new admin endpoint must be listed with its permission in `backend/tests/admin-routes.test.ts`; a new API error code, audit action, permission or order status needs its Persian label in `src/components/admin/`; a new SQL file must be listed in `backend/src/db/migrate.ts`.
+
 > The repository was bootstrapped without a generated npm lockfile because the authoring environment had no npm registry connectivity. Before a production release, run `npm install --package-lock-only` in a networked environment, commit `package-lock.json`, change the Docker dependency stage and CI to `npm ci`, and then verify reproducible builds.
 
 ## Included customer flows
@@ -59,6 +79,7 @@ src/
   types/store.ts        Product, variant, cart and filter models
 public/images/          Original local SVG placeholders; NOT product photographs
 tests/                  Playwright critical-path tests
+tests-unit/             Storefront unit and storefront ↔ API contract tests (node:test)
 deploy/nginx/           Reverse-proxy starter
 docs/                   Deployment and verification reports
 ```

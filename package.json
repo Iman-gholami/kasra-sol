@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:unit": "node --experimental-strip-types --test tests-unit/*.test.mjs"
+    "test": "npm run test:unit && npm --prefix backend test",
+    "test:unit": "node --experimental-strip-types --test tests-unit/*.test.mjs && tsx --test tests-unit/*.test.ts"
   },
   "dependencies": {
     "next": "16.3.8",
@@ -28,6 +29,7 @@
     "eslint": "^9.39.0",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.0",
     "typescript": "~5.9.3"
   },
   "engines": { "node": ">=22" }

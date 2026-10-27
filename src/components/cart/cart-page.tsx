@@ -14,7 +14,7 @@ import { FlowSteps } from '@/components/checkout/flow-chrome';
 import { loadDraft, saveCode } from '@/components/checkout/checkout-storage';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
 import { useBottomBar } from '@/components/ui/document-flags';
-import { applyDiscount, freeShippingProgress, shippingMethods } from '@/lib/checkout';
+import { applyDiscount, freeShippingProgress, lineLimit, MAX_LINE_QUANTITY, shippingMethods } from '@/lib/checkout';
 import { formatNumber, toman } from '@/lib/format';
 
 const cheapestShipping = Math.min(...shippingMethods.map(method => method.price));
@@ -84,13 +84,15 @@ export function CartPage() {
                   </del>}
                   <strong className="price">{toman(row.product.price)}</strong>
                 </p>
-                {row.item.quantity >= row.stock
-                  ? <p className="cart-stock-note">همه موجودی این رنگ و سایز در سبد توست.</p>
+                {row.item.quantity >= lineLimit(row.stock)
+                  ? <p className="cart-stock-note">{row.stock > MAX_LINE_QUANTITY
+                    ? 'از هر رنگ و سایز حداکثر ' + formatNumber(MAX_LINE_QUANTITY) + ' عدد در یک سفارش ثبت می‌شود.'
+                    : 'همه موجودی این رنگ و سایز در سبد توست.'}</p>
                   : row.stock <= LOW_STOCK && <p className="cart-stock-note">از این رنگ و سایز {formatNumber(row.stock)} عدد موجود است.</p>}
               </div>
               <div className="cart-item-controls">
                 <span className="cart-qty-label" aria-hidden="true">تعداد:</span>
-                <QuantityStepper value={row.item.quantity} max={row.stock} itemLabel={row.product.name}
+                <QuantityStepper value={row.item.quantity} max={lineLimit(row.stock)} itemLabel={row.product.name}
                   onChange={value => updateQuantity(row.item, value)}/>
                 {row.item.quantity > 1 && <span className="cart-line-total">جمع: <strong className="price">{toman(row.product.price * row.item.quantity)}</strong></span>}
                 <div className="cart-line-actions">

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Minus, Plus, X } from 'lucide-react';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
 import { formatNumber } from '@/lib/format';
+import { isDemoPhoto } from '@/lib/demo-photos';
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -80,7 +81,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
               sizes="(max-width: 600px) 100vw, (max-width: 1080px) 48vw, 620px"/>
           </button>)}
         </div>
-        {images.every(image => image.startsWith('/images/lookbook/')) &&
+        {images.every(isDemoPhoto) &&
           <span className="gallery-demo-label">تصویر نمایشی</span>}
         {count > 1 && <>
           <button type="button" className="pdp-gallery-arrow pdp-gallery-prev" aria-label="تصویر قبلی" onClick={() => show(index - 1)}>

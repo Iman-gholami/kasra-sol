@@ -8,6 +8,12 @@ import type { CartItem, Product } from '@/types/store';
 
 export const FREE_SHIPPING_THRESHOLD = 2_500_000;
 
+/** The order API accepts at most this many units of one color and size, and this many lines, per order. */
+export const MAX_LINE_QUANTITY = 20;
+export const MAX_CART_LINES = 30;
+/** Units of one color and size a cart line may hold: its stock, up to what one order may contain. */
+export const lineLimit = (stock: number) => Math.min(stock, MAX_LINE_QUANTITY);
+
 export type ShippingMethodId = 'post' | 'express' | 'courier';
 export type ShippingMethod = {
   id: ShippingMethodId; title: string; eta: string; price: number;

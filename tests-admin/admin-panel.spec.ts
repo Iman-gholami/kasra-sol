@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { accounts, overflowing, PNG, SCREENSHOTS, signIn, visitorAddress, watchConsole } from './helpers';
+import { accounts, API, overflowing, PNG, SCREENSHOTS, signIn, visitorAddress, watchConsole } from './helpers';
 
 // Real back office: Fastify + PostgreSQL behind the Next.js proxy. Tests run in order and share records.
 const PRODUCT = 'e2e-linen-manto';
@@ -244,6 +244,83 @@ test('manager picks the home slider products and their order, and the storefront
   await expect(slides.first()).toContainText('۱۷٪ تخفیف');
   await context.close();
   expect(problems).toEqual([]);
+});
+
+/** Real touch drag through CDP (synthetic DOM TouchEvents never reach pointer handlers the way a finger does). */
+async function touchDrag(page: Page, x: number, y: number, dx: number) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 10; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * i / 10, y }] });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+}
+
+// The demo storefront shows one still cover, so the rotating slider is only exercised here, with the API connected.
+test('the storefront cover rotates the picked products, pauses, and follows its slide buttons and swipes', async ({ browser, request }) => {
+  // As the owner, through the API: show three products, then restore the pick the previous test saved.
+  const headers = { 'X-Forwarded-For': visitorAddress() };
+  const login = await request.post(API + '/v1/admin/auth/login', { data: accounts().owner, headers });
+  expect(login.status()).toBe(200);
+  const auth = { ...headers, Authorization: 'Bearer ' + (await login.json() as { token: string }).token };
+  const saved = (await (await request.get(API + '/v1/admin/home-slider', { headers: auth })).json() as { items: { id: string }[] })
+    .items.map(item => item.id);
+  const pick = (productIds: string[]) => request.put(API + '/v1/admin/home-slider', { headers: auth, data: { productIds } });
+  expect((await pick(['shomiz-01', 'manto-01', 'tshirt-01'])).status()).toBe(200);
+  const names = ['شومیز لینن آوید', 'مانتو کتی سارا', 'تیشرت بیسیک سپید'];
+  const open = async (options: Parameters<Browser['newContext']>[0] = {}) => {
+    const context = await browser.newContext({ ...options, extraHTTPHeaders: { 'X-Forwarded-For': visitorAddress() } });
+    const page = await context.newPage();
+    await page.goto('/');
+    const cover = page.getByRole('region', { name: 'محصولات ویژه' });
+    return { context, page, cover, active: cover.locator('.hero-slide[data-active] .hero-tag-name') };
+  };
+  try {
+    // Moves on by itself; the pause button (WCAG 2.2.2) holds it; a slide button jumps.
+    const moving = await open();
+    await expect(moving.cover.locator('.hero-slide')).toHaveCount(3);
+    await expect(moving.active).toHaveText(names[0]);
+    await expect(moving.cover.locator('.hero-slide').nth(1)).toHaveAttribute('inert');
+    await expect(moving.active).toHaveText(names[1], { timeout: 8000 });
+    await moving.page.getByRole('button', { name: 'توقف خودکار اسلایدها' }).click();
+    // Focus and hover inside also hold the slider; leave both so only the pause button keeps it still.
+    await moving.page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await moving.page.mouse.move(2, 2);
+    await moving.page.waitForTimeout(6000);
+    await expect(moving.active).toHaveText(names[1]);
+    await expect(moving.page.getByRole('button', { name: 'پخش خودکار اسلایدها' })).toBeVisible();
+    const third = moving.page.getByRole('button', { name: 'اسلاید ۳ از ۳' });
+    await third.click();
+    await expect(third).toHaveAttribute('aria-current', 'true');
+    await expect(moving.active).toHaveText(names[2]);
+    await moving.context.close();
+
+    // Reduced motion: never moves by itself and has no pause control, but the slide buttons work.
+    const still = await open({ reducedMotion: 'reduce' });
+    await expect(still.active).toHaveText(names[0]);
+    await expect(still.page.getByRole('button', { name: 'توقف خودکار اسلایدها' })).toHaveCount(0);
+    await still.page.waitForTimeout(6000);
+    await expect(still.active).toHaveText(names[0]);
+    await still.page.getByRole('button', { name: 'اسلاید ۲ از ۳' }).click();
+    await expect(still.active).toHaveText(names[1]);
+    await still.context.close();
+
+    // Touch, RTL: a swipe to the right shows the next slide, to the left the previous one.
+    const touch = await open({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+    await expect(touch.active).toHaveText(names[0]);
+    await touch.page.getByRole('button', { name: 'اسلاید ۱ از ۳' }).tap(); // hydrate first
+    const box = (await touch.cover.locator('.hero-slides').boundingBox())!;
+    await touchDrag(touch.page, box.x + 60, box.y + box.height * 0.6, 200);
+    await expect(touch.active).toHaveText(names[1]);
+    await touchDrag(touch.page, box.x + box.width - 60, box.y + box.height * 0.6, -200);
+    await expect(touch.active).toHaveText(names[0]);
+    expect(await touch.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await touch.context.close();
+  } finally {
+    expect((await pick(saved)).status()).toBe(200);
+  }
 });
 
 test('product editor: unsaved changes are guarded, Back moves between screens, a copy starts as an empty draft', async ({ page }) => {

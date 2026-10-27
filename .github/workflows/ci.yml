@@ -17,11 +17,15 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      # The storefront ↔ API contract tests in tests-unit/ import the API's validation code.
+      - name: Install API dependencies
+        working-directory: backend
+        run: npm install --no-audit --no-fund
       - name: Lint
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
-      - name: Checkout retry unit tests
+      - name: Unit and contract tests
         run: npm run test:unit
       - name: Build
         run: npm run build

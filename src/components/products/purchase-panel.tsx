@@ -9,6 +9,7 @@ import { QuantityStepper } from '@/components/ui/quantity-stepper';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
 import { useBottomBar } from '@/components/ui/document-flags';
 import { formatNumber, toman } from '@/lib/format';
+import { lineLimit, MAX_CART_LINES, MAX_LINE_QUANTITY } from '@/lib/checkout';
 import type { Product } from '@/types/store';
 
 type Notice = { text: string; error: boolean; cartLink?: boolean };
@@ -33,11 +34,14 @@ export function PurchasePanel({ product }: { product: Product }) {
   const color = product.colors.find(entry => entry.id === colorId);
   const variant = getVariant(product, colorId, size);
   const isFavorite = hydrated && wishlist.includes(product.id);
-  // What can still be added: stock minus what this variant already has in the cart.
+  // What can still be added: stock (up to what one order may hold) minus what this variant already has in the cart.
   const inCart = cart.find(item => item.productId === product.id && item.colorId === colorId && item.size === size)?.quantity ?? 0;
-  const room = variant ? variant.stock - inCart : 0;
+  const room = variant ? lineLimit(variant.stock) - inCart : 0;
   const ready = Boolean(colorId && size && room >= 1);
   const allInCart = Boolean(colorId && size && variant?.stock && room < 1);
+  // Full because one order cannot hold more, not because the stock ran out.
+  const atOrderLimit = Boolean(variant && variant.stock > MAX_LINE_QUANTITY && inCart >= MAX_LINE_QUANTITY);
+  const fullText = atOrderLimit ? 'حداکثر تعداد مجاز در سبد خریدت' : 'همه موجودی در سبد خریدت';
 
   useBottomBar('pdp');
   useEffect(() => { registerShopProduct(product); }, [product]);
@@ -92,7 +96,14 @@ export function PurchasePanel({ product }: { product: Product }) {
       return;
     }
     if (room < 1) {
-      setNotice({ text: 'همه موجودی این رنگ و سایز (' + formatNumber(variant.stock) + ' عدد) در سبد خریدت است.', error: true, cartLink: true });
+      setNotice({ text: atOrderLimit
+        ? 'از هر رنگ و سایز حداکثر ' + formatNumber(MAX_LINE_QUANTITY) + ' عدد در یک سفارش ثبت می‌شود و همین تعداد در سبد خریدت است.'
+        : 'همه موجودی این رنگ و سایز (' + formatNumber(variant.stock) + ' عدد) در سبد خریدت است.', error: true, cartLink: true });
+      return;
+    }
+    if (!inCart && cart.length >= MAX_CART_LINES) {
+      setNotice({ text: 'هر سفارش حداکثر ' + formatNumber(MAX_CART_LINES) + ' کالای مختلف دارد؛ برای افزودن این کالا یکی از اقلام سبد خرید را حذف کن.',
+        error: true, cartLink: true });
       return;
     }
     const item = { productId: product.id, colorId, size, quantity: Math.min(quantity, room) };
@@ -106,7 +117,7 @@ export function PurchasePanel({ product }: { product: Product }) {
   }
 
   const summary = color ? color.name + (size ? '، سایز ' + size : '') : 'رنگ و سایز انتخاب نشده';
-  const stickyLabel = ready ? 'افزودن به سبد خرید از نوار پایین' : allInCart ? 'همه موجودی در سبد خریدت از نوار پایین'
+  const stickyLabel = ready ? 'افزودن به سبد خرید از نوار پایین' : allInCart ? fullText + ' از نوار پایین'
     : !colorId ? 'انتخاب رنگ و سایز از نوار پایین' : 'انتخاب سایز از نوار پایین';
 
   return <>
@@ -164,7 +175,7 @@ export function PurchasePanel({ product }: { product: Product }) {
           <span>راهنمای سایز</span>
         </button>
         <button ref={buyButton} type="button" className="btn btn-primary btn-dark btn-lg" onClick={add}>
-          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : allInCart ? 'همه موجودی در سبد خریدت' : 'رنگ و سایز رو انتخاب کن'}
+          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : allInCart ? fullText : 'رنگ و سایز رو انتخاب کن'}
         </button>
         <button type="button" className={'btn btn-secondary btn-lg pdp-wishlist' + (isFavorite ? ' is-liked' : '')}
           aria-label={isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'} aria-pressed={isFavorite}

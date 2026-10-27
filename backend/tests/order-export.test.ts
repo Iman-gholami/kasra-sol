@@ -34,3 +34,15 @@ test('the file is UTF-8 with a BOM, Persian headers, Solar Hijri Tehran dates an
   assert.ok(lines[1].endsWith(',900000,0,,120000,1020000'));
   assert.equal(persianDateTime(new Date('2026-10-19T12:53:00Z')), '1405/07/27 16:23');
 });
+
+test('an empty export still has the header row, and unknown statuses stay readable', () => {
+  const header = ordersCsv([]);
+  assert.equal(header.trimEnd().split('\r\n').length, 1);
+  assert.ok(header.endsWith('\r\n'));
+  const row: ExportRow = { id: 'abcdef12-0000-4000-8000-000000000000', status: 'on_hold', payment: 'cod', shipping: 'post',
+    code: 'KASRA10', subtotal: 1, discount: 0, shippingCost: 0, total: 1, createdAt: new Date('2026-03-20T20:29:00Z'),
+    address: {}, items: '', units: 0 };
+  const line = ordersCsv([row]).split('\r\n')[1];
+  assert.ok(line.includes(',on_hold,') && line.includes(',KASRA10,'));
+  assert.ok(line.includes(',1404/12/29 23:59,'), 'the last minute of the Persian year');
+});

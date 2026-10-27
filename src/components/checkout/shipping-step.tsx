@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent, type RefObject } from 'react';
 import { AlertCircle, ArrowLeft, Info, Plus, Sparkles } from 'lucide-react';
-import { ChoiceCard, SelectField, TextField, addressOrder, sampleFields, validate } from '@/components/checkout/fields';
+import { ChoiceCard, FIELD_MAX_LENGTH, SelectField, TextField, addressOrder, sampleFields, validate } from '@/components/checkout/fields';
 import type { CheckoutDraft, Field, Fields } from '@/components/checkout/checkout-storage';
 import { DEFAULT_PAYMENT, DEFAULT_SHIPPING, shippingById, shippingCost, shippingMethods, shippingRestriction,
   type ShippingMethodId } from '@/lib/checkout';
@@ -87,21 +87,21 @@ export function ShippingStep({ draft, update, subtotal, headingRef, onContinue }
     <p className="field-hint">همهٔ اطلاعات نشانی الزامی است؛ توضیح برای مأمور ارسال اختیاری است.</p>
     <div className="form-grid">
       <TextField label="نام و نام خانوادگی تحویل‌گیرنده" value={fields.name} error={errors.name} onChange={v => set('name', v)} onBlur={() => blur('name')}
-        autoComplete="name" enterKeyHint="next"/>
+        autoComplete="name" enterKeyHint="next" maxLength={FIELD_MAX_LENGTH.name}/>
       <TextField label="شماره موبایل" value={fields.mobile} error={errors.mobile} onChange={v => set('mobile', v)} onBlur={() => blur('mobile')}
         type="tel" inputMode="tel" autoComplete="tel" enterKeyHint="next" dir="ltr" placeholder="0912 345 6789"
         hint="برای هماهنگی تحویل؛ ارقام فارسی هم پذیرفته می‌شوند."/>
       <SelectField label="استان" value={fields.province} error={errors.province} onChange={v => set('province', v)} onBlur={() => blur('province')}/>
       <TextField label="شهر" value={fields.city} error={errors.city} onChange={v => set('city', v)} onBlur={() => blur('city')}
-        autoComplete="address-level2" enterKeyHint="next"/>
+        autoComplete="address-level2" enterKeyHint="next" maxLength={FIELD_MAX_LENGTH.city}/>
       <TextField label="نشانی دقیق" value={fields.address} error={errors.address} onChange={v => set('address', v)} onBlur={() => blur('address')}
-        autoComplete="street-address" multiline wide placeholder="خیابان، کوچه، پلاک، واحد"/>
+        autoComplete="street-address" multiline wide placeholder="خیابان، کوچه، پلاک، واحد" maxLength={FIELD_MAX_LENGTH.address}/>
       <TextField label="کد پستی" value={fields.postal} error={errors.postal} onChange={v => set('postal', v)} onBlur={() => blur('postal')}
         inputMode="numeric" autoComplete="postal-code" enterKeyHint="done" dir="ltr" placeholder="1234567890" hint="۱۰ رقم، بدون خط تیره."/>
       {notesOpen
         ? <div className="form-grid-wide" ref={notesRef}>
-          <TextField label="توضیح برای مأمور ارسال" optional value={fields.notes} onChange={v => set('notes', v)} multiline
-            placeholder="مثلاً: زنگ واحد ۲ کار نمی‌کند"/>
+          <TextField label="توضیح برای مأمور ارسال" optional value={fields.notes} error={errors.notes} onChange={v => set('notes', v)}
+            onBlur={() => blur('notes')} multiline placeholder="مثلاً: زنگ واحد ۲ کار نمی‌کند" maxLength={FIELD_MAX_LENGTH.notes}/>
         </div>
         : <button type="button" className="link-button checkout-add-note" onClick={() => {
           setNotesOpen(true);
