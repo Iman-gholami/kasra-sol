@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, ArrowUpLeft } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircleQuestion, Ruler, Truck } from 'lucide-react';
 import { categories, lookbookPhotos } from '@/data/products';
 import { getCatalogProducts, getHomeSlides } from '@/lib/backend-products';
 import { ProductRail } from '@/components/products/product-rail';
@@ -29,6 +29,15 @@ function coverSlides(picked: Product[], newest: Product[]) {
   const slides = [...distinct, ...discounted.filter(item => !distinct.includes(item))].slice(0, 5);
   return slides.length ? slides : newest.slice(0, 3);
 }
+
+/** What a first-time buyer asks before ordering clothes online, each answered by the page that holds the store's
+ * terms. Worded as information, never as guarantees: delivery and return terms are the owner's to set. */
+const services = [
+  { href: '/size-guide', title: 'راهنمای انتخاب سایز', text: 'اندازه‌هایت را قبل از خرید با جدول سایز مقایسه کن.', Icon: Ruler },
+  { href: '/shipping-and-returns', title: 'ارسال و بازگشت', text: 'روش‌های ارسال و شرایط بازگشت کالا را پیش از خرید ببین.', Icon: Truck },
+  { href: '/faq', title: 'سؤال‌های پرتکرار', text: 'پاسخ کوتاه به پرسش‌های رایج درباره‌ی سفارش و اندازه.', Icon: MessageCircleQuestion },
+  { href: '/wishlist', title: 'برای بعد نگه دار', text: 'لباس‌های موردعلاقه‌ات را با قلب در علاقه‌مندی‌ها ذخیره کن.', Icon: Heart }
+];
 
 export const dynamic = 'force-dynamic';
 export default async function HomePage() {
@@ -111,18 +120,21 @@ export default async function HomePage() {
       <ProductRail products={picks} label="منتخب کسری"/>
     </section>}
 
+    <section className="container home-section services" aria-labelledby="services-title">
+      <h2 id="services-title" className="sr-only">خرید با خیال راحت</h2>
+      <ul className="service-list">
+        {services.map(({ href, title, text, Icon }) => <li key={href}>
+          <Link href={href} className="service-item"><Icon size={24} strokeWidth={1.5} aria-hidden="true"/><span><strong>{title}</strong><small>{text}</small></span></Link>
+        </li>)}
+      </ul>
+    </section>
+
     {offers.length > 0 && <section className="container home-section" aria-labelledby="offers-title">
       <SectionHeading id="offers-title" title="پیشنهاد ویژه" note="قیمت ویژه برای چند انتخاب از کالکشن." href="/shop?sale=1" linkLabel="همه‌ی تخفیف‌دارها"/>
       <ProductRail products={offers} label="محصولات تخفیف‌دار"/>
     </section>}
 
     <ShopByColor options={colors}/>
-
-    <nav className="container service-links" aria-label="راهنمای خرید از کسری">
-      <Link href="/size-guide"><span><strong>راهنمای انتخاب سایز</strong><small>اندازه‌گیری درست، قبل از انتخاب</small></span><span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span></Link>
-      <Link href="/shipping-and-returns"><span><strong>ارسال و بازگشت</strong><small>اطلاعات نمونه، هنوز نهایی نشده</small></span><span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span></Link>
-      <Link href="/faq"><span><strong>سؤال‌های پرتکرار</strong><small>پاسخ کوتاه به پرسش‌های رایج</small></span><span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span></Link>
-    </nav>
 
     <section className="container newsletter" aria-labelledby="closing-title">
       <span className="newsletter-figure"><Image src={lookbookPhotos.tshirtWhite} alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>

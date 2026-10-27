@@ -4,8 +4,9 @@ test('shop by color position, dataset colors, default cream and four preview pro
   await page.goto('/');
   const section=page.getByRole('region',{name:'خرید بر اساس رنگ'});
   await expect(section).toBeVisible();
+  // After the collections and the product rows: a way to browse once the shopper knows what the store sells.
   const tops=await Promise.all([
-    page.locator('.category-section'),section,page.locator('section[aria-labelledby="arrivals-title"]')
+    page.locator('.category-section'),page.locator('section[aria-labelledby="arrivals-title"]'),section
   ].map(locator=>locator.evaluate(el=>el.getBoundingClientRect().top+window.scrollY)));
   expect(tops[0]).toBeLessThan(tops[1]);
   expect(tops[1]).toBeLessThan(tops[2]);
@@ -13,7 +14,7 @@ test('shop by color position, dataset colors, default cream and four preview pro
   await expect(section.getByRole('button',{name:'نمایش محصولات رنگ کرم'})).toHaveAttribute('aria-pressed','true');
   await expect(section.locator('.product-card')).toHaveCount(4);
   await expect(section.locator('.price-line strong').first()).toContainText('تومان');
-  await expect(section.getByRole('link',{name:/مشاهده همه محصولات این رنگ/})).toHaveAttribute('href','/shop?color=cream');
+  await expect(section.getByRole('link',{name:/همه‌ی محصولات این رنگ/})).toHaveAttribute('href','/shop?color=cream');
   await expect(section.getByText('عکس‌ها نمونه‌اند',{exact:false})).toBeVisible();
 });
 
@@ -32,7 +33,7 @@ test('selecting a color updates cards, preserves wishlist and links to filtered 
   const first=section.locator('.product-card').first();
   const name=await first.locator('h3').innerText();
   await first.getByRole('button',{name:/افزودن به علاقه‌مندی‌ها/}).click();
-  await section.getByRole('link',{name:/مشاهده همه محصولات این رنگ/}).click();
+  await section.getByRole('link',{name:/همه‌ی محصولات این رنگ/}).click();
   await expect(page).toHaveURL(/\/shop\?color=black/);
   await expect(page.locator('.product-card').getByText(name)).toBeVisible();
   await page.goBack();
@@ -52,7 +53,7 @@ test('every preview is contained in its server filtered catalog, multi-colored i
     await section.getByRole('button',{name:'نمایش محصولات رنگ '+label}).click();
     const names=await section.locator('.product-info h3').allTextContents();
     expect(names).toHaveLength(4);
-    await expect(section.getByRole('link',{name:/مشاهده همه محصولات این رنگ/}))
+    await expect(section.getByRole('link',{name:/همه‌ی محصولات این رنگ/}))
       .toHaveAttribute('href','/shop?color='+id);
     await page.goto('/shop?color='+id);
     const catalog=await page.locator('.product-info h3').allTextContents();
@@ -82,11 +83,13 @@ test('shop by color avoids horizontal overflow in six responsive widths',async (
         vw:window.innerWidth,
         scroll:row.scrollWidth,
         client:row.clientWidth,
-        columns:getComputedStyle(document.querySelector('.shop-color-product-grid .product-grid')!).gridTemplateColumns.split(' ').length
+        rail:(()=>{const rail=document.querySelector('.shop-by-color .product-rail')!;return {scroll:rail.scrollWidth,client:rail.clientWidth,columns:getComputedStyle(rail).gridTemplateColumns.split(' ').length};})()
       };
     });
     expect(d.doc).toBeLessThanOrEqual(width+1);
-    expect(d.columns).toBe(width<=820?2:4);
+    // Phones and tablets swipe through the four products; wider screens show them as four columns.
+    if(width<=820)expect(d.rail.scroll).toBeGreaterThan(d.rail.client);
+    else expect(d.rail.columns).toBe(4);
     if(width<=430)expect(d.scroll).toBeGreaterThan(d.client);
   }
 });
