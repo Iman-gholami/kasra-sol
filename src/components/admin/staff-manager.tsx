@@ -121,13 +121,16 @@ function StaffItem({ member, roles, refresh }: { member: Member; roles: CustomRo
       <button type="submit" disabled={busy} className="admin-btn admin-btn-primary admin-btn-small">ذخیره نام</button>
       <button type="button" className="admin-btn admin-btn-outline admin-btn-small" onClick={() => setNameOpen(false)}>انصراف</button>
     </form>}
-    <fieldset className="admin-permissions" disabled={busy}>
-      <legend>مجوزهای قابل تنظیم <span className="admin-sub">(تغییر هر مورد، نشست‌های فعال کارمند را می‌بندد)</span></legend>
-      {DELEGABLE.map(permission => <label key={permission} className="admin-check">
-        <input type="checkbox" checked={pending[permission] ?? member.permissions.includes(permission)} onChange={() => toggle(permission)}/>
-        <span>{PERMISSION[permission].label}<small>{PERMISSION[permission].hint}</small></span>
-      </label>)}
-    </fieldset>
+    <details className="admin-permission-details">
+      <summary>نمایش و ویرایش مجوزها</summary>
+      <fieldset className="admin-permissions" disabled={busy}>
+        <legend>مجوزهای قابل تنظیم <span className="admin-sub">(تغییر هر مورد، نشست‌های فعال کارمند را می‌بندد)</span></legend>
+        {DELEGABLE.map(permission => <label key={permission} className="admin-check">
+          <input type="checkbox" checked={pending[permission] ?? member.permissions.includes(permission)} onChange={() => toggle(permission)}/>
+          <span>{PERMISSION[permission].label}<small>{PERMISSION[permission].hint}</small></span>
+        </label>)}
+      </fieldset>
+    </details>
     {error && <Notice tone="error">{error}</Notice>}
   </article>;
 }
@@ -197,7 +200,7 @@ export function StaffManager() {
     <section aria-labelledby="staff-list-title" className="admin-stack">
       <h2 id="staff-list-title" className="admin-section-title">حساب‌ها</h2>
       {staff === null ? (!error && <Loading label="در حال دریافت حساب‌ها…"/>)
-        : staff.map(member => <StaffItem key={member.id + member.role + (member.customRoleId ?? '') + member.active + member.permissions.join()} member={member} roles={roles} refresh={refresh}/>)}
+        : staff.map(member => <StaffItem key={member.id} member={member} roles={roles} refresh={refresh}/>)}
     </section>
     {staff && <RoleManager roles={roles} refresh={refresh}/>}
   </div>;
