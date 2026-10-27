@@ -167,23 +167,23 @@
 .shop-color-footer { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); margin-block-start: var(--space-6); }
 .shop-color-footer p { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--color-text-subtle); font-size: var(--text-xs); text-align: center; }
 
-/* Editorial band: a soft panel; the photograph is a rounded plate kept near its real size (sharp), the copy beside it. */
-.editorial-band {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--space-6);
-  margin-block: var(--space-4); padding: clamp(20px, 3vw, 48px); overflow: hidden;
-  border-radius: var(--radius-lg); background: var(--color-surface-muted);
+/* Season story: the one tinted band on the page, edge to edge. Two coats as plates of different heights (the second
+   steps down), with a short line and a quiet button beside them. The band's content keeps the page width. */
+.season { padding-block: clamp(40px, 1.5rem + 4vw, 96px); background: var(--color-surface-muted); }
+.editorial-band { display: grid; gap: var(--space-5); align-items: center; }
+.season-photos { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr); align-items: end; gap: var(--space-3); }
+.season-photo { position: relative; display: block; aspect-ratio: 4 / 5; overflow: hidden; border-radius: var(--radius-photo); background: var(--color-surface-sunken); }
+.season-photo + .season-photo { aspect-ratio: 3 / 4; margin-block-end: var(--space-6); }
+.season-photo img { object-fit: cover; object-position: 50% 10%; }
+.season-copy { display: flex; flex-direction: column; align-items: flex-start; }
+.season-kicker { margin: 0 0 var(--space-2); color: var(--color-accent); font-size: var(--text-sm); font-weight: var(--font-weight-medium); }
+.season-copy h2 { margin: 0; font-size: var(--text-section); font-weight: var(--font-weight-light); line-height: 1.35; }
+.season-copy > p:not(.season-kicker) { margin: var(--space-3) 0 var(--space-5); max-inline-size: 34ch; color: var(--color-text-muted); }
+@media (min-width: 821px) {
+  .editorial-band { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 112px); }
+  .season-photos { gap: var(--space-4); }
+  .season-photo + .season-photo { margin-block-end: var(--space-8); }
 }
-.editorial-art {
-  position: relative; justify-self: center; inline-size: min(100%, 460px); aspect-ratio: 4 / 5; overflow: hidden;
-  border-radius: var(--radius-md); background: var(--color-surface-sunken);
-}
-.editorial-art img { object-fit: cover; object-position: center 8%; }
-.editorial-copy { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: var(--space-5) clamp(8px, 3vw, 48px); }
-.editorial-copy::after { content: "K"; position: absolute; inset-block-start: -12px; inset-inline-end: 12px; z-index: -1; color: rgb(121 95 76 / 0.06); font: 300px/0.9 var(--font-wordmark); }
-.editorial-super { margin: 0 0 var(--space-4); color: var(--color-text-subtle); font: 600 12px/1.5 Arial, sans-serif; letter-spacing: 0.24em; }
-.editorial-copy h2 { margin: 0 0 var(--space-3); font-size: var(--text-heading); font-weight: var(--font-weight-light); line-height: 1.35; max-inline-size: 14ch; }
-.editorial-copy h2 em { display: block; font-style: normal; font-weight: var(--font-weight-medium); color: var(--color-accent); }
-.editorial-copy > p:not(.editorial-super) { margin: 0 0 var(--space-5); max-inline-size: 34ch; color: var(--color-text-muted); }
 
 /* Service links: three soft boxes with a round arrow, like the contents boxes under the hero. */
 .service-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); margin-block-start: var(--space-7); }
@@ -212,11 +212,9 @@
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
     .category-figure, .newsletter-figure { animation: home-settle linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
-    .editorial-art img { animation: home-settle-zoom linear both; animation-timeline: view(); animation-range: entry 0% cover 50%; }
   }
 }
 @keyframes home-settle { from { transform: translateY(28px) scale(1.05); } }
-@keyframes home-settle-zoom { from { transform: scale(1.12); } }
 
 @media (max-width: 820px) {
   .service-links a { padding-inline: var(--space-4); }
@@ -234,10 +232,6 @@
   .shop-color-result-summary { margin-block: var(--space-2) var(--space-4); font-size: var(--text-xs); }
   .shop-color-footer { margin-block-start: var(--space-5); }
   .shop-color-view-all { inline-size: 100%; }
-  .editorial-band { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
-  .editorial-art { inline-size: 100%; }
-  .editorial-copy { padding: var(--space-4) var(--space-2) var(--space-3); }
-  .editorial-copy::after { font-size: 220px; }
   .service-links { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); margin-block-start: var(--space-5); }
   .service-links a { min-block-size: 76px; }
   .newsletter { min-block-size: 0; padding-block-end: 0; gap: var(--space-4); }

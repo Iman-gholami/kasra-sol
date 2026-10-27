@@ -15,6 +15,9 @@ import type { Product } from '@/types/store';
 // Collection cards: about 2.2 in view on phones, then up to three across the page width.
 const categorySizes = '(max-width: 600px) 44vw, (max-width: 1520px) 31vw, 470px';
 
+// The season story's two plates: side by side at about 55% and 40% of the page on phones, of half the page from 821px.
+const seasonSizes = '(max-width: 820px) 55vw, 380px';
+
 // The cover photo runs edge to edge on phones and stands as a plate of at most 600px beside the copy from 601px.
 const slideSizes = '(max-width: 600px) 100vw, (max-width: 820px) 420px, 600px';
 /** The cover slides: the owner's pick from the admin panel. Without one, up to five discounted products, newest first,
@@ -36,7 +39,21 @@ export default async function HomePage() {
   const arrivals = newest.slice(0, 8);
   const slides = coverSlides(picked, newest).map(({ id, slug, name, images, price, compareAt }) =>
     ({ id, slug, name, image: images[0], price, compareAt }));
-  const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
+  // Each row shows products the rows above it have not, so the page never repeats a card. A row with nothing left is
+  // left out rather than shown empty (with the API, products are whatever the owner has published and marked).
+  const shown = new Set(arrivals.map(item => item.id));
+  const take = (list: Product[]) => {
+    const row = list.filter(item => !shown.has(item.id)).slice(0, 8);
+    row.forEach(item => shown.add(item.id));
+    return row;
+  };
+  const picks = take(newest.filter(item => item.featured));
+  const offers = take(newest.filter(item => item.compareAt && item.compareAt > item.price));
+  // The season story shows two coats: the two newest from the API, or two demo photographs.
+  const coats = newest.filter(item => item.category === 'manto');
+  const season = process.env.BACKEND_INTERNAL_URL && coats.length >= 2
+    ? coats.slice(0, 2).map(item => ({ src: item.images[0], alt: item.name }))
+    : [{ src: lookbookPhotos.mantoBlack, alt: 'مانتوی بلند مشکی با شلوار کرم، عکس نمایشی' }, { src: lookbookPhotos.mantoSage, alt: '' }];
   const colors = getShopByColorResults(products);
   // With the API, each collection shows its newest product's photo, so real photography appears without code changes.
   const collections = categories.map(({ slug, title }) => ({
@@ -70,29 +87,36 @@ export default async function HomePage() {
       </ul>
     </section>
 
-    <ShopByColor options={colors}/>
-
     <section className="container home-section" aria-labelledby="arrivals-title">
       <SectionHeading id="arrivals-title" title="تازه‌ترین‌ها" href="/shop?sort=newest" linkLabel="مشاهده‌ی همه"/>
       <ProductRail products={arrivals} label="تازه‌ترین محصولات"/>
     </section>
 
-    <section className="container wide-editorial editorial-band" aria-labelledby="edit-title">
-      <div className="editorial-art">
-        <Image src={lookbookPhotos.mantoBlack} alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 600px) 86vw, 460px"/>
-      </div>
-      <div className="editorial-copy">
-        <p className="editorial-super" dir="ltr">THE KASRA EDIT</p>
-        <h2 id="edit-title">انتخاب‌هایی برای <em>استایلِ خودت</em></h2>
-        <p>ترکیب‌های بی‌دردسر و رنگ‌هایی که همیشه می‌شه دوست‌شون داشت.</p>
-        <Link href="/category/manto" className="btn btn-secondary">مانتوهای کسری <ArrowLeft size={18} aria-hidden="true"/></Link>
+    <section className="home-section season" aria-labelledby="season-title">
+      <div className="container editorial-band">
+        <div className="season-photos">
+          {season.map(({ src, alt }) => <span key={src} className="season-photo"><Image src={src} alt={alt} fill sizes={seasonSizes}/></span>)}
+        </div>
+        <div className="season-copy">
+          <p className="season-kicker">کالکشن پاییز ۱۴۰۵</p>
+          <h2 id="season-title">لایه‌های سبک برای روزهای خنک</h2>
+          <p>مانتوهای خوش‌فرم و راحت، در رنگ‌هایی که با هم جور می‌شوند.</p>
+          <Link href="/category/manto" prefetch={demoPrefetch} className="btn btn-secondary">مانتوها را ببین <ArrowLeft size={18} aria-hidden="true"/></Link>
+        </div>
       </div>
     </section>
 
-    <section className="container home-section" aria-labelledby="picks-title">
+    {picks.length > 0 && <section className="container home-section" aria-labelledby="picks-title">
       <SectionHeading id="picks-title" title="منتخب کسری" href="/shop?sort=featured" linkLabel="مشاهده‌ی همه"/>
       <ProductRail products={picks} label="منتخب کسری"/>
-    </section>
+    </section>}
+
+    {offers.length > 0 && <section className="container home-section" aria-labelledby="offers-title">
+      <SectionHeading id="offers-title" title="پیشنهاد ویژه" note="قیمت ویژه برای چند انتخاب از کالکشن." href="/shop?sale=1" linkLabel="همه‌ی تخفیف‌دارها"/>
+      <ProductRail products={offers} label="محصولات تخفیف‌دار"/>
+    </section>}
+
+    <ShopByColor options={colors}/>
 
     <nav className="container service-links" aria-label="راهنمای خرید از کسری">
       <Link href="/size-guide"><span><strong>راهنمای انتخاب سایز</strong><small>اندازه‌گیری درست، قبل از انتخاب</small></span><span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span></Link>
