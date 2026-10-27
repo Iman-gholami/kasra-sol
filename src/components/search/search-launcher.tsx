@@ -43,7 +43,7 @@ export function SearchLauncher() {
   return <>
     <button type="button" ref={trigger} className="search-trigger" aria-expanded={open} aria-haspopup="dialog"
       onClick={event => show(event.currentTarget)}>
-      <Search size={20} aria-hidden="true"/>
+      <Search size={20} strokeWidth={1.75} aria-hidden="true"/>
       <span className="search-trigger-label">جستجوی محصولات</span>
       <kbd aria-hidden="true">/</kbd>
     </button>

@@ -24,7 +24,7 @@ export function MobileMenu() {
   return <>
     <button type="button" className="icon-button menu-trigger" aria-label="باز کردن منو" aria-expanded={open}
       aria-controls="mobile-navigation" onClick={() => setOpen(true)}>
-      <Menu size={23} aria-hidden="true"/>
+      <Menu size={23} strokeWidth={1.75} aria-hidden="true"/>
     </button>
     {mounted && <Sheet open={open} onClose={close} id="mobile-navigation" className="sheet-start menu-sheet"
       labelledBy="mobile-menu-title" swipe="start">

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { Heart, ShoppingBag, UserRound } from 'lucide-react';
 import { useShop } from '@/components/shop-provider';
 import { SearchLauncher } from '@/components/search/search-launcher';
 import { formatNumber } from '@/lib/format';
@@ -33,12 +33,15 @@ export function HeaderActions() {
 
   return <div className="header-actions">
     <SearchLauncher />
+    <Link className="icon-button header-account" href="/account" aria-label="حساب کاربری">
+      <UserRound size={21} strokeWidth={1.75} aria-hidden="true"/>
+    </Link>
     <Link className="icon-button header-wishlist" href="/wishlist" aria-label={wishLabel}>
-      <Heart size={21} aria-hidden="true"/>
+      <Heart size={21} strokeWidth={1.75} aria-hidden="true"/>
       {hydrated && wishlist.length > 0 && <span className="count" aria-hidden="true">{formatNumber(wishlist.length)}</span>}
     </Link>
     <Link className="icon-button" href="/cart" aria-label={cartLabel}>
-      <ShoppingBag size={21} aria-hidden="true"/>
+      <ShoppingBag size={21} strokeWidth={1.75} aria-hidden="true"/>
       {hydrated && cartCount > 0 && <span className="count" data-bump={bump} aria-hidden="true">{formatNumber(cartCount)}</span>}
     </Link>
     <span className="sr-only" role="status" aria-live="polite">{announcement}</span>

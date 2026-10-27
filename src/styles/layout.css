@@ -19,13 +19,21 @@
 .header-start { justify-self: start; gap: var(--space-1); }
 .header-actions { justify-self: end; gap: var(--space-1); }
 .menu-trigger { display: none; }
-.brand { display: inline-flex; align-items: center; gap: 12px; min-block-size: var(--touch); direction: ltr; padding-inline: 2px; }
-.brand-monogram { inline-size: 38px; block-size: 40px; display: grid; place-items: center; border: 1px solid var(--color-brand); color: var(--color-brand); font: 26px/0.9 var(--font-wordmark); }
-.brand-type { display: flex; flex-direction: column; align-items: center; }
-.brand-type strong { font: 500 24px/0.95 var(--font-wordmark); letter-spacing: 0.17em; padding-inline-start: 0.17em; color: var(--color-brand); }
-/* Logotype detail: part of the wordmark image, aria-hidden — the one documented exception to the 12px floor.
-   The wordmark is LTR, so inline-start padding balances the trailing letter-spacing on the left. */
-.brand-type small { font: 600 9px/2 Arial, sans-serif; letter-spacing: 0.32em; padding-inline-start: 0.32em; color: var(--color-text-muted); }
+/* The wordmark is outlined SVG (components/layout/wordmark.tsx): ink follows `color`, BOUTIQUE takes --wordmark-sub. */
+.wordmark { display: block; block-size: 100%; inline-size: auto; overflow: visible; }
+.wordmark-sub { fill: var(--wordmark-sub, var(--color-text-muted)); }
+.brand { display: inline-flex; align-items: center; min-block-size: var(--touch); padding-inline: 2px; color: var(--color-brand); }
+.brand .wordmark { block-size: 36px; transform-origin: center; }
+/* Scrolled: the sticky bar stays the same height (a height change would shift the page), but the wordmark settles
+   smaller and a hairline shadow lifts the bar off the content. Scroll-linked, so declared only without reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .site-header { animation: header-lift linear both; animation-timeline: scroll(root); animation-range: 0 120px; }
+    .brand .wordmark { animation: brand-settle linear both; animation-timeline: scroll(root); animation-range: 0 120px; }
+  }
+}
+@keyframes header-lift { to { box-shadow: 0 6px 18px rgb(30 26 23 / 0.06); } }
+@keyframes brand-settle { to { transform: scale(0.86); } }
 
 .desktop-nav > ul { display: flex; align-items: center; gap: clamp(2px, 0.5vw, 8px); margin: 0; padding: 0; list-style: none; }
 .desktop-nav > ul > li { display: flex; align-items: center; }
@@ -163,11 +171,8 @@
 @media (max-width: 600px) {
   .header-inner { gap: var(--space-2); }
   .header-actions { gap: 0; }
-  .header-wishlist { display: none; }
-  .brand { gap: 8px; }
-  .brand-monogram { inline-size: 31px; block-size: 33px; font-size: 21px; }
-  .brand-type strong { font-size: 19px; }
-  .brand-type small { font-size: 8px; letter-spacing: 0.26em; }
+  .header-wishlist, .header-account { display: none; }
+  .brand .wordmark { block-size: 30px; }
   .breadcrumbs { margin-block-start: var(--space-2); }
   .breadcrumbs a { min-block-size: var(--touch); min-inline-size: var(--touch); }
   .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-4); padding: var(--space-6) var(--space-5); }
@@ -204,6 +209,5 @@
   .site-shell { padding-block-end: var(--bottom-bar-space, 0px); }
 }
 @media (max-width: 360px) {
-  .brand-type small { display: none; }
-  .brand-type strong { font-size: 18px; }
+  .brand .wordmark { block-size: 27px; }
 }

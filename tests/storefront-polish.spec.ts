@@ -29,7 +29,7 @@ test.describe('desktop', () => {
     await page.goto('/');
     await expect(page.locator('.announcement')).toHaveCSS('background-color', 'rgb(30, 26, 23)');
     await expect(page.locator('.site-header')).toHaveCSS('background-color', 'rgb(250, 247, 242)');
-    await expect(page.locator('.brand-type strong')).toHaveCSS('color', 'rgb(30, 26, 23)');
+    await expect(page.locator('.brand')).toHaveCSS('color', 'rgb(30, 26, 23)');
     await expect(page.locator('.footer-grid')).toHaveCSS('background-color', 'rgb(30, 26, 23)');
     await expect(page.locator('.footer nav a').first()).toHaveCSS('color', 'rgb(207, 198, 187)');
     await page.goto('/shop');
