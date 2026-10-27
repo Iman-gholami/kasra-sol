@@ -395,6 +395,7 @@ test('owner manages an employee: new account, own password change, permission gr
   await expect(employee.getByText('رمز عبور تغییر کرد', { exact: false })).toBeVisible();
 
   const card = page.locator('.admin-member', { hasText: 'همکار موقت' });
+  await card.getByText('نمایش و ویرایش مجوزها').click();
   await card.getByRole('checkbox', { name: /تغییر قیمت/ }).check();
   await expect(page.locator('.admin-member', { hasText: 'همکار موقت' }).getByRole('checkbox', { name: /تغییر قیمت/ })).toBeChecked();
   await employee.reload();
