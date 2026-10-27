@@ -16,7 +16,7 @@ const ROUTES: Record<string, RegExp> = {
   PATCH: new RegExp('^(staff/' + UUID + '|products/' + PRODUCT + '/(price|visibility)|variants/' + UUID + '/stock|' +
     'orders/' + UUID + '/status)$'),
   PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password|roles/' + UUID + '|home-slider)$'),
-  DELETE: new RegExp('^(staff/' + UUID + '|roles/' + UUID + '|store-holds/' + SERIAL + '))
+  DELETE: new RegExp('^(staff/' + UUID + '|roles/' + UUID + '|store-holds/' + SERIAL + ')$')
 };
 // List endpoints accept these query parameters; anything else is dropped rather than forwarded.
 const QUERY: Record<string, string[]> = {
