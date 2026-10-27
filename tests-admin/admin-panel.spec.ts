@@ -405,7 +405,7 @@ test('product editor: unsaved changes are guarded, Back moves between screens, a
   await openTab(page, 'محصولات و موجودی');
   await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
-  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
   await expect(page.getByRole('heading', { name: /ویرایش محصول/ })).toBeFocused();
   await expect(page).toHaveURL(/edit=e2e-linen-manto/);
   await page.getByLabel('نام محصول').fill('نام ذخیره‌نشده');
@@ -694,7 +694,7 @@ test('product photo removal can be undone before saving and persists after savin
   await openTab(page, 'محصولات و موجودی');
   await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
-  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
   await expect(page.locator('.admin-gallery-item')).toHaveCount(2);
   await page.getByRole('button', { name: 'حذف تصویر ۲ از محصول' }).click();
   await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
@@ -705,6 +705,6 @@ test('product photo removal can be undone before saving and persists after savin
   await expect(page.getByText('محصول ذخیره شد.')).toBeVisible();
   await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
-  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
   await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
 });
