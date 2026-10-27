@@ -94,6 +94,9 @@ test('owner creates a draft with photos, publishes it, and it reaches the storef
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
   const row = page.getByRole('row', { name: new RegExp(PRODUCT_NAME) });
   await expect(row.getByText('پیش‌نویس')).toBeVisible();
+  const repeatedSearch = page.waitForResponse(response => response.url().includes('/api/admin/products?') && response.request().method() === 'GET');
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  expect((await repeatedSearch).status()).toBe(200);
   await row.getByRole('button', { name: 'انتشار ' + PRODUCT_NAME }).click();
   await expect(page.getByRole('row', { name: new RegExp(PRODUCT_NAME) }).getByText('منتشرشده')).toBeVisible();
   await shot(page, 'products-desktop');
@@ -447,6 +450,9 @@ test('orders: period filter, Excel export of the filtered list, and a printable 
   await page.getByLabel('فیلتر وضعیت سفارش').selectOption('all');
   await page.getByLabel('بازه زمانی ثبت سفارش').selectOption('today');
   await expect(page.getByRole('row').filter({ hasText: 'مهمان نمایشی' }).first()).toBeVisible();
+  const repeatedSearch = page.waitForResponse(response => response.url().includes('/api/admin/orders?') && response.request().method() === 'GET');
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  expect((await repeatedSearch).status()).toBe(200);
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /خروجی Excel/ }).click()]);
   expect(download.suggestedFilename()).toMatch(/^kasra-orders-\d{4}-\d{2}-\d{2}\.csv$/);
   const file = readFileSync(await download.path());
