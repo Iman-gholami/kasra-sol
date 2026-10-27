@@ -219,8 +219,9 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
         user.custom_role_name = role.rows[0]?.name;
         user.custom_permissions = role.rows[0]?.permissions;
       }
-      // Any change of access (or deactivation) ends the employee's sessions immediately.
-      await client.query('DELETE FROM admin_sessions WHERE user_id=$1', [id.data]);
+      // A display-name-only edit should not interrupt the employee's work; access changes still end sessions.
+      if (switchRole || input.data.grants !== undefined || input.data.revokes !== undefined || input.data.active !== undefined)
+        await client.query('DELETE FROM admin_sessions WHERE user_id=$1', [id.data]);
       await recordAudit(client, actor.id, 'staff.updated', id.data, input.data);
       await client.query('COMMIT');
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }

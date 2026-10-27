@@ -135,6 +135,15 @@ describe('authentication and sessions', () => {
     assert.equal((await api('/v1/admin/orders', { token: user.token })).status, 401);
     assert.equal((await login(user.username, user.password)).status, 401);
   });
+
+  it('renames an employee without interrupting their session', async () => {
+    const user = await account('staff');
+    assert.equal((await api('/v1/admin/staff/' + user.id, { method: 'PATCH', token: owner.token,
+      body: { displayName: 'نام اصلاح‌شده' } })).status, 200);
+    const me = await api('/v1/admin/auth/me', { token: user.token });
+    assert.equal(me.status, 200);
+    assert.equal(me.data.user.displayName, 'نام اصلاح‌شده');
+  });
 });
 
 describe('role-based access and escalation attempts', () => {
