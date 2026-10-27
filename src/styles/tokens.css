@@ -1,40 +1,41 @@
 /* KASRA design tokens — single source for color, space, type, shape, depth, layering and motion.
-   Palette B: clean white canvas, cool-gray sections, charcoal ink and Kasra red. The editorial
-   grid, Estedad typography and product photography remain in place.
+   «کرم و جوهر»: a bone-white canvas, cream and sand neutrals that match the photographs' studio backdrop, warm ink
+   for text and primary buttons, and one terracotta accent used sparingly (sale prices, discount tags, current
+   states). The clothes are the colour on the page; the interface stays quieter than the photographs. See DESIGN.md.
    Theme tokens are declared through Tailwind 4 `@theme`, so they exist as CSS variables and as
    utilities; component CSS reads them with var(). Breakpoints used in media queries:
    600px (phone) · 820px (tablet) · 1080px (small laptop) · 1440px (wide). */
 
 @theme {
-  /* Kasra Wear palette B — semantic UI colors shared throughout the storefront.
-     Brand on white has a 6.57:1 contrast ratio; admin retains its independent theme. */
-  --color-brand: #B51F2B;
-  --color-brand-hover: #981A24;
-  --color-brand-active: #7E1520;
-  --color-surface: #FFFFFF;        /* canvas and header */
-  --color-surface-raised: #FFFFFF; /* menus, inputs and cards */
-  --color-surface-muted: #F1F2F4;  /* sections, summaries, soft pills */
-  --color-surface-sunken: #E5E7EB; /* pressed states and placeholders */
-  --color-studio: #EAECF0;          /* cool-gray studio panels paired with mockup photo crops */
-  --color-text: #181818;
-  --color-text-muted: #62666D;
-  --color-text-subtle: #62666D;
-  --color-accent: var(--color-brand);
-  --color-accent-soft: #D77A84;    /* decorative only */
-  --color-accent-wash: #F9EBED;
-  --color-border: #E5E7EB;
-  --color-border-strong: #858A93;
-  --color-outline-soft: rgb(24 24 24 / 0.28);
+  /* Colour roles. Contrast ratios are against the canvas / the cream (the darkest background small text sits on). */
+  --color-brand: #1E1A17;          /* brand ink: wordmark and primary buttons */
+  --color-brand-hover: #3A332D;    /* canvas text on it 11.6:1 */
+  --color-brand-active: #0F0D0B;
+  --color-surface: #FAF7F2;        /* page canvas: bone white */
+  --color-surface-raised: #FFFFFF; /* menus, inputs and sheets */
+  --color-surface-muted: #F3EDE5;  /* cream: bands, summaries, soft pills */
+  --color-surface-sunken: #E9DFD2; /* sand: image placeholders, pressed states */
+  --color-studio: #CDB59C;         /* the photographs' studio backdrop; only behind photos, never under small text */
+  --color-text: #1E1A17;           /* warm ink, 16.2:1 / 14.9:1 */
+  --color-text-muted: #5E554D;     /* 6.8:1 / 6.3:1 */
+  --color-text-subtle: #6B6158;    /* 5.7:1 / 5.2:1, 4.6:1 on sand */
+  --color-accent: #8A4B3B;         /* terracotta, 6.2:1 / 5.7:1; white on it 6.7:1 */
+  --color-accent-strong: #6E3A2E;  /* hover and pressed accent, 8.5:1 */
+  --color-accent-soft: #C9A49A;    /* decorative only — never text */
+  --color-accent-wash: #F4E9E3;    /* accent text on it 5.6:1 */
+  --color-border: #E3D9CC;         /* hairline dividers */
+  --color-border-strong: #8C8177;  /* form controls, 3.3:1 on cream, 3.8:1 on white */
+  --color-outline-soft: rgb(30 26 23 / 0.28);
   --color-success: #2E6B4C;
   --color-success-wash: #E8F1EC;
   --color-warning: #865A0F;
   --color-warning-wash: #F8EFDF;
   --color-danger: #9B2F2A;
   --color-danger-wash: #FBEEEC;
-  --color-focus: #B51F2B;
+  --color-focus: #8A4B3B;
   --color-inverse: #FFFFFF;
-  --color-footer-muted: #D1D5DB;
-  --color-scrim: rgb(24 24 24 / 0.48);
+  --color-footer-muted: #CFC6BB;   /* on ink 10.2:1 */
+  --color-scrim: rgb(30 26 23 / 0.48);
 
   /* Type: one family, Estedad, for everything. Large headings speak in its extra-light weight, with medium for the
      emphasised words: the contrast in weight is the display voice. */
@@ -71,7 +72,8 @@
      options are pills. */
   --radius-xs: 4px;    /* tiny marks: keyboard hints, indicator dots */
   --radius-sm: 10px;   /* fields and small controls */
-  --radius-md: 16px;   /* photos and cards */
+  --radius-md: 16px;   /* notices, accordions, toasts */
+  --radius-photo: 4px; /* product and editorial photographs: a crisp plate, not a soft box */
   --radius-lg: 24px;   /* panels, sheets and dialogs */
   --radius-pill: 999px;
   --shadow-1: 0 -1px 0 rgb(34 34 34 / 0.06), 0 -6px 18px rgb(36 30 26 / 0.06);
@@ -88,8 +90,8 @@
 
 :root {
   color-scheme: light;
-  /* The white canvas as channels, for translucent bars that must match it exactly. */
-  --color-surface-rgb: 255 255 255;
+  /* The canvas as channels, for translucent paper on photos (heart disc, gallery labels) that must match it. */
+  --color-surface-rgb: 250 247 242;
 
   /* Spacing scale */
   --space-1: 4px;
@@ -128,6 +130,8 @@
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-slow: 320ms;
+  --duration-photo: 300ms;    /* photo hover zoom and second-photo crossfade */
+  --duration-slide: 500ms;    /* hero slide crossfade */
   --duration-reveal: 1100ms;  /* headline lines and image wipes */
 }
 

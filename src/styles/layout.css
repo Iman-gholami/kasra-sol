@@ -1,7 +1,7 @@
 /* Layout chrome: announcement, header, desktop nav panel, mobile menu, footer, breadcrumbs, bottom bars. */
 
 .announcement {
-  background: var(--color-brand); color: var(--color-inverse); text-align: center;
+  background: var(--color-text); color: var(--color-surface); text-align: center;
   padding: max(6px, var(--safe-top)) var(--gutter) 6px;
 }
 .announcement p { margin: 0; font-size: var(--text-xs); line-height: 1.7; }

@@ -28,17 +28,18 @@ test.describe('desktop', () => {
     expect(image.headers()['content-type']).toContain('image/avif');
   });
 
-  test('palette B is applied to shared chrome and discounted products', async ({ page }) => {
+  test('the cream-and-ink palette is applied to shared chrome and discounted products', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('.announcement')).toHaveCSS('background-color', 'rgb(181, 31, 43)');
-    await expect(page.locator('.site-header')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
-    await expect(page.locator('.brand-type strong')).toHaveCSS('color', 'rgb(181, 31, 43)');
-    await expect(page.locator('.footer-grid')).toHaveCSS('background-color', 'rgb(24, 24, 24)');
-    await expect(page.locator('.footer nav a').first()).toHaveCSS('color', 'rgb(209, 213, 219)');
+    await expect(page.locator('.announcement')).toHaveCSS('background-color', 'rgb(30, 26, 23)');
+    await expect(page.locator('.site-header')).toHaveCSS('background-color', 'rgb(250, 247, 242)');
+    await expect(page.locator('.brand-type strong')).toHaveCSS('color', 'rgb(30, 26, 23)');
+    await expect(page.locator('.footer-grid')).toHaveCSS('background-color', 'rgb(30, 26, 23)');
+    await expect(page.locator('.footer nav a').first()).toHaveCSS('color', 'rgb(207, 198, 187)');
     await page.goto('/shop');
-    await expect(page.locator('.product-card .discount-tag').first()).toHaveCSS('background-color', 'rgb(181, 31, 43)');
-    await expect(page.locator('.product-card .discount-tag').first()).toHaveCSS('color', 'rgb(255, 255, 255)');
-    await expect(page.locator('.product-card .price-line:has(del) > strong').first()).toHaveCSS('color', 'rgb(181, 31, 43)');
+    // A discount is a quiet paper tag in the terracotta accent; the price itself stays ink.
+    await expect(page.locator('.product-card .discount-tag').first()).toHaveCSS('background-color', 'rgb(250, 247, 242)');
+    await expect(page.locator('.product-card .discount-tag').first()).toHaveCSS('color', 'rgb(138, 75, 59)');
+    await expect(page.locator('.product-card .price-line:has(del) > strong').first()).toHaveCSS('color', 'rgb(30, 26, 23)');
   });
 
 
@@ -55,12 +56,12 @@ test.describe('desktop', () => {
     }
   });
 
-  test('primary buttons use Kasra red and darken on mouse hover', async ({ page }) => {
+  test('primary buttons are ink and lighten on mouse hover', async ({ page }) => {
     await page.goto('/');
-    const cta = page.getByRole('link', { name: 'کالکشن رو ببین' });
-    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(181, 31, 43)');
+    const cta = page.locator('.hero-actions .btn-primary');
+    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(30, 26, 23)');
     await cta.hover();
-    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(152, 26, 36)');
+    await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(58, 51, 45)');
   });
 
   test('cart line keeps quantity and actions beside the photo', async ({ page }) => {
@@ -87,7 +88,7 @@ test.describe('phone', () => {
     await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
     await expect(page.getByRole('heading', { name: 'بازبینی و پرداخت' })).toBeVisible();
     const pay = page.getByRole('button', { name: /^پرداخت/ });
-    await expect.poll(() => pay.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(181, 31, 43)');
+    await expect.poll(() => pay.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(30, 26, 23)');
   });
 
   test('filter sheet title keeps one line with the drag handle on its own row', async ({ page }) => {

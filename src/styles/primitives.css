@@ -249,7 +249,7 @@ select.control {
 .toast-message { flex: 1; line-height: 1.6; }
 .toast a, .toast .toast-action {
   display: inline-flex; align-items: center; min-block-size: var(--touch); padding-inline: var(--space-3);
-  border: 0; background: transparent; color: #f3d9d4; font-weight: var(--font-weight-bold);
+  border: 0; background: transparent; color: var(--color-accent-soft); font-weight: var(--font-weight-bold);
   text-decoration: underline; text-underline-offset: 4px;
 }
 .toast .icon-button { color: var(--color-inverse); }
