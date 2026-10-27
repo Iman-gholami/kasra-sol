@@ -40,3 +40,22 @@ it('stores only the referring host and groups it into a source', () => {
   assert.equal(sourceOf('torob.com'), 'compare');
   assert.equal(sourceOf('example.org'), 'other');
 });
+it('treats Android phones as mobile and Android tablets and iPads as tablets', () => {
+  assert.equal(deviceOf('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36'), 'mobile');
+  assert.equal(deviceOf('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Safari/604.1'), 'tablet');
+});
+it('collapses repeated slashes and hides only the real back-office paths', () => {
+  assert.equal(normalizePath('//shop///'), '/shop');
+  assert.equal(normalizePath('/administrator-guide'), '/administrator-guide');
+  assert.equal(normalizePath('/apiary'), '/apiary');
+  assert.equal(normalizePath('shop'), null);
+  assert.equal(productSlugOf('/product/Manto-01'), null);
+  assert.equal(productSlugOf('/product/manto-01/reviews'), null);
+});
+it('groups subdomains of search engines and ignores non-web referrers', () => {
+  assert.equal(sourceOf(referrerHost('https://news.google.com/x')), 'search');
+  assert.equal(referrerHost('https://m.facebook.com/'), 'facebook.com');
+  assert.equal(referrerHost('ftp://files.example/'), null);
+  assert.equal(sourceOf('notgoogle.example'), 'other');
+  assert.equal(sourceOf('digikala.com'), 'compare');
+});
