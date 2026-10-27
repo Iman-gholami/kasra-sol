@@ -132,7 +132,8 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     const result = await pool.query(
       'SELECT u.id,u.username,u.display_name,u.role,u.grants,u.revokes,u.active,u.locked_until,u.created_at,' +
       'u.custom_role_id,r.name AS custom_role_name,r.permissions AS custom_permissions ' +
-      'FROM admin_users u LEFT JOIN admin_custom_roles r ON r.id=u.custom_role_id ORDER BY u.created_at');
+      'FROM admin_users u LEFT JOIN admin_custom_roles r ON r.id=u.custom_role_id ' +
+       'WHERE u.archived_at IS NULL ORDER BY u.created_at');
     return reply.header('Cache-Control', 'no-store').send({
       items: (result.rows as Identity[]).map(publicUser)
     });
@@ -195,7 +196,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
         const role = await client.query('SELECT id FROM admin_custom_roles WHERE id=$1 FOR KEY SHARE', [customRoleId]);
         if (!role.rowCount) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'role_not_found' }); }
       }
-      const existing = await client.query('SELECT id,role FROM admin_users WHERE id=$1 FOR UPDATE', [id.data]);
+      const existing = await client.query('SELECT id,role FROM admin_users WHERE id=$1 AND archived_at IS NULL FOR UPDATE', [id.data]);
       if (!existing.rowCount) {
         await client.query('ROLLBACK');
         return reply.code(404).send({ error: 'not_found' });
@@ -228,6 +229,43 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     return reply.header('Cache-Control', 'no-store').send({ user: publicUser(user!) });
   });
 
+  // Owner-only safe removal: hide the account, revoke all sessions and retain its immutable ID
+  // so historical sales and audit records keep their attribution.
+  app.delete('/v1/admin/staff/:id', async (req, reply) => {
+    const actor = await requirePermission(req, reply, 'staff:manage');
+    if (!actor) return;
+    const id = z.string().uuid().safeParse((req.params as { id: string }).id);
+    if (!id.success) return reply.code(400).send({ error: 'invalid_payload' });
+    if (actor.id === id.data) return reply.code(403).send({ error: 'cannot_modify_self' });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query<{ role: string; username: string }>(
+        'SELECT role,username FROM admin_users WHERE id=$1 AND archived_at IS NULL FOR UPDATE', [id.data]);
+      if (!existing.rowCount) {
+        await client.query('ROLLBACK');
+        return reply.code(404).send({ error: 'not_found' });
+      }
+      if (existing.rows[0].role === 'owner') {
+        await client.query('ROLLBACK');
+        return reply.code(403).send({ error: 'cannot_modify_owner' });
+      }
+      await client.query(
+        'UPDATE admin_users SET active=false,archived_at=now(),updated_at=now() WHERE id=$1', [id.data]);
+      await client.query('DELETE FROM admin_sessions WHERE user_id=$1', [id.data]);
+      await recordAudit(client, actor.id, 'staff.archived', id.data, {
+        username: existing.rows[0].username
+      });
+      await client.query('COMMIT');
+      return reply.header('Cache-Control', 'no-store').send({ ok: true });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   // The owner sets a new password for an employee who forgot theirs; it ends their sessions and unlocks them.
   app.put('/v1/admin/staff/:id/password', async (req, reply) => {
     const actor = await requirePermission(req, reply, 'staff:manage');
@@ -240,7 +278,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const existing = await client.query<{ role: string }>('SELECT role FROM admin_users WHERE id=$1 FOR UPDATE', [id.data]);
+      const existing = await client.query<{ role: string }>('SELECT role FROM admin_users WHERE id=$1 AND archived_at IS NULL FOR UPDATE', [id.data]);
       if (!existing.rows[0] || existing.rows[0].role === 'owner') {
         await client.query('ROLLBACK');
         return reply.code(existing.rows[0] ? 403 : 404).send({ error: existing.rows[0] ? 'cannot_modify_owner' : 'not_found' });
