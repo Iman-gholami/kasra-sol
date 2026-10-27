@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { brandMockupPhotos, byId, bySlug, categories, demoPhotos, getCategory, getVariant, palette, products,
   standardSizes } from '@/data/products';
+import { isDemoPhoto } from '@/lib/demo-photos';
 
 // The cart, the catalog lookup API and the backend all accept only ids of this shape.
 const PRODUCT_ID = /^[a-z0-9][a-z0-9-]{1,78}$/;
@@ -75,6 +76,18 @@ describe('demo catalog', () => {
     for (const category of categories)
       assert.ok(products.some(p => p.category === category.slug && p.featured), category.slug);
     assert.ok(products.some(p => p.variants.some(v => v.stock === 0)));
+  });
+});
+
+describe('demo photos', () => {
+  it('recognizes every sample photo, so product pages always say they are not pictures of the real item', () => {
+    for (const product of products) for (const image of product.images) assert.ok(isDemoPhoto(image), product.id + ' ' + image);
+    for (const image of Object.values(brandMockupPhotos)) assert.ok(isDemoPhoto(image), image);
+    assert.ok(isDemoPhoto('/images/lookbook/manto-black.avif'), 'the earlier photos, kept for rollback');
+  });
+  it('does not label uploaded product photos as samples', () => {
+    assert.equal(isDemoPhoto('/api/media/0b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e.webp'), false);
+    assert.equal(isDemoPhoto('/images/catalog/manto-01.jpg'), false);
   });
 });
 

@@ -76,13 +76,16 @@ test('mobile menu and horizontal overflow', async ({ page }) => {
 });
 
 test('optimized model photos are served and used by storefront', async ({ page, request }) => {
-  for (const photo of ['shomiz-cream', 'shomiz-rose', 'manto-black', 'manto-sage', 'tshirt-white', 'tshirt-blue']) {
-    const response = await request.get('/images/lookbook/' + photo + '.avif');
-    expect(response.ok()).toBe(true);
+  // The approved mockup crops are the storefront photos; the earlier lookbook set still illustrates the category menu.
+  const photos = ['brand-preview/hero-model', 'brand-preview/shomiz-blue', 'brand-preview/shomiz-cream', 'brand-preview/manto-cream',
+    'brand-preview/manto-pink', 'brand-preview/tshirt-blue', 'lookbook/shomiz-rose', 'lookbook/manto-sage', 'lookbook/tshirt-blue'];
+  for (const photo of photos) {
+    const response = await request.get('/images/' + photo + '.avif');
+    expect(response.ok(), photo).toBe(true);
     expect(response.headers()['content-type']).toContain('image/avif');
   }
   await page.goto('/');
-  await expect(page.locator('.hero-visual img')).toHaveAttribute('src', /shomiz-cream.avif/);
+  await expect(page.locator('.hero-visual img')).toHaveAttribute('src', /hero-model.avif/);
   await page.goto('/category/manto');
   await expect(page.locator('.product-image-link img').first()).toHaveAttribute('src', /manto-/);
   await page.goto('/category/tshirt');
@@ -202,6 +205,7 @@ test('mobile purchase information is grouped and demo imagery disclosure remains
   const buyPanel = page.getByRole('region', {name:'انتخاب مشخصات و خرید'});
   await expect(buyPanel.getByText('رنگ', {exact:false}).first()).toBeVisible();
   await expect(page.getByText('عکس‌های مدل با هوش مصنوعی ساخته شده‌اند', {exact:false})).toBeVisible();
+  await expect(page.locator('.gallery-demo-label')).toHaveText('تصویر نمایشی');
   await buyPanel.getByRole('button', {name:'رنگ کرم'}).click();
   await buyPanel.getByRole('button', {name:'سایز M'}).click();
   await expect(buyPanel.getByRole('button', {name:'افزودن به سبد خرید'})).toBeEnabled();

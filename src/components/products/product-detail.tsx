@@ -4,6 +4,7 @@ import { ProductGallery } from '@/components/products/product-gallery';
 import { PurchasePanel } from '@/components/products/purchase-panel';
 import { Price } from '@/components/products/price';
 import { discountPercent, formatPercent } from '@/lib/format';
+import { isDemoPhoto } from '@/lib/demo-photos';
 import type { Product } from '@/types/store';
 
 /** Server-rendered product page body. Only the gallery and the purchase panel hydrate.
@@ -40,7 +41,7 @@ export function ProductDetail({ product }: { product: Product }) {
           <Link className="text-link" href="/shipping-and-returns">توضیحات نمونه ارسال و بازگشت</Link>
         </div>
       </details>
-      {product.images.every(image => image.startsWith('/images/lookbook/')) && <p className="notice demo-inline-note"><Info size={18} aria-hidden="true"/>
+      {product.images.every(isDemoPhoto) && <p className="notice demo-inline-note"><Info size={18} aria-hidden="true"/>
         <span>عکس‌های مدل با هوش مصنوعی ساخته شده‌اند و ممکن است با رنگ و جزئیات این کالا یکسان نباشند؛ قیمت‌ها هم نمایشی‌اند.</span></p>}
     </div>
   </div>;
