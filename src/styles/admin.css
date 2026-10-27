@@ -574,3 +574,18 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .admin-slider-current { max-height:none; }
   .admin-slider-bottom .admin-btn-primary { margin-inline-start:0; }
 }
+
+
+/* Read-only, small live storefront preview above the home slider editor. */
+.admin-slider-live { border:1px solid var(--admin-line); border-radius:12px; overflow:hidden; background:#fff; }
+.admin-slider-live-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; }
+.admin-slider-live-head p { margin:3px 0 0; }
+.admin-slider-live-viewport { position:relative; height:325px; overflow:hidden; border-top:1px solid var(--admin-line); pointer-events:none; background:#f5f5f5; }
+.admin-slider-live-viewport iframe { position:absolute; inset-block-start:0; inset-inline-start:0; width:1100px; height:690px; border:0; transform:scale(.47); transform-origin:top left; pointer-events:none; }
+.admin-slider-pages { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.admin-slider-pages .admin-sub { margin-inline-end:auto; }
+@media (max-width:640px) {
+  .admin-slider-live-head { align-items:flex-start; flex-direction:column; }
+  .admin-slider-live-viewport { height:245px; }
+  .admin-slider-live-viewport iframe { transform:scale(.35); }
+}
