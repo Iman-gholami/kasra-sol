@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { ChevronDown, ChevronUp, GalleryHorizontal, ImageIcon, Plus, Search, X } from 'lucide-react';
 import { adminApi, errorMessage } from '@/components/admin/admin-api';
 import { formatNumber, formatToman, PRODUCT_STATUS } from '@/components/admin/labels';
@@ -31,6 +32,7 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [max, setMax] = useState(5);
   const [query, setQuery] = useState('');
+  const [adding, setAdding] = useState(false);
   const [results, setResults] = useState<Slide[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,7 +70,7 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
     setState(null);
   }
   const remove = (id: string) => { setSlides(current => current?.filter(slide => slide.id !== id) ?? null); setState(null); };
-  const add = (slide: Slide) => { setSlides(current => current && !current.some(item => item.id === slide.id) ? [...current, slide] : current); setState(null); };
+  const add = (slide: Slide) => { setSlides(current => current && !current.some(item => item.id === slide.id) ? [...current, slide] : current); setState(null); setAdding(false); setResults(null); };
 
   async function search(event: FormEvent) {
     event.preventDefault();
@@ -93,75 +95,79 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
 
   return <div className="admin-stack admin-narrow">
     <section className="admin-panel" aria-labelledby="slider-title">
-      <div className="admin-panel-head"><div>
-        <h2 id="slider-title"><GalleryHorizontal size={18} aria-hidden="true"/> اسلایدر صفحه اول</h2>
-        <p>محصولاتی که بالای صفحه اول فروشگاه یکی‌یکی و هر چند ثانیه نمایش داده می‌شوند (حداکثر {formatNumber(max)} محصول).
-          اگر فهرست خالی باشد، محصولات تخفیف‌دار خودکار نمایش داده می‌شوند.</p>
-      </div></div>
+      <div className="admin-panel-head">
+        <div>
+          <h2 id="slider-title"><GalleryHorizontal size={18} aria-hidden="true"/> اسلایدر صفحه اول</h2>
+          <p>اسلایدهای فعلی و ترتیب نمایش در صفحه اول فروشگاه</p>
+        </div>
+        <Link href="/" target="_blank" rel="noopener noreferrer" className="admin-btn admin-btn-outline admin-btn-small">
+          مشاهده صفحه اول
+        </Link>
+      </div>
       <div className="admin-panel-body admin-stack-sm">
         {slides === null ? (state ? null : <Loading label="در حال دریافت اسلایدر…"/>)
-          : slides.length === 0 ? <p className="admin-sub">هنوز محصولی انتخاب نشده است؛ صفحه اول محصولات تخفیف‌دار را نشان می‌دهد.</p>
-          : <ol className="admin-slide-list" aria-label="ترتیب اسلایدها">
-            {slides.map((slide, index) => <li key={slide.id} className="admin-slide">
-              <span className="admin-slide-no" aria-hidden="true">{formatNumber(index + 1)}</span>
-              <Thumb slide={slide}/>
-              <span className="admin-slide-info">
-                <span className="admin-product-name">{slide.name}</span>
-                <Prices slide={slide}/>
-                {slide.status !== 'active' && <Badge tone={PRODUCT_STATUS[slide.status].tone}>{PRODUCT_STATUS[slide.status].label}</Badge>}
-              </span>
-              <span className="admin-slide-tools">
-                <button type="button" className="admin-icon-btn" disabled={index === 0} onClick={() => move(index, -1)}
-                  aria-label={'جلوتر بردن ' + slide.name}><ChevronUp size={18} aria-hidden="true"/></button>
-                <button type="button" className="admin-icon-btn" disabled={index === slides.length - 1} onClick={() => move(index, 1)}
-                  aria-label={'عقب‌تر بردن ' + slide.name}><ChevronDown size={18} aria-hidden="true"/></button>
-                <button type="button" className="admin-icon-btn admin-icon-danger" onClick={() => remove(slide.id)}
-                  aria-label={'حذف ' + slide.name + ' از اسلایدر'}><X size={18} aria-hidden="true"/></button>
-              </span>
-            </li>)}
-          </ol>}
-        {unpublished.length > 0 && <Notice tone="warning">
-          محصول منتشرنشده در اسلایدر نمایش داده نمی‌شود و ذخیره را متوقف می‌کند؛ آن را از فهرست بردارید.</Notice>}
-        {state && <Notice tone={state.tone}>{state.text}</Notice>}
-        {slides !== null && <div className="admin-actions">
-          <button type="button" className="admin-btn admin-btn-primary" disabled={!dirty || busy} onClick={() => void save()}>
-            {busy ? 'در حال ذخیره…' : 'ذخیره اسلایدر'}</button>
-          {dirty && <span className="admin-sub">تغییرات هنوز ذخیره نشده است.</span>}
-        </div>}
-      </div>
-    </section>
-
-    <section className="admin-panel" aria-labelledby="slider-add-title">
-      <div className="admin-panel-head"><div>
-        <h2 id="slider-add-title"><Plus size={18} aria-hidden="true"/> افزودن محصول به اسلایدر</h2>
-        <p>فقط محصولات منتشرشده قابل انتخاب‌اند و محصولات تخفیف‌دار با برچسب تخفیف نمایش داده می‌شوند.
-          جست‌وجوی خالی، تازه‌ترین محصولات را نشان می‌دهد.</p>
-      </div></div>
-      <div className="admin-panel-body admin-stack-sm">
-        <form role="search" onSubmit={search} className="admin-search-form">
-          <label className="admin-search-field"><span className="sr-only">جست‌وجوی محصول برای اسلایدر</span>
-            <Search size={17} aria-hidden="true"/>
-            <input type="search" placeholder="نام یا کد محصول" value={query} onChange={event => setQuery(event.target.value)}/>
-          </label>
-          <button type="submit" className="admin-btn admin-btn-outline" disabled={searching}>جست‌وجو</button>
-        </form>
-        {results && (results.length === 0 ? <p className="admin-sub">محصول منتشرشده‌ای با این عبارت پیدا نشد.</p>
-          : <ul className="admin-slide-list" aria-label="نتیجه جست‌وجو">
-            {results.map(result => {
-              const added = ids.includes(result.id);
-              return <li key={result.id} className="admin-slide">
-                <Thumb slide={result}/>
+          : <>
+            <div className="admin-slider-summary">
+              <strong>{slides.length ? formatNumber(slides.length) + ' اسلاید انتخاب‌شده' : 'حالت نمایش خودکار'}</strong>
+              <span className="admin-sub">{slides.length
+                ? 'اسلاید اول در بالای فهرست نمایش داده می‌شود. تصویر هر محصول، تصویر فعلی همان محصول است.'
+                : 'هنوز اسلایدر دستی ذخیره نشده؛ سایت به‌صورت خودکار محصولات تخفیف‌دار را نمایش می‌دهد.'}</span>
+            </div>
+            {slides.length > 0 && <ol className="admin-slide-list admin-slider-current" aria-label="اسلایدهای فعلی به ترتیب نمایش">
+              {slides.map((slide, index) => <li key={slide.id} className="admin-slide">
+                <span className="admin-slide-no" aria-hidden="true">{formatNumber(index + 1)}</span>
+                <Thumb slide={slide}/>
                 <span className="admin-slide-info">
-                  <span className="admin-product-name">{result.name}</span>
-                  <Prices slide={result}/>
+                  <span className="admin-product-name">{slide.name}</span>
+                  <Prices slide={slide}/>
+                  {slide.status !== 'active' && <Badge tone={PRODUCT_STATUS[slide.status].tone}>{PRODUCT_STATUS[slide.status].label}</Badge>}
                 </span>
-                <button type="button" className="admin-btn admin-btn-outline admin-btn-small" disabled={added || full || slides === null}
-                  onClick={() => add(result)} aria-label={(added ? 'در اسلایدر است: ' : 'افزودن به اسلایدر: ') + result.name}>
-                  {added ? 'در اسلایدر' : 'افزودن'}</button>
-              </li>;
-            })}
-          </ul>)}
-        {full && <p className="admin-sub">اسلایدر پر است؛ برای افزودن، یکی از محصولات فعلی را بردارید.</p>}
+                <span className="admin-slide-tools">
+                  <button type="button" className="admin-icon-btn" disabled={index === 0 || busy} onClick={() => move(index, -1)}
+                    aria-label={'جلوتر بردن ' + slide.name}><ChevronUp size={18} aria-hidden="true"/></button>
+                  <button type="button" className="admin-icon-btn" disabled={index === slides.length - 1 || busy} onClick={() => move(index, 1)}
+                    aria-label={'عقب‌تر بردن ' + slide.name}><ChevronDown size={18} aria-hidden="true"/></button>
+                  <button type="button" className="admin-icon-btn admin-icon-danger" disabled={busy} onClick={() => remove(slide.id)}
+                    aria-label={'برداشتن ' + slide.name + ' از اسلایدر'}><X size={18} aria-hidden="true"/></button>
+                </span>
+              </li>)}
+            </ol>}
+            <div className="admin-slider-bottom">
+              <button type="button" className="admin-btn admin-btn-outline admin-btn-small"
+                onClick={() => setAdding(open => !open)} aria-expanded={adding} aria-controls="slider-add-panel" disabled={full && !adding}>
+                <Plus size={16} aria-hidden="true"/> {adding ? 'بستن انتخاب محصول' : 'افزودن محصول'}
+              </button>
+              <span className="admin-sub">{formatNumber(slides.length)} از {formatNumber(max)} جایگاه</span>
+              <button type="button" className="admin-btn admin-btn-primary admin-btn-small" disabled={!dirty || busy || unpublished.length > 0}
+                onClick={() => void save()}>{busy ? 'در حال ذخیره…' : 'ذخیره تغییرات'}</button>
+            </div>
+            {dirty && <p className="admin-sub" role="status">تغییرات هنوز ذخیره نشده‌اند.</p>}
+            {unpublished.length > 0 && <Notice tone="warning">
+              محصولات منتشرنشده نمی‌توانند در اسلایدر ذخیره شوند؛ ابتدا آن‌ها را بردارید.</Notice>}
+            {adding && <div id="slider-add-panel" className="admin-slider-picker">
+              <form role="search" onSubmit={search} className="admin-search-form">
+                <label className="admin-search-field"><span className="sr-only">جست‌وجوی محصول برای اسلایدر</span>
+                  <Search size={17} aria-hidden="true"/>
+                  <input type="search" placeholder="نام یا کد محصول" value={query} onChange={event => setQuery(event.target.value)}/>
+                </label>
+                <button type="submit" className="admin-btn admin-btn-outline" disabled={searching}>{searching ? 'در حال جست‌وجو…' : 'جست‌وجو'}</button>
+              </form>
+              {results && (results.length === 0 ? <p className="admin-sub">محصولی پیدا نشد.</p>
+                : <ul className="admin-slide-list" aria-label="نتایج جست‌وجوی محصول">
+                  {results.map(result => {
+                    const added = ids.includes(result.id);
+                    return <li key={result.id} className="admin-slide">
+                      <Thumb slide={result}/>
+                      <span className="admin-slide-info"><span className="admin-product-name">{result.name}</span><Prices slide={result}/></span>
+                      <button type="button" className="admin-btn admin-btn-outline admin-btn-small" disabled={added || full || busy}
+                        onClick={() => add(result)}>{added ? 'انتخاب‌شده' : 'افزودن'}</button>
+                    </li>;
+                  })}
+                </ul>)}
+            </div>}
+            {full && <p className="admin-sub">ظرفیت اسلایدر کامل است. برای افزودن، یکی از اسلایدها را بردارید.</p>}
+          </>}
+        {state && <Notice tone={state.tone}>{state.text}</Notice>}
       </div>
     </section>
   </div>;
