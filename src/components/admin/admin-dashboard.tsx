@@ -19,6 +19,7 @@ import { Notice } from '@/components/admin/ui';
 
 export type AdminUser = {
   id: string; username: string; displayName: string; role: 'owner' | 'manager' | 'staff';
+  customRoleId?: string | null; customRoleName?: string | null;
   active: boolean; grants: string[]; revokes: string[]; permissions: string[];
 };
 export type Section = 'overview' | 'traffic' | 'products' | 'home' | 'orders' | 'staff' | 'audit' | 'account';
@@ -174,7 +175,7 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
         <div className="admin-account">
           <div>
             <span className="admin-account-name">{user.displayName}</span>
-            <span className="admin-account-role">{ROLE[user.role]}</span>
+            <span className="admin-account-role">{user.customRoleName ?? ROLE[user.role]}</span>
           </div>
           <div className="admin-avatar" aria-hidden="true">{user.displayName.slice(0, 1)}</div>
         </div>

@@ -510,3 +510,50 @@ test('audit viewport matrix keeps admin sections within the viewport', async ({ 
     }
   }
 });
+
+test('owner manages a custom role and cannot remove it while assigned', async ({ page }) => {
+  page.on('dialog', dialog => void dialog.accept());
+  await signIn(page, accounts().owner);
+  await openTab(page, 'کارکنان و مجوزها');
+  const roles = page.getByRole('region', { name: 'نقش‌های دلخواه' });
+  await roles.getByLabel('نام نقش').fill('مسئول سفارش تست');
+  await roles.getByRole('checkbox', { name: /مشاهده سفارش‌ها/ }).check();
+  await roles.getByRole('button', { name: 'ایجاد نقش' }).click();
+  await expect(roles.getByText('نقش جدید ساخته شد.')).toBeVisible();
+  const form = page.getByRole('form', { name: 'ایجاد حساب کارمند' });
+  await form.getByLabel('نام کاربری (لاتین)').fill('roles_e2e');
+  await form.getByLabel('نام نمایشی').fill('همکار نقش تست');
+  await form.getByLabel('رمز عبور اولیه (حداقل ۱۲ نویسه)').fill('test-roles-password-1');
+  await expect(form.getByLabel('نقش').getByText('مسئول سفارش تست')).toHaveCount(1);
+  await form.getByLabel('نقش').selectOption({ label: 'مسئول سفارش تست' });
+  await form.getByRole('button', { name: 'ساخت حساب مستقل' }).click();
+  await expect(page.getByText('حساب «همکار نقش تست» ساخته شد', { exact: false })).toBeVisible();
+  const member = page.locator('.admin-member').filter({ hasText: 'همکار نقش تست' });
+  await expect(member).toBeVisible();
+  await roles.getByRole('button', { name: 'حذف نقش مسئول سفارش تست' }).click();
+  await expect(roles.getByRole('alert')).toContainText('ابتدا نقش آن حساب‌ها را تغییر دهید');
+  await member.getByLabel('نقش').selectOption('staff');
+  await expect(roles.locator('.admin-member').filter({ hasText: 'مسئول سفارش تست' })).toContainText('۰ حساب');
+  await roles.getByRole('button', { name: 'حذف نقش مسئول سفارش تست' }).click();
+  await expect(roles.getByText('نقش «مسئول سفارش تست» حذف شد.')).toBeVisible();
+});
+
+test('product photo removal can be undone before saving and persists after saving', async ({ page }) => {
+  await signIn(page, accounts().owner);
+  await openTab(page, 'محصولات و موجودی');
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(2);
+  await page.getByRole('button', { name: 'حذف تصویر ۲ از محصول' }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
+  await page.getByRole('button', { name: 'بازگرداندن تصویر' }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(2);
+  await page.getByRole('button', { name: 'حذف تصویر ۲ از محصول' }).click();
+  await page.getByRole('button', { name: 'ذخیره تغییرات محصول' }).click();
+  await expect(page.getByText('محصول ذخیره شد.')).toBeVisible();
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
+});

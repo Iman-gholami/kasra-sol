@@ -33,7 +33,9 @@ function summary(entry: Entry): string {
         Array.isArray(d.stock) && d.stock.length ? 'موجودی ' + num(d.stock.length) + ' ترکیب رنگ و سایز' : ''
       ].filter(Boolean).join(' · ');
     }
-    case 'staff.created': return ROLE[String(d.role)] ?? '';
+    case 'staff.created': return typeof d.customRoleName === 'string' ? d.customRoleName : ROLE[String(d.role)] ?? '';
+    case 'staff.role_created': case 'staff.role_updated': case 'staff.role_deleted':
+      return typeof d.name === 'string' ? d.name : '';
     case 'staff.updated': {
       const grants = permissions(d.grants), revokes = permissions(d.revokes);
       return [

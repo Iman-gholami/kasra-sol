@@ -49,6 +49,7 @@ export const AUDIT_ACTION: Record<string, string> = {
   'auth.login': 'ورود به پنل', 'auth.login_failed': 'تلاش ناموفق ورود', 'auth.login_locked': 'ورود به حساب قفل‌شده',
   'auth.logout': 'خروج از پنل', 'auth.password_changed': 'تغییر رمز عبور', 'auth.password_change_failed': 'تلاش ناموفق تغییر رمز',
   'staff.created': 'ایجاد حساب کارمند', 'staff.updated': 'تغییر نقش یا دسترسی کارمند', 'staff.password_reset': 'تعیین رمز جدید برای کارمند',
+  'staff.role_created': 'ایجاد نقش', 'staff.role_updated': 'ویرایش نقش', 'staff.role_deleted': 'حذف نقش',
   'products.created': 'ایجاد محصول', 'products.updated': 'ویرایش محصول', 'products.price': 'تغییر قیمت',
   'products.visibility': 'انتشار یا آرشیو محصول', 'inventory.stock': 'تغییر موجودی', 'orders.status': 'تغییر وضعیت سفارش',
   'media.uploaded': 'آپلود تصویر', 'orders.exported': 'دریافت خروجی سفارش‌ها', 'products.home_slider': 'تغییر اسلایدر صفحه اول'

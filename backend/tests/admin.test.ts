@@ -19,6 +19,14 @@ test('owner-only permissions cannot be delegated through grant arrays', () => {
   assert.equal(effectivePermissions('manager', [], []).includes('staff:manage'), false);
   assert.equal(effectivePermissions('staff', ['staff:manage'], []).includes('staff:manage'), false);
 });
+test('custom roles replace default permissions and never grant owner-only access', () => {
+  assert.deepEqual(effectivePermissions('staff', [], [], ['orders:read']), ['orders:read']);
+  assert.equal(may('staff', [], [], 'products:read', ['orders:read']), false);
+  assert.equal(may('staff', ['inventory:read'], ['orders:read'], 'inventory:read', ['orders:read']), true);
+  assert.equal(may('staff', [], [], 'orders:read', []), false);
+  assert.equal(may('staff', [], [], 'staff:manage', ['staff:manage']), false);
+  assert.equal(may('staff', [], [], 'payments:configure', ['payments:configure']), false);
+});
 test('password hashing uses random salts and rejects incorrect passwords', async () => {
   const first = await hashPassword('correct horse battery staple');
   const second = await hashPassword('correct horse battery staple');
