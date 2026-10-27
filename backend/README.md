@@ -87,12 +87,16 @@ DATABASE_URL=... node --test --test-concurrency=1 tests/integration/*.mjs
 
 ## Multi-user admin (development branch)
 
-The RBAC backend implements individual staff accounts with roles `owner`, `manager`, and `staff`.
+The RBAC backend implements individual staff accounts with built-in roles `owner`, `manager`, and `staff`,
+plus owner-defined custom roles (migration `010_admin_custom_roles`).
 Only the owner may create, disable, or change staff access. Manager and staff permission overrides
 are explicit; `staff:manage` and `payments:configure` cannot be delegated. Default staff **cannot change prices**.
 All privileged mutations of price, stock, and staff roles have audit records; role edits revoke all affected sessions.
+Custom roles contain an explicit set of delegatable permissions; individual grants and revokes still apply on top.
+Assigning a different role clears the account's previous individual overrides. A custom role in use cannot be
+deleted until every account (including inactive accounts) is reassigned. The built-in roles are never deleted.
 
-Run additive migration `002_admin`; it does not erase existing products or orders.
+Run the migrations with `npm run db:migrate`; they do not erase existing products or orders.
 Create the first owner with a password saved in a PRIVATE file outside the repository:
 
 ```sh
@@ -115,7 +119,8 @@ Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`,
 `/products` (`?q&status&stock&page&limit`), `/products/:id`, `/products/:id/price`, `/products/:id/variants`,
 `/products/:id/visibility`, `/variants/:id/stock`, `/orders` (`?status&q&period&page&limit`), `/orders/export`
 (`?status&q&period`, CSV), `/orders/:id`, `/orders/:id/status`, `/staff`, `/staff/:id`, `/staff/:id/password`, `/media`,
-`/reports/overview`, `/audit` (`?before&group&actor`), `/home-slider` (GET, PUT).
+`/reports/overview`, `/audit` (`?before&group&actor`), `/home-slider` (GET, PUT), `/roles` (GET, POST),
+`/roles/:id` (PUT, DELETE; `409 role_in_use` if assigned).
 
 `/audit` filters by event group (`auth`, `staff`, `products`, `inventory`, `orders`, `media`: the part of the action
 before the dot) and by acting account id, and adds `targetName` (the account or product an entry is about).
