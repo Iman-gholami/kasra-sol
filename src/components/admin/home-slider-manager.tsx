@@ -199,7 +199,7 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
                   onClick={() => void loadProducts(page - 1, allProducts)}>قبلی</button>
                 <button type="button" className="admin-btn admin-btn-outline admin-btn-small" disabled={page >= pages || searching}
                   onClick={() => void loadProducts(page + 1, allProducts)}>بعدی</button>
-              </div>
+              </div>}
             </div>}
             {full && <p className="admin-sub">ظرفیت اسلایدر کامل است. برای افزودن، یکی از اسلایدها را بردارید.</p>}
           </>}
