@@ -16,13 +16,14 @@ const box = async (locator: Locator) => { await locator.waitFor(); return (await
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test('the approved mockup portrait and category photos replace remote Unsplash imagery', async ({ page }) => {
+  test('the studio photos stand in their rooms: no frame on the cover, sharp portraits in the circles', async ({ page }) => {
     await page.goto('/');
     const hero = page.locator('.hero-slide[data-active] img').first();
     await expect(hero).toHaveAttribute('src', /brand-preview%2Fhero-model\.avif/);
+    await expect(page.locator('.hero-slide[data-active] .hero-figure')).toHaveClass(/hero-figure-studio/);
     const categoryPhoto = page.locator('.collection-circle img').first();
-    await expect(categoryPhoto).toHaveAttribute('src', /brand-preview%2F/);
-    await expect(page.locator('.demo-photo-note')).toContainText('ماکاپ تأییدشده');
+    await expect(categoryPhoto).toHaveAttribute('src', /lookbook%2F[a-z]+-[a-z]+-portrait\.avif/);
+    await expect(page.locator('.demo-photo-note')).toContainText('عکس‌ها نمایشی‌اند');
     const image = await page.request.get('/images/brand-preview/hero-model.avif');
     expect(image.ok()).toBeTruthy();
     expect(image.headers()['content-type']).toContain('image/avif');
@@ -47,7 +48,7 @@ test.describe('desktop', () => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/');
       const header = await box(page.locator('.header-inner'));
-      for (const selector of ['.hero', '.category-section', '.editorial-band', '.footer-grid']) {
+      for (const selector of ['.hero', '.week', '.closing', '.footer-grid']) {
         const section = await box(page.locator(selector));
         expect(Math.abs(section.x - header.x), selector + ' start at ' + width).toBeLessThanOrEqual(1);
         expect(Math.abs(section.x + section.width - header.x - header.width), selector + ' end at ' + width).toBeLessThanOrEqual(1);

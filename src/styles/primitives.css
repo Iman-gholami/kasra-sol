@@ -98,8 +98,8 @@
 .chip-remove svg { opacity: 0.75; }
 
 /* ---------- Collection circles (`components/home/collection-circles.tsx`) ----------
-   Story-style: a model on the studio sand inside an oxblood ring, the name below. Under the home cover and on the
-   empty search page. */
+   Story-style: a studio portrait inside a Kasra-red ring, the name below. Under the home cover and on the empty
+   search page. */
 .collection-circles { display: flex; justify-content: center; gap: clamp(20px, 6vw, 72px); margin: 0; padding: 0; list-style: none; }
 .collection-circles a { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); font-size: var(--text-md); font-weight: var(--font-weight-semibold); }
 .collection-circle {
@@ -107,19 +107,10 @@
   transition: border-color var(--duration-fast) var(--ease-standard);
 }
 .collection-circle > span { position: relative; display: block; block-size: 100%; overflow: hidden; border-radius: 50%; background: var(--color-studio); }
-/* The photos are full-length; the circle shows head and shoulders. */
-.collection-circle img { object-fit: cover; object-position: 50% 0; transform: scale(1.7); transform-origin: 50% 4%; }
-/* Cropped exactly from the mockup's circular photos; never zoom a second time. */
-.collection-circle-mockup img { transform: none; object-position: center; }
+/* The photos are already head-and-shoulders crops (scripts/studio-photos.py); shown as they are, never zoomed. */
+.collection-circle img { object-fit: cover; }
 @media (hover: hover) { .collection-circles a:hover .collection-circle { border-color: var(--color-text); } }
 
-/* Round paper arrow button every soft link box ends with (the collection rooms and service links); it nudges toward
-   its arrow on hover. */
-.arrow-disc {
-  display: grid; place-items: center; inline-size: var(--touch); block-size: var(--touch); flex-shrink: 0;
-  border-radius: 50%; background: var(--color-surface); color: var(--color-text); transition: transform 500ms var(--ease-editorial);
-}
-@media (hover: hover) { a:hover > .arrow-disc { transform: translate(-3px, -3px); } }
 
 /* ---------- Fields ---------- */
 .field { display: flex; flex-direction: column; gap: var(--space-2); min-inline-size: 0; }

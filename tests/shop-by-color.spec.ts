@@ -1,11 +1,11 @@
 import {expect,test} from '@playwright/test';
 
-test('shop by color position, dataset colors, default cream and four preview products',async ({page})=>{
+test('shop by color after the week of looks and the arrivals, dataset colors, default cream and four preview products',async ({page})=>{
   await page.goto('/');
   const section=page.getByRole('region',{name:'خرید بر اساس رنگ'});
   await expect(section).toBeVisible();
   const tops=await Promise.all([
-    page.locator('.category-section'),section,page.locator('section[aria-labelledby="arrivals-title"]')
+    page.locator('.week'),page.locator('section[aria-labelledby="arrivals-title"]'),section
   ].map(locator=>locator.evaluate(el=>el.getBoundingClientRect().top+window.scrollY)));
   expect(tops[0]).toBeLessThan(tops[1]);
   expect(tops[1]).toBeLessThan(tops[2]);

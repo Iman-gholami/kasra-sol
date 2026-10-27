@@ -111,11 +111,13 @@ or by Escape. The collections are set large and light, numbered like a contents 
 on every open (movement only, full contrast throughout).
 
 ### Home hero (magazine cover with a product slider)
-`app/page.tsx`, `components/home/hero-slider.tsx`, `styles/home.css`. One sand room (`--color-studio`) holds the
-whole cover. The headline sits on the start side, each line rising out of its own mask: the first line extra-light,
-the second medium in oxblood. The other side is a slider: one model at a time, feathered into the sand like the
-collection rooms, with a paper tag (discount badge, name, `Price`) that links to the product. Phones stack it: the
-headline and the main button over the room, the lede and «تازه‌ترین‌ها» below.
+`app/page.tsx`, `components/home/hero-slider.tsx`, `styles/home.css`. One studio-gray room (`--color-studio`) holds
+the whole cover. The headline sits on the start side, each line rising out of its own mask: the first line
+extra-light, the second medium in Kasra red. The other side is a slider: one model at a time, with a paper tag
+(discount badge, name, `Price`) that links to the product. A studio photo (`isDemoPhoto`: the demo set, re-shot on
+the room's own gray) has no frame: the model stands on the room's floor. Any other photo, such as one uploaded in the
+back office, hangs as a rounded plate. Phones stack it: the headline and the main button over the room, the lede and
+«تازه‌ترین‌ها» below.
 
 - **Which products:** the owner picks up to five in the back office (**اسلایدر صفحه اول**, `products:write`), in
   order. With no pick, the cover shows up to five discounted products (one per photo first); with no discounts, the
@@ -135,20 +137,21 @@ headline and the main button over the room, the lede and «تازه‌ترین�
 The collections follow as circles (below).
 
 ### Home sections
-`app/page.tsx`, `styles/home.css`.
-- **Collections:** three sand rooms (`--color-studio`, `--radius-lg`). Each model is feathered into her panel (mask on
-  all four sides, only a thin strip at the top because the photos have almost no headroom), so she seems to stand in
-  the page; the name in light type, a line, and a round arrow disc. The figure settles in as the room scrolls into
-  view. Side by side from 1081px, stacked below. If future photography uses another backdrop, retune `--color-studio`.
-- **Shop by colour:** a soft panel; colour choices are paper pills, the chosen one ringed in ink.
-- **Editorial band:** a soft panel with the photograph as a rounded plate capped at 460px wide (about its real size, so
-  it stays sharp); it settles from a slow zoom as it scrolls in.
-- **Service links:** three soft boxes with a round arrow disc.
-- **Closing call to action:** a last sand room. A model is feathered into the panel at the inline end like the
-  collections, with the invitation and an ink pill button beside her; she settles in as the room scrolls into view.
-  On phones she stands at the panel's foot and the copy narrows beside her.
-- `.arrow-disc` (`styles/primitives.css`) is the shared round paper arrow button for every soft link box; it nudges
-  toward its arrow on hover.
+`app/page.tsx`, `components/home/week-looks.tsx`, `styles/home.css`. Six sections, quiet apart from one: the cover,
+the week of looks, new arrivals, shop by colour, the service links and the closing call to action.
+- **Studio photos:** every demo photo was cut out of its original backdrop and re-set on `--color-studio` with a soft
+  floor shadow (`scripts/studio-photos.py`; see `docs/DEMO-PHOTOGRAPHY-HD.md`). A photo in a gray room therefore
+  needs no mask or frame: its edges disappear. Nothing is upscaled, and the 94px mockup crops are gone.
+- **Week of looks** (the bold moment): «یک هفته، شش استایل». Six studio photos side by side with no gap read as one
+  wide shot of the same model, a different outfit from Saturday to Thursday (`data/week-looks.ts`); the strip's ends
+  are rounded like the rooms. The day and outfit sit under each photo; each look opens `/shop` on its category and
+  colour. Pointing at or focusing a look fades the other five models (only the models: a photo's gray is the strip's,
+  so the strip stays whole). Phones and tablets scroll the strip sideways, about two and a half looks at a time.
+- **Shop by colour:** on the white page under a hairline (its product photos bring their own gray); colour choices
+  are soft pills, the chosen one ringed in ink. The preview leads with products whose card photos differ.
+- **Service links:** one quiet row of three split by hairlines, each with its arrow; stacked on phones.
+- **Closing call to action:** a last studio room. A model stands on its floor at the inline end, with the invitation
+  and the red button beside her. On phones she narrows beside the copy.
 
 ### Product card
 `components/products/product-card.tsx`, `styles/catalog.css`. A rounded 3:4 photo with a paper pill tag for sale or
@@ -330,7 +333,7 @@ desktop. Product photography for launch should be at least 1600px on the long ed
 - [x] Proof: header and menu, home hero, product card
 - [x] Design tokens across all components (colour, type weights, radius roles, outline token)
 - [x] Shared components (search, sheets and dialogs, toasts, desktop nav panel, footer, bottom nav)
-- [x] Home page sections (collections, shop by colour, editorial band, service links, closing call to action)
+- [x] Home page sections (week of looks, new arrivals, shop by colour, service links, closing call to action)
 - [x] Category and search pages (heading, collections row, toolbar, filter sidebar and sheet, pagination, empty
   and loading states, search page)
 - [x] Product page (gallery, buy box, details and accordions, zoom, phone purchase bar, loading state)

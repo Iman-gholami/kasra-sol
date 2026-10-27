@@ -79,10 +79,18 @@ export function getShopByColorResults(catalog: Product[] = products): ShopByColo
   return [...encountered.values()].map(({color, products: matches}) => ({
     color,
     count: matches.length,
-    products: matches
+    products: distinctPhotosFirst(matches
       .sort((a,b) => Number(b.featured) - Number(a.featured) ||
-        b.createdAt.localeCompare(a.createdAt))
+        b.createdAt.localeCompare(a.createdAt)))
       .slice(0, COLOR_PREVIEW_LIMIT)
       .map(previewProduct)
   })).sort((a,b) => a.color.order - b.color.order);
+}
+
+/** Keeps the order, but moves products whose card photo repeats an earlier one to the end, so a preview row shows
+ * different photos when it can (the demo catalog shares a few photos between many products). */
+function distinctPhotosFirst(sorted: Product[]): Product[] {
+  const seen = new Set<string>();
+  const distinct = sorted.filter(product => !seen.has(product.images[0]) && seen.add(product.images[0]));
+  return [...distinct, ...sorted.filter(product => !distinct.includes(product))];
 }

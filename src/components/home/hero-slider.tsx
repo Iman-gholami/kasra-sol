@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Pause, Play } from 'lucide-react';
 import { Price } from '@/components/products/price';
+import { isDemoPhoto } from '@/lib/demo-photos';
 import { discountPercent, formatNumber, formatPercent } from '@/lib/format';
 
 export type HeroSlide = { id: string; slug: string; name: string; image: string; price: number; compareAt?: number };
@@ -16,7 +17,7 @@ const subscribe = (notify: () => void) => {
   return () => query.removeEventListener('change', notify);
 };
 
-/** The cover slider: the owner's picks (or discounted products), one at a time in the sand room. The first slide is
+/** The cover slider: the owner's picks (or discounted products), one at a time in the studio room. The first slide is
  * server-rendered and is the page's LCP image; the other photos load once the browser is idle, so they never compete
  * with it. A progress bar times each slide (5s, CSS) and the slider moves on when it fills. The pause button stops it
  * (WCAG 2.2.2), and so do hovering it and focusing inside it; with reduced motion it never moves by itself. The bar's
@@ -84,8 +85,9 @@ export function HeroSlider({ slides, sizes }: { slides: HeroSlide[]; sizes: stri
         const discount = discountPercent(slide.price, slide.compareAt);
         return <div key={slide.id} className="hero-slide" data-active={i === index || undefined} role="group" aria-roledescription="اسلاید"
           aria-label={formatNumber(i + 1) + ' از ' + formatNumber(count)} aria-hidden={i !== index || undefined} inert={i !== index}>
-          {/* Like product cards: the photo repeats the name link, so it stays out of the tab order and the accessibility tree. */}
-          <Link href={'/product/' + slide.slug} className={'hero-figure' + (i === 0 ? ' hero-visual' : '') + (slide.image.startsWith('/images/brand-preview/') ? ' hero-figure-mockup' : '')} tabIndex={-1} aria-hidden="true">
+          {/* Like product cards: the photo repeats the name link, so it stays out of the tab order and the accessibility tree.
+              A studio photo shares the room's gray, so its model stands in the room; any other photo hangs as a framed plate. */}
+          <Link href={'/product/' + slide.slug} className={'hero-figure' + (i === 0 ? ' hero-visual' : '') + (isDemoPhoto(slide.image) ? ' hero-figure-studio' : '')} tabIndex={-1} aria-hidden="true">
             {(i === 0 || rest) && <Image src={slide.image} alt="" fill sizes={sizes} preload={i === 0}
               fetchPriority={i === 0 ? 'high' : 'low'}/>}
           </Link>

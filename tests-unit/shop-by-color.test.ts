@@ -57,6 +57,18 @@ describe('getShopByColorResults', () => {
     assert.deepEqual(getShopByColorResults(catalog)[0].products.map(p => p.id), ['old-featured', 'new-plain', 'old-plain']);
   });
 
+  it('leads with products whose card photos differ, so the preview never shows one photo over and over', () => {
+    const photo = (image: string) => ({ images: [image] });
+    const catalog = [
+      product('a', [palette[0]], {}, { ...photo('/one.avif'), createdAt: '2026-05-04T00:00:00Z' }),
+      product('b', [palette[0]], {}, { ...photo('/one.avif'), createdAt: '2026-05-03T00:00:00Z' }),
+      product('c', [palette[0]], {}, { ...photo('/one.avif'), createdAt: '2026-05-02T00:00:00Z' }),
+      product('d', [palette[0]], {}, { ...photo('/two.avif'), createdAt: '2026-05-01T00:00:00Z' }),
+      product('e', [palette[0]], {}, { ...photo('/three.avif'), createdAt: '2026-04-01T00:00:00Z' })
+    ];
+    assert.deepEqual(getShopByColorResults(catalog)[0].products.map(p => p.id), ['a', 'd', 'e', 'b']);
+  });
+
   it('groups shades into their family with the palette name and swatch, counting each product once', () => {
     const shades = [{ id: 'navy', name: 'سرمه‌ای', hex: '#223355', familyId: 'blue' },
       { id: 'sky', name: 'آسمانی', hex: '#88bbff', familyId: 'blue' }];
