@@ -35,6 +35,10 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
   const [adding, setAdding] = useState(false);
   const [results, setResults] = useState<Slide[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [allProducts, setAllProducts] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [previewOpen, setPreviewOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [state, setState] = useState<State>(null);
 
@@ -72,14 +76,25 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
   const remove = (id: string) => { setSlides(current => current?.filter(slide => slide.id !== id) ?? null); setState(null); };
   const add = (slide: Slide) => { setSlides(current => current && !current.some(item => item.id === slide.id) ? [...current, slide] : current); setState(null); setAdding(false); setResults(null); };
 
-  async function search(event: FormEvent) {
-    event.preventDefault();
-    setSearching(true);
+  async function loadProducts(nextPage: number, showAll: boolean, term = query) {
+    setSearching(true); setState(null);
     try {
-      const found = await adminApi<{ items: Slide[] }>('products?status=active&limit=8&q=' + encodeURIComponent(query.trim()));
+      const params = new URLSearchParams({
+        status: 'active', limit: '12', page: String(nextPage),
+        ...(showAll ? {} : { q: term.trim() })
+      });
+      const found = await adminApi<{ items: Slide[]; pages: number }>('products?' + params);
       setResults(found.items);
+      setPages(Math.max(1, found.pages ?? 1));
+      setPage(nextPage);
+      setAllProducts(showAll);
+      setAdding(true);
     } catch (error) { setState({ tone: 'error', text: errorMessage(error) }); }
     finally { setSearching(false); }
+  }
+  async function search(event: FormEvent) {
+    event.preventDefault();
+    await loadProducts(1, false);
   }
   async function save() {
     setBusy(true); setState(null);
@@ -107,6 +122,18 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
       <div className="admin-panel-body admin-stack-sm">
         {slides === null ? (state ? null : <Loading label="در حال دریافت اسلایدر…"/>)
           : <>
+            <section className="admin-slider-live" aria-label="پیش‌نمایش صفحه اول">
+              <div className="admin-slider-live-head">
+                <div><strong>پیش‌نمایش فعلی فروشگاه</strong><p className="admin-sub">نمای واقعی صفحه اول، در ابعاد کوچک؛ تغییرات ذخیره‌نشده هنوز در آن دیده نمی‌شوند.</p></div>
+                <button type="button" className="admin-btn admin-btn-outline admin-btn-small"
+                  onClick={() => setPreviewOpen(open => !open)} aria-expanded={previewOpen}>
+                  {previewOpen ? 'بستن پیش‌نمایش' : 'نمایش پیش‌نمایش'}
+                </button>
+              </div>
+              {previewOpen && <div className="admin-slider-live-viewport">
+                <iframe title="نمای کوچک صفحه اول فروشگاه" src="/" loading="lazy" tabIndex={-1}/>
+              </div>}
+            </section>
             <div className="admin-slider-summary">
               <strong>{slides.length ? formatNumber(slides.length) + ' اسلاید انتخاب‌شده' : 'حالت نمایش خودکار'}</strong>
               <span className="admin-sub">{slides.length
@@ -151,6 +178,8 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
                   <input type="search" placeholder="نام یا کد محصول" value={query} onChange={event => setQuery(event.target.value)}/>
                 </label>
                 <button type="submit" className="admin-btn admin-btn-outline" disabled={searching}>{searching ? 'در حال جست‌وجو…' : 'جست‌وجو'}</button>
+                <button type="button" className="admin-btn admin-btn-outline" disabled={searching}
+                  onClick={() => { setQuery(''); void loadProducts(1, true, ''); }}>مشاهده همه محصولات</button>
               </form>
               {results && (results.length === 0 ? <p className="admin-sub">محصولی پیدا نشد.</p>
                 : <ul className="admin-slide-list" aria-label="نتایج جست‌وجوی محصول">
@@ -164,6 +193,13 @@ export function HomeSliderManager({ onUnsaved }: { onUnsaved?: (question: string
                     </li>;
                   })}
                 </ul>)}
+              {results && <div className="admin-slider-pages">
+                <span className="admin-sub">{allProducts ? 'همه محصولات منتشرشده' : 'نتایج جست‌وجو'} · صفحه {formatNumber(page)} از {formatNumber(pages)}</span>
+                <button type="button" className="admin-btn admin-btn-outline admin-btn-small" disabled={page <= 1 || searching}
+                  onClick={() => void loadProducts(page - 1, allProducts)}>قبلی</button>
+                <button type="button" className="admin-btn admin-btn-outline admin-btn-small" disabled={page >= pages || searching}
+                  onClick={() => void loadProducts(page + 1, allProducts)}>بعدی</button>
+              </div>
             </div>}
             {full && <p className="admin-sub">ظرفیت اسلایدر کامل است. برای افزودن، یکی از اسلایدها را بردارید.</p>}
           </>}
