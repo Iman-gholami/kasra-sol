@@ -6,15 +6,15 @@ import { getCatalogProducts, getHomeSlides } from '@/lib/backend-products';
 import { ProductGrid } from '@/components/products/product-grid';
 import { ShopByColor } from '@/components/home/shop-by-color';
 import { HeroSlider } from '@/components/home/hero-slider';
-import { CollectionCircles, collectionPhotos } from '@/components/home/collection-circles';
+import { collectionPhotos } from '@/components/home/collection-circles';
 import { getShopByColorResults } from '@/lib/shop-by-color';
 import type { Product } from '@/types/store';
 
 // Each room's figure takes about 60% of its panel (three panels side by side from 1081px, stacked below).
 const roomFigureSizes = '(max-width: 600px) 52vw, (max-width: 1080px) 40vw, (max-width: 1520px) 19vw, 290px';
 
-// The cover figure takes about three quarters of the sand room on phones and a third of the page on wide screens.
-const slideSizes = '(max-width: 820px) 76vw, (max-width: 1520px) 34vw, 520px';
+// The cover photo runs edge to edge on phones and stands as a plate of at most 600px beside the copy from 601px.
+const slideSizes = '(max-width: 600px) 100vw, (max-width: 820px) 420px, 600px';
 /** The cover slides: the owner's pick from the admin panel. Without one, up to five discounted products, newest first,
  * leading with different photos so consecutive slides look different; failing that, the three newest products. */
 function coverSlides(picked: Product[], newest: Product[]) {
@@ -38,17 +38,16 @@ export default async function HomePage() {
   const colors = getShopByColorResults(products);
 
   return <>
-    <section className="hero container wide-editorial" aria-labelledby="hero-title">
-      <div className="hero-room" aria-hidden="true"/>
-      <p className="hero-pretitle"><span className="overline-rule" aria-hidden="true"/>انتخاب‌های تازه، هر روز</p>
-      <h1 id="hero-title"><span className="hero-line"><span>استایل هر روزت،</span></span> <em className="hero-line"><span>به سبک خودت.</span></em></h1>
-      <p className="hero-lede">از یک شومیز دوست‌داشتنی تا مانتویی که هر روز سراغش می‌ری؛ انتخاب‌های ساده برای سلیقه تو.</p>
-      <div className="hero-actions">
-        <Link href="/shop" prefetch={demoPrefetch} className="btn btn-primary btn-lg">کالکشن رو ببین <ArrowLeft size={19} aria-hidden="true"/></Link>
-        <Link href="/shop?sort=newest" className="text-link">تازه‌ترین‌ها</Link>
+    <section className="hero" aria-labelledby="hero-title">
+      <div className="hero-copy">
+        <p className="hero-pretitle">کالکشن تازه · پاییز ۱۴۰۵</p>
+        <h1 id="hero-title">استایل هر روزت، <em>به سبک خودت.</em></h1>
+        <p className="hero-lede">شومیز، مانتو و تیشرت؛ ساده، خوش‌دوخت و راحت برای هر روز.</p>
+        <div className="hero-actions">
+          <Link href="/shop?sort=newest" prefetch={demoPrefetch} className="btn btn-primary btn-lg">مشاهده‌ی کالکشن جدید <ArrowLeft size={19} aria-hidden="true"/></Link>
+        </div>
       </div>
       {slides.length > 0 && <HeroSlider slides={slides} sizes={slideSizes}/>}
-      <nav className="hero-collections" aria-label="میان‌بُر دسته‌بندی‌ها"><CollectionCircles/></nav>
     </section>
 
     <section className="container section-block category-section" aria-labelledby="categories-title">

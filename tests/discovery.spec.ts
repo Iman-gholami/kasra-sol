@@ -1,7 +1,7 @@
 test('collection navigation stays clear of the former full-grid loading skeleton', async ({page}) => {
   await page.setViewportSize({width: 390, height: 844});
   await page.goto('/');
-  await page.getByRole('link', {name: /شومیز/}).filter({has: page.locator('.collection-circle')}).first().click();
+  await page.locator('.category-section a[href="/category/shomiz"]').first().click();
   await expect(page).toHaveURL(/\/category\/shomiz/);
   await expect(page.locator('.product-card').first()).toBeVisible();
   await expect(page.locator('.catalog-skeleton-head, .filters-skeleton, .product-card-skeleton')).toHaveCount(0);

@@ -16,11 +16,12 @@ const subscribe = (notify: () => void) => {
   return () => query.removeEventListener('change', notify);
 };
 
-/** The cover slider: the owner's picks (or discounted products), one at a time in the sand room. The first slide is
+/** The cover slider: the owner's picks (or discounted products), one photo at a time. The first slide is
  * server-rendered and is the page's LCP image; the other photos load once the browser is idle, so they never compete
- * with it. A progress bar times each slide (5s, CSS) and the slider moves on when it fills. The pause button stops it
- * (WCAG 2.2.2), and so do hovering it and focusing inside it; with reduced motion it never moves by itself. The bar's
- * segments and a horizontal swipe move it by hand. */
+ * with it. A progress bar times each slide (6s, CSS) and the slider moves on when it fills; after one full round it
+ * rests on the first slide (the button then offers to play again). The pause button stops it (WCAG 2.2.2), and so do
+ * hovering it and focusing inside it; with reduced motion it never moves by itself. The bar's segments and a
+ * horizontal swipe move it by hand. */
 export function HeroSlider({ slides, sizes }: { slides: HeroSlide[]; sizes: string }) {
   const count = slides.length;
   const [index, setIndex] = useState(0);
@@ -43,7 +44,11 @@ export function HeroSlider({ slides, sizes }: { slides: HeroSlide[]; sizes: stri
   }, [count]);
 
   const go = (target: number) => setIndex((target + count) % count);
-  const next = () => setIndex(current => (current + 1) % count);
+  // Autoplay advances one slide; coming back round to the first, it stops there instead of looping forever.
+  const next = () => {
+    if (index === count - 1) setPaused(true);
+    setIndex((index + 1) % count);
+  };
 
   function onPointerUp(event: PointerEvent<HTMLDivElement>) {
     const start = swipe.current;

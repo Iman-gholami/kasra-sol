@@ -59,10 +59,8 @@
   --text-display: clamp(2.25rem, 1.5rem + 3.1vw, 4.25rem);
   /* Page and section headings: Estedad light at this size; emphasised words take medium. */
   --text-heading: clamp(2rem, 1.35rem + 2.4vw, 3.25rem);
-  /* Cover lines, sized so each line fits its column unwrapped from 320 to 1920px:
-     beside the slider on wide screens, and above it when the hero stacks on narrow ones. */
-  --text-hero: clamp(2.6rem, 5vw, 5.4rem);
-  --text-hero-stacked: clamp(2.1rem, 10vw, 2.9rem);
+  /* The home headline: 30px on a 320px phone, 56px from about 1440px. */
+  --text-hero: clamp(1.875rem, 1.1rem + 3.3vw, 3.5rem);
   --leading-body: 1.85;
   --leading-snug: 1.55;
   --leading-heading: 1.4;
