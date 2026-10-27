@@ -8,6 +8,7 @@ import { ShopByColor } from '@/components/home/shop-by-color';
 import { HeroSlider } from '@/components/home/hero-slider';
 import { collectionPhotos } from '@/components/home/collection-circles';
 import { SectionHeading } from '@/components/home/section-heading';
+import { NewsletterForm } from '@/components/home/newsletter-form';
 import { formatNumber } from '@/lib/format';
 import { getShopByColorResults } from '@/lib/shop-by-color';
 import type { Product } from '@/types/store';
@@ -136,10 +137,12 @@ export default async function HomePage() {
 
     <ShopByColor options={colors}/>
 
-    <section className="container newsletter" aria-labelledby="closing-title">
-      <span className="newsletter-figure"><Image src={lookbookPhotos.tshirtWhite} alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>
-      <div className="newsletter-copy"><h2 id="closing-title">یک انتخاب برای امروز، یک استایل به سبک تو.</h2><p>لباس‌های موردعلاقه‌ات را پیدا کن و با علامت قلب برای بعد نگه دار.</p></div>
-      <Link href="/shop" className="btn btn-primary">دیدن همه لباس‌ها <ArrowLeft size={18} aria-hidden="true"/></Link>
+    <section className="container home-section club" aria-labelledby="club-title">
+      <div className="club-copy">
+        <h2 id="club-title">باشگاه مشتریان کسری</h2>
+        <p>از رسیدن کالکشن‌های تازه با پیامک باخبر شو.</p>
+      </div>
+      <NewsletterForm/>
     </section>
   </>;
 }

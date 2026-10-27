@@ -111,14 +111,6 @@
 .collection-circle img { object-fit: cover; object-position: 50% 0; transform: scale(1.7); transform-origin: 50% 4%; }
 @media (hover: hover) { .collection-circles a:hover .collection-circle { border-color: var(--color-text); } }
 
-/* Round paper arrow button every soft link box ends with (the collection rooms and service links); it nudges toward
-   its arrow on hover. */
-.arrow-disc {
-  display: grid; place-items: center; inline-size: var(--touch); block-size: var(--touch); flex-shrink: 0;
-  border-radius: 50%; background: var(--color-surface); color: var(--color-text); transition: transform 500ms var(--ease-editorial);
-}
-@media (hover: hover) { a:hover > .arrow-disc { transform: translate(-3px, -3px); } }
-
 /* ---------- Fields ---------- */
 .field { display: flex; flex-direction: column; gap: var(--space-2); min-inline-size: 0; }
 .field-label { font-size: var(--text-sm); font-weight: var(--font-weight-semibold); color: var(--color-text); }
