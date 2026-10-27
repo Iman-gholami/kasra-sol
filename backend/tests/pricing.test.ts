@@ -31,3 +31,14 @@ describe('server-side price rules', () => {
     assert.equal(totals.total, 1_120_000);
   });
 });
+
+describe('courier city', () => {
+  it('accepts Tehran written with spaces, punctuation, diacritics or a stray joiner, as the checkout form does', () => {
+    for (const city of ['تهران', ' تهران ', 'تهران،', 'تِهران', 'تهران‌'])
+      assert.equal(calculate([{ price: 100, quantity: 1 }], 'courier', 'cod', '', 'تهران', city).shipping, 120_000, city);
+  });
+  it('still refuses other cities and other provinces', () => {
+    for (const [province, city] of [['تهران', 'کرج'], ['تهران', 'تهرانپارس'], ['البرز', 'تهران']])
+      assert.throws(() => calculate([{ price: 100, quantity: 1 }], 'courier', 'cod', '', province, city), DomainError, city);
+  });
+});

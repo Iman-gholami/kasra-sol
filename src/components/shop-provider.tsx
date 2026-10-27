@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, useSyncExternalStore } from 'react';
 import { byId, getVariant } from '@/data/products';
+import { lineLimit, MAX_CART_LINES } from '@/lib/checkout';
 import type { CartItem, Product } from '@/types/store';
 
 type Snapshot = { cart: CartItem[]; wishlist: string[]; hydrated: boolean; catalogError: boolean };
@@ -73,8 +74,8 @@ function sanitizeCart(cart: CartItem[], wishlist: string[]) {
   const sanitized = cart.flatMap(item => {
     const product = backendEnabled ? registry.get(item.productId) : getShopProduct(item.productId);
     const stock = product && getVariant(product, item.colorId, item.size)?.stock;
-    return stock && stock > 0 ? [{ ...item, quantity: Math.min(item.quantity, stock) }] : [];
-  });
+    return stock && stock > 0 ? [{ ...item, quantity: Math.min(item.quantity, lineLimit(stock)) }] : [];
+  }).slice(0, MAX_CART_LINES);
   const savedWishlist = wishlist.filter(id => Boolean(backendEnabled ? registry.get(id) : getShopProduct(id)));
   return { cart: sanitized, wishlist: savedWishlist };
 }
@@ -112,10 +113,13 @@ function addToCart(incoming: CartItem, productOverride?: Product): boolean {
   const stock = product && getVariant(product, incoming.colorId, incoming.size)?.stock;
   if (!stock || !Number.isInteger(incoming.quantity) || incoming.quantity < 1) return false;
   const found = current.cart.find(item => itemKey(item) === itemKey(incoming));
+  // One order holds at most MAX_CART_LINES lines; a new line beyond that would be refused at checkout.
+  if (!found && current.cart.length >= MAX_CART_LINES) return false;
+  const limit = lineLimit(stock);
   const cart = found
     ? current.cart.map(item => itemKey(item) === itemKey(incoming)
-        ? { ...item, quantity: Math.min(stock, item.quantity + incoming.quantity) } : item)
-    : [...current.cart, { ...incoming, quantity: Math.min(stock, incoming.quantity) }];
+        ? { ...item, quantity: Math.min(limit, item.quantity + incoming.quantity) } : item)
+    : [...current.cart, { ...incoming, quantity: Math.min(limit, incoming.quantity) }];
   notify({ ...current, cart });
   return true;
 }
@@ -124,7 +128,7 @@ function updateQuantity(target: CartItem, quantity: number) {
     if (itemKey(item) !== itemKey(target)) return item;
     const product = getShopProduct(item.productId);
     const stock = product && getVariant(product, item.colorId, item.size)?.stock || 0;
-    return { ...item, quantity: Math.min(stock, Math.max(1, Math.floor(quantity))) };
+    return { ...item, quantity: Math.min(lineLimit(stock), Math.max(1, Math.floor(quantity))) };
   });
   notify({ ...current, cart });
 }

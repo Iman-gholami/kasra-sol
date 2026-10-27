@@ -1,3 +1,6 @@
+// The storefront's own normalization, so a city the checkout form accepts for the courier is accepted here too.
+import { normalizePersian } from '../../src/lib/format';
+
 export type Shipping = 'post' | 'express' | 'courier';
 export type Payment = 'online' | 'cod';
 export type PriceLine = { price: number; quantity: number };
@@ -7,7 +10,7 @@ export class DomainError extends Error {
   constructor(public readonly status: number, message: string) { super(message); }
 }
 export function calculate(lines: PriceLine[], shipping: Shipping, payment: Payment, code: string, province: string, city: string) {
-  if (shipping === 'courier' && !(province === 'تهران' && city.trim() === 'تهران'))
+  if (shipping === 'courier' && !(province === 'تهران' && normalizePersian(city) === 'تهران'))
     throw new DomainError(422, 'پیک فقط برای شهر تهران مجاز است.');
   if (payment === 'cod' && shipping !== 'courier')
     throw new DomainError(422, 'پرداخت در محل فقط برای پیک تهران مجاز است.');

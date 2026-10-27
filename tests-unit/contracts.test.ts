@@ -7,12 +7,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { NextRequest } from 'next/server';
 import * as adminProxy from '@/app/api/admin/[...path]/route';
-import { normalizeMobile, normalizePostal, provinces, validate, addressComplete, addressOrder } from '@/components/checkout/fields';
+import { addressComplete, addressOrder, FIELD_MAX_LENGTH, normalizeMobile, normalizePostal, provinces, validate } from '@/components/checkout/fields';
 import type { Fields } from '@/components/checkout/checkout-storage';
 import { AUDIT_ACTION, AUDIT_GROUP, ORDER_STATUS, PERMISSION, PRODUCT_FIELD, TRANSITION_ACTIONS,
   type OrderStatus } from '@/components/admin/labels';
-import { applyDiscount, discountCodes, orderTotals, paymentMethods, paymentRestriction, paymentById, resolveLines,
-  shippingById, shippingMethods, shippingRestriction } from '@/lib/checkout';
+import { applyDiscount, discountCodes, MAX_CART_LINES, MAX_LINE_QUANTITY, orderTotals, paymentMethods, paymentRestriction,
+  paymentById, resolveLines, shippingById, shippingMethods, shippingRestriction } from '@/lib/checkout';
 import { parseFilters, queryProducts } from '@/lib/catalog';
 import { categories, products } from '@/data/products';
 import type { Product } from '@/types/store';
@@ -94,6 +94,15 @@ describe('checkout totals: the cart shows what the API will charge', () => {
       assert.equal(api.checkout.safeParse(payload(address, 'courier', payment.id)).success, true, payment.id);
   });
 
+  it('agrees which spellings of the city are Tehran for the courier', () => {
+    for (const city of ['تهران', ' تهران ', 'تهران،', 'تِهران', 'تهران‌', 'تهران.', 'کرج', 'تهرانپارس']) {
+      const shop = !shippingRestriction(shippingById('courier'), 'تهران', city);
+      let api = true;
+      try { calculate([{ price: 1, quantity: 1 }], 'courier', 'cod', '', 'تهران', city); } catch { api = false; }
+      assert.equal(api, shop, city);
+    }
+  });
+
   it('defaults to methods the API allows together', () => {
     assert.equal(paymentRestriction(paymentById('online'), 'post'), undefined);
     assert.doesNotThrow(() => calculate([{ price: 1, quantity: 1 }], shippingById('post').id, 'online', '', 'فارس', 'شیراز'));
@@ -120,9 +129,26 @@ describe('checkout address: the form accepts what the API accepts', () => {
   });
 
   it('checks the same fields the API requires', () => {
-    const required = Object.keys(api.checkout.shape.fields.shape).filter(key => key !== 'notes').sort();
-    assert.deepEqual([...addressOrder].sort(), required);
+    assert.deepEqual([...addressOrder].sort(), Object.keys(api.checkout.shape.fields.shape).sort());
     assert.equal(validate('notes', address), undefined);
+  });
+
+  it('limits text to the lengths the API accepts, so a long note cannot fail at payment', () => {
+    for (const [field, limit] of Object.entries(FIELD_MAX_LENGTH) as [keyof Fields, number][])
+      for (const length of [limit, limit + 1]) {
+        const fields = { ...address, [field]: 'آ'.repeat(length) };
+        assert.equal(api.checkout.safeParse(payload(fields)).success, addressComplete(fields), field + ' × ' + length);
+      }
+  });
+
+  it('caps cart lines where the API does: units of one variant, and lines per order', () => {
+    const order = payload(address);
+    const line = (quantity: number, size = 'M') => ({ ...order.items[0], quantity, size });
+    assert.equal(api.checkout.safeParse({ ...order, items: [line(MAX_LINE_QUANTITY)] }).success, true);
+    assert.equal(api.checkout.safeParse({ ...order, items: [line(MAX_LINE_QUANTITY + 1)] }).success, false);
+    const lines = (count: number) => Array.from({ length: count }, (_, i) => line(1, 'S' + i));
+    assert.equal(api.checkout.safeParse({ ...order, items: lines(MAX_CART_LINES) }).success, true);
+    assert.equal(api.checkout.safeParse({ ...order, items: lines(MAX_CART_LINES + 1) }).success, false);
   });
 
 });

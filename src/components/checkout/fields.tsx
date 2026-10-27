@@ -2,11 +2,14 @@
 
 import { useId, type ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { toLatinDigits } from '@/lib/format';
+import { formatNumber, toLatinDigits } from '@/lib/format';
 import type { Field, Fields } from '@/components/checkout/checkout-storage';
 
 export const provinces = ['تهران', 'اصفهان', 'فارس', 'خراسان رضوی', 'البرز', 'گیلان', 'مازندران', 'آذربایجان شرقی', 'خوزستان', 'سایر استان‌ها'];
-export const addressOrder: Field[] = ['name', 'mobile', 'province', 'city', 'address', 'postal'];
+/** Fields in the order the form shows them; the optional note is checked only for its length. */
+export const addressOrder: Field[] = ['name', 'mobile', 'province', 'city', 'address', 'postal', 'notes'];
+/** The longest text the order API accepts for each free-text field. */
+export const FIELD_MAX_LENGTH: Partial<Record<Field, number>> = { name: 160, city: 80, address: 600, notes: 500 };
 export const sampleFields: Fields = { name: 'مهمان نمایشی', mobile: '09120000000', province: 'تهران', city: 'تهران',
   address: 'خیابان نمونه، کوچه آزمایشی، پلاک ۱۰، واحد ۲', postal: '1234567890', notes: '' };
 
@@ -23,6 +26,10 @@ export const normalizePostal = (value: string) => toLatinDigits(value).replace(/
 
 export function validate(field: Field, fields: Fields): string | undefined {
   const value = fields[field].trim();
+  // The API trims every field except the note before measuring it.
+  const limit = FIELD_MAX_LENGTH[field];
+  if (limit && (field === 'notes' ? fields.notes : value).length > limit)
+    return 'حداکثر ' + formatNumber(limit) + ' حرف مجاز است؛ متن را کوتاه‌تر کن.';
   switch (field) {
     case 'name': return value.length < 3 ? 'نام و نام خانوادگی را کامل وارد کن.' : undefined;
     case 'mobile': return /^09\d{9}$/.test(normalizeMobile(value)) ? undefined : 'شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.';
@@ -37,7 +44,7 @@ export const addressComplete = (fields: Fields) => addressOrder.every(field => !
 
 type TextFieldProps = {
   label: string; value: string; onChange: (value: string) => void; onBlur?: () => void; error?: string; hint?: string;
-  optional?: boolean; multiline?: boolean; wide?: boolean; placeholder?: string; dir?: 'ltr';
+  optional?: boolean; multiline?: boolean; wide?: boolean; placeholder?: string; dir?: 'ltr'; maxLength?: number;
   type?: string; inputMode?: 'tel' | 'numeric' | 'text'; autoComplete?: string; enterKeyHint?: 'next' | 'done';
 };
 
@@ -50,10 +57,10 @@ function FieldShell({ id, label, optional, error, hint, wide, children }: { id: 
   </div>;
 }
 
-export function TextField({ label, value, onChange, onBlur, error, hint, optional, multiline, wide, placeholder, dir, type = 'text', inputMode, autoComplete, enterKeyHint }: TextFieldProps) {
+export function TextField({ label, value, onChange, onBlur, error, hint, optional, multiline, wide, placeholder, dir, maxLength, type = 'text', inputMode, autoComplete, enterKeyHint }: TextFieldProps) {
   const id = useId();
   const describedBy = error ? id + '-error' : hint ? id + '-hint' : undefined;
-  const common = { id, value, placeholder, autoComplete: autoComplete ?? 'off', 'aria-invalid': Boolean(error),
+  const common = { id, value, placeholder, maxLength, autoComplete: autoComplete ?? 'off', 'aria-invalid': Boolean(error),
     'aria-describedby': describedBy, 'aria-required': optional ? undefined : true, onBlur,
     className: 'control' + (dir ? ' control-ltr' : '') };
   return <FieldShell id={id} label={label} optional={optional} error={error} hint={hint} wide={wide}>

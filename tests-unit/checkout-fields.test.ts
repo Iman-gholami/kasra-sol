@@ -1,6 +1,6 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { addressComplete, addressOrder, normalizeMobile, normalizePostal, provinces, sampleFields,
+import { addressComplete, addressOrder, FIELD_MAX_LENGTH, normalizeMobile, normalizePostal, provinces, sampleFields,
   validate } from '@/components/checkout/fields';
 import { completeOrder, emptyFields, loadDraft, saveCode, saveDraft, type DemoOrder,
   type Fields } from '@/components/checkout/checkout-storage';
@@ -27,13 +27,21 @@ describe('validate', () => {
   it('accepts a complete address, in the order the form asks for it', () => {
     for (const field of addressOrder) assert.equal(validate(field, valid), undefined, field);
     assert.equal(addressComplete(valid), true);
-    assert.deepEqual(addressOrder, ['name', 'mobile', 'province', 'city', 'address', 'postal']);
+    assert.deepEqual(addressOrder, ['name', 'mobile', 'province', 'city', 'address', 'postal', 'notes']);
   });
   it('gives a Persian message for each missing or malformed field', () => {
     const broken: Fields = { name: 'ab', mobile: '0912', province: '', city: 'x', address: 'کوتاه', postal: '123', notes: '' };
-    for (const field of addressOrder) assert.match(validate(field, broken) ?? '', /[آ-ی]/, field);
+    for (const field of addressOrder.filter(f => f !== 'notes')) assert.match(validate(field, broken) ?? '', /[آ-ی]/, field);
     assert.equal(addressComplete(broken), false);
     assert.equal(validate('notes', broken), undefined, 'notes are optional');
+  });
+  it('refuses text longer than the order API accepts, and says the limit', () => {
+    for (const [field, limit] of Object.entries(FIELD_MAX_LENGTH) as [keyof Fields, number][]) {
+      assert.equal(validate(field, { ...valid, [field]: 'آ'.repeat(limit) }), undefined, field + ' at the limit');
+      assert.match(validate(field, { ...valid, [field]: 'آ'.repeat(limit + 1) }) ?? '', /حداکثر/, field + ' past the limit');
+    }
+    assert.equal(addressComplete({ ...valid, notes: 'آ'.repeat(501) }), false, 'a long note keeps the shopper on the address step');
+    assert.equal(validate('address', { ...valid, address: '  ' + 'آ'.repeat(600) + '  ' }), undefined, 'measured after trimming');
   });
   it('trims before measuring, so spaces cannot satisfy a minimum length', () => {
     assert.ok(validate('name', { ...valid, name: '   ab   ' }));

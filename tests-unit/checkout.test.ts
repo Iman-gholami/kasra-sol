@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyDiscount, cartTotals, DEFAULT_PAYMENT, DEFAULT_SHIPPING, discountCodes, FREE_SHIPPING_THRESHOLD,
-  freeShippingProgress, normalizeCode, orderTotals, paymentById, paymentMethods, paymentRestriction, resolveLines,
+  freeShippingProgress, lineLimit, MAX_CART_LINES, MAX_LINE_QUANTITY, normalizeCode, orderTotals, paymentById, paymentMethods, paymentRestriction, resolveLines,
   shippingById, shippingCost, shippingMethods, shippingRestriction, type ShippingMethodId } from '@/lib/checkout';
 import { byId } from '@/data/products';
 import type { CartItem } from '@/types/store';
@@ -52,6 +52,16 @@ describe('shipping cost and the free-shipping meter', () => {
     assert.deepEqual(freeShippingProgress(1_000_000), { remaining: 1_500_000, reached: false, ratio: 0.4 });
     assert.deepEqual(freeShippingProgress(FREE_SHIPPING_THRESHOLD), { remaining: 0, reached: true, ratio: 1 });
     assert.deepEqual(freeShippingProgress(9_000_000), { remaining: 0, reached: true, ratio: 1 });
+  });
+});
+
+describe('cart line limits', () => {
+  it('lets a line hold its stock, up to what one order may contain', () => {
+    assert.equal(lineLimit(3), 3);
+    assert.equal(lineLimit(MAX_LINE_QUANTITY), MAX_LINE_QUANTITY);
+    assert.equal(lineLimit(500), MAX_LINE_QUANTITY);
+    assert.equal(lineLimit(0), 0);
+    assert.ok(MAX_CART_LINES > 0);
   });
 });
 
