@@ -13,6 +13,6 @@ Approved design: brand red `#B51F2B`, white `#FFFFFF`, quiet gray `#F1F2F4`, cha
 | Border | `--color-border` | `#E5E7EB` |
 | Soft accent | `--color-accent-wash` | `#F9EBED` |
 
-Normal prices are charcoal; sale prices are red. Footer text stays white / light gray. Error, success and warning colors are separate semantic roles. The photo-only studio color remains subtly warm because current demo images have sand backdrops; review with production photography.
+Normal prices are charcoal; sale prices are red. Footer text stays white / light gray. Error, success and warning colors are separate semantic roles. The studio gray `--color-studio` (`#EAECF0`) is both the photo panels' color and the backdrop the demo photos were re-set on (`scripts/studio-photos.py`), so photos and panels meet without a seam.
 
 Contrast examples: brand red against white 6.57:1, muted copy against white 5.77:1, muted copy against gray sections 5.15:1. Playwright color regression assertions live in `tests/storefront-polish.spec.ts`.

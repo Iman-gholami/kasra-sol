@@ -1,7 +1,9 @@
-/* Homepage sections: hero, collections, shop by color, editorial band, service links, closing CTA. */
+/* Homepage sections: hero, week of looks, new arrivals, shop by color, service links, closing call to action.
+   One studio gray (--color-studio) runs through the page: the photos were re-shot on it (scripts/studio-photos.py), so
+   wherever a photo sits in a gray room its edges disappear and the model stands in the room itself. */
 
 /* Hero: a magazine cover in one cool-gray room. The headline, lede and calls to action sit on the start side; the slider
-   (`components/home/hero-slider.tsx`) fills the other side with one feathered model at a time and a shoppable tag.
+   (`components/home/hero-slider.tsx`) fills the other side with one model at a time and a shoppable tag.
    Phones stack the same markup: headline and button over the room, the lede and «تازه‌ترین‌ها» below it. The
    collections follow as circles. Motion stays small: the headline lines rise out of their masks and the rule draws
    (CSS, from first paint); slides cross-fade. The first slide is the LCP image and is still from the first frame. */
@@ -32,8 +34,8 @@
 .hero-actions { grid-area: actions; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-6); }
 
 /* The slider. Controls (progress segments that double as slide buttons, and pause) sit at its top; each slide is a
-   feathered figure and a paper tag with the discount, name and price. */
-/* The stage is clipped to the room's corners on its side, so the feathered figure never spills past the sand. */
+   figure and a paper tag with the discount, name and price. */
+/* The stage is clipped to the room's corners on its side, so a figure never spills past the room. */
 .hero-stage {
   grid-area: stage; position: relative; isolation: isolate; overflow: hidden; min-block-size: clamp(520px, 42vw, 660px);
   border-start-end-radius: var(--radius-lg); border-end-end-radius: var(--radius-lg);
@@ -62,23 +64,15 @@
 .hero-slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity 700ms var(--ease-editorial), visibility 0s linear 700ms; }
 .hero-slide[data-active] { opacity: 1; visibility: visible; transition: opacity 700ms var(--ease-editorial), visibility 0s; }
 .hero-figure {
-  position: absolute; inset-block: 4% 0; inset-inline-end: 6%; inline-size: 70%;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 26%, #000 74%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 90%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent 0, #000 26%, #000 74%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 90%, transparent 100%);
-  mask-composite: intersect;
+  position: absolute; inset-block: var(--space-8) var(--space-6); inset-inline-end: 10%; inline-size: 58%;
+  overflow: hidden; border-radius: var(--radius-md); background: var(--color-surface-sunken);
   transition: transform 900ms var(--ease-editorial);
 }
-/* The approved mockup crop already contains its own studio shadow and feathered floor.
-   Keep the complete subject opaque; blend only the outermost perimeter into the gray room. */
-.hero-figure-mockup {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 94%, transparent),
-    linear-gradient(to bottom, #000, #000 96%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 8%, #000 94%, transparent),
-    linear-gradient(to bottom, #000, #000 96%, transparent);
-}
+.hero-figure img { object-fit: cover; object-position: 50% 12%; }
+/* A studio photo is the room's own gray: no frame, and the model stands on the room's floor. */
+.hero-figure-studio { inset-block: var(--space-6) 0; inset-inline-end: 4%; inline-size: 78%; overflow: visible; border-radius: 0; background: none; }
+.hero-figure-studio img { object-fit: contain; object-position: 50% 100%; }
 .hero-slide:not([data-active]) .hero-figure { transform: scale(1.04); }
-.hero-figure img { object-fit: cover; object-position: 50% 0; }
 .hero-tag {
   position: absolute; z-index: 1; inset-inline-start: var(--space-3); inset-block-end: var(--space-6);
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; max-inline-size: min(64%, 280px);
@@ -100,43 +94,38 @@
 .hero-line > span { animation: hero-rise var(--duration-reveal) var(--ease-editorial) 60ms both; }
 .hero h1 em > span { animation-delay: 170ms; }
 
-/* Collections: three light-gray rooms. Each editorial model photo sits inside a softly feathered panel
-   of that sand (--color-studio) and seems to stand in the page; the name, a line and a round arrow sit beside her. */
-.category-section { padding-block-start: var(--space-6); }
-.category-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
-.category-tile {
-  position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start;
-  min-block-size: clamp(340px, 29vw, 420px); padding: var(--space-5); overflow: hidden;
-  border-radius: var(--radius-lg); background: var(--color-studio); color: var(--color-text);
+/* Week of looks (`components/home/week-looks.tsx`): the page's one bold moment. Six studio photos with no gap between
+   them read as one wide shot of the same model in a different outfit for each day; the strip's ends are rounded like
+   the rooms. The day and the outfit sit under each photo on the white page. Pointing at a look fades the other five
+   models (only the models: a photo's gray is the strip's, so fading it leaves the strip whole). */
+.week-lede { margin: var(--space-2) 0 0; color: var(--color-text-muted); }
+.week-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; scroll-snap-type: x proximity; }
+.week-scroll::-webkit-scrollbar { display: none; }
+.week-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.week-strip > li { scroll-snap-align: start; }
+.week-look { display: flex; flex-direction: column; color: var(--color-text); }
+.week-look:focus-visible { outline-offset: -3px; }
+.week-figure { position: relative; display: block; aspect-ratio: 5 / 8; margin-block-end: var(--space-3); background: var(--color-studio); }
+.week-strip > li:first-child .week-figure { border-start-start-radius: var(--radius-lg); border-end-start-radius: var(--radius-lg); }
+.week-strip > li:last-child .week-figure { border-start-end-radius: var(--radius-lg); border-end-end-radius: var(--radius-lg); }
+/* The photos have almost no headroom; the inner box drops them a little so every head clears the strip's top. */
+.week-figure > span { position: absolute; inset: 7% 0 0; }
+.week-figure img { object-fit: cover; object-position: 50% 100%; transition: opacity 500ms var(--ease-editorial); }
+.week-day { padding-inline: var(--space-3); font-size: var(--text-md); font-weight: var(--font-weight-semibold); }
+.week-title { padding-inline: var(--space-3); color: var(--color-text-muted); font-size: var(--text-sm); }
+@media (hover: hover) {
+  .week-strip:has(.week-look:hover) .week-look:not(:hover) img { opacity: 0.35; }
+  .week-look:hover .week-day { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 7px; }
 }
-.category-tile:focus-visible { outline-offset: 4px; }
-/* A model feathered into a sand room (the collections and the closing call to action). The photographs have almost
-   no headroom, so the figure starts a little below the panel's edge and only a thin strip is feathered at the top:
-   enough to hide the photo's edge without ghosting the hair. */
-.category-figure, .newsletter-figure {
-  position: absolute; z-index: -1; inset-block: var(--space-3) 0;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30%, #000 70%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 4%, #000 88%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent 0, #000 30%, #000 70%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 4%, #000 88%, transparent 100%);
-  mask-composite: intersect;
-}
-.category-figure img, .newsletter-figure img { object-fit: cover; object-position: 50% 0; }
-.category-figure { inset-inline-end: -4%; inline-size: 62%; }
-.category-figure img { transition: transform 1200ms var(--ease-editorial); }
-@media (hover: hover) { .category-tile:hover .category-figure img { transform: scale(1.04) translateY(-4px); } }
-.category-description { display: flex; flex-direction: column; gap: var(--space-1); max-inline-size: 46%; margin-block-end: var(--space-4); }
-.category-name { font-size: clamp(2rem, 1.4rem + 1.6vw, 2.9rem); font-weight: var(--font-weight-light); line-height: 1.3; }
-.category-description > span:last-child { font-size: var(--text-sm); line-height: 1.7; }
+.week-strip:has(.week-look:focus-visible) .week-look:not(:focus-visible) img { opacity: 0.35; }
+.week .demo-photo-note { margin-block-start: var(--space-5); }
 .demo-photo-note, .catalog-photo-note { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 0; color: var(--color-text-subtle); font-size: var(--text-xs); line-height: 1.7; }
 .demo-photo-note svg, .catalog-photo-note svg { flex-shrink: 0; }
 
-/* Shop by color: a soft panel; colour choices are paper pills, the chosen one ringed in ink. */
-.shop-by-color {
-  margin-block: var(--space-2); padding: clamp(32px, 4.4vw, 64px) clamp(16px, 3.4vw, 52px);
-  border-radius: var(--radius-lg); background: var(--color-surface-muted);
-}
+/* Shop by color: on the white page, under a hairline (its product photos bring their own gray); colour choices are
+   soft pills, the chosen one ringed in ink. */
+.shop-by-color { border-block-start: 1px solid var(--color-border); }
 .shop-color-heading { max-inline-size: 640px; margin: 0 auto var(--space-5); text-align: center; }
-.shop-color-heading .section-kicker { text-align: center; }
 .shop-color-heading h2 { margin: var(--space-1) 0 var(--space-2); font-size: var(--text-heading); font-weight: var(--font-weight-light); }
 .shop-color-heading > p:last-child { margin: 0; color: var(--color-text-muted); }
 .shop-color-scroll {
@@ -148,7 +137,7 @@
 .shop-color-choice {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-inline-size: 92px; min-block-size: 48px;
   padding: 6px 16px 6px 12px; border: 1px solid transparent; border-radius: var(--radius-pill);
-  background: var(--color-surface-raised); color: var(--color-text); font-size: var(--text-sm); font-weight: var(--font-weight-semibold);
+  background: var(--color-surface-muted); color: var(--color-text); font-size: var(--text-sm); font-weight: var(--font-weight-semibold);
   white-space: nowrap; scroll-snap-align: start; touch-action: manipulation;
   transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
 }
@@ -161,62 +150,34 @@
 .shop-color-footer { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); margin-block-start: var(--space-6); }
 .shop-color-footer p { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--color-text-subtle); font-size: var(--text-xs); text-align: center; }
 
-/* Editorial band: a soft panel; the photograph is a rounded plate kept near its real size (sharp), the copy beside it. */
-.editorial-band {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--space-6);
-  margin-block: var(--space-4); padding: clamp(20px, 3vw, 48px); overflow: hidden;
-  border-radius: var(--radius-lg); background: var(--color-surface-muted);
+/* Service links: one quiet row of three, split by hairlines, each with its arrow. */
+.service-links {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-block-start: var(--space-6);
+  border-block: 1px solid var(--color-border);
 }
-.editorial-art {
-  position: relative; justify-self: center; inline-size: min(100%, 460px); aspect-ratio: 4 / 5; overflow: hidden;
-  border-radius: var(--radius-md); background: var(--color-surface-sunken);
-}
-.editorial-art img { object-fit: cover; object-position: center 8%; }
-.editorial-copy { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: var(--space-5) clamp(8px, 3vw, 48px); }
-.editorial-copy::after { content: "K"; position: absolute; inset-block-start: -12px; inset-inline-end: 12px; z-index: -1; color: rgb(121 95 76 / 0.06); font: 300px/0.9 var(--font-wordmark); }
-.editorial-super { margin: 0 0 var(--space-4); color: var(--color-text-subtle); font: 600 12px/1.5 Arial, sans-serif; letter-spacing: 0.24em; }
-.editorial-copy h2 { margin: 0 0 var(--space-3); font-size: var(--text-heading); font-weight: var(--font-weight-light); line-height: 1.35; max-inline-size: 14ch; }
-.editorial-copy h2 em { display: block; font-style: normal; font-weight: var(--font-weight-medium); color: var(--color-accent); }
-.editorial-copy > p:not(.editorial-super) { margin: 0 0 var(--space-5); max-inline-size: 34ch; color: var(--color-text-muted); }
-
-/* Service links: three soft boxes with a round arrow, like the contents boxes under the hero. */
-.service-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); margin-block-start: var(--space-7); }
 .service-links a {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-block-size: 92px; padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-lg); background: var(--color-surface-muted); transition: background-color 400ms var(--ease-editorial);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-block-size: 96px;
+  padding: var(--space-4) var(--space-5); color: var(--color-text);
 }
-@media (hover: hover) { .service-links a:hover { background: var(--color-surface-sunken); } }
-.service-links strong { display: block; font-size: var(--text-md); }
+.service-links a + a { border-inline-start: 1px solid var(--color-border); }
+.service-links a > svg { flex-shrink: 0; transition: transform 500ms var(--ease-editorial); }
+@media (hover: hover) { .service-links a:hover > svg { transform: translate(-3px, -3px); } .service-links a:hover strong { color: var(--color-accent); } }
+.service-links strong { display: block; font-size: var(--text-md); transition: color var(--duration-fast) var(--ease-standard); }
 .service-links small { display: block; color: var(--color-text-muted); font-size: var(--text-xs); line-height: 1.7; }
 
-/* Closing call to action: a last sand room. A model is feathered into the panel at the inline end, like the
-   collections; the invitation and an ink pill button sit beside her. */
-.newsletter {
+/* Closing call to action: a last studio room. A model stands at its inline end on the room's floor (a studio photo,
+   so no frame); the invitation and the button sit beside her. */
+.closing {
   position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
-  gap: var(--space-5); min-block-size: clamp(320px, 28vw, 400px); margin-block-start: var(--space-7);
-  padding: clamp(28px, 5vw, 64px); border-radius: var(--radius-lg); background: var(--color-studio); color: var(--color-text);
+  gap: var(--space-5); min-block-size: clamp(340px, 30vw, 440px); margin-block: var(--section-gap) 0;
+  padding: clamp(28px, 5vw, 72px); border-radius: var(--radius-lg); background: var(--color-studio); color: var(--color-text);
 }
-.newsletter-figure { inset-inline-end: 4%; inline-size: min(34%, 300px); }
-.newsletter-copy { max-inline-size: min(60%, 34rem); }
-.newsletter h2 { margin: 0 0 var(--space-2); font-size: var(--text-heading); font-weight: var(--font-weight-light); }
-.newsletter p { margin: 0; }
+.closing-figure { position: absolute; z-index: -1; inset-block: var(--space-5) 0; inset-inline-end: 6%; inline-size: min(30%, 330px); }
+.closing-figure img { object-fit: contain; object-position: 50% 100%; }
+.closing-copy { max-inline-size: min(58%, 34rem); }
+.closing h2 { margin: 0 0 var(--space-2); font-size: var(--text-heading); font-weight: var(--font-weight-light); line-height: var(--leading-heading); }
+.closing p { margin: 0; color: var(--color-text-muted); }
 
-/* Scroll-driven settle: photographs (never text) ease into place as they enter the viewport. CSS-only and
-   compositor-driven where supported; skipped entirely when reduced motion is requested. */
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .category-figure, .newsletter-figure { animation: home-settle linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
-    .editorial-art img { animation: home-settle-zoom linear both; animation-timeline: view(); animation-range: entry 0% cover 50%; }
-  }
-}
-@keyframes home-settle { from { transform: translateY(28px) scale(1.05); } }
-@keyframes home-settle-zoom { from { transform: scale(1.12); } }
-
-@media (max-width: 1080px) {
-  .category-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
-  .category-tile { min-block-size: 260px; }
-  .category-figure { inline-size: 40%; inset-inline-end: 4%; }
-}
 @media (max-width: 820px) {
   /* Phones and tablets: one column. The room holds the headline, the slider and the button; the lede and the
      second link follow it on the page. */
@@ -233,17 +194,18 @@
   .hero-actions { display: contents; }
   .hero-actions .btn { position: relative; z-index: 2; grid-area: stage; align-self: end; justify-self: start; margin: 0 var(--space-4) var(--space-5); }
   .hero-actions .text-link { grid-area: more; justify-self: start; }
-  .hero-figure { inset-block: 33% 0; inset-inline-end: -6%; inline-size: 76%; }
+  .hero-figure { inset-block: 36% var(--space-4); inset-inline-end: var(--space-4); inline-size: 60%; }
+  .hero-figure-studio { inset-block: 33% 0; inset-inline-end: -6%; inline-size: 76%; }
   .hero-tag { inset-inline-start: var(--space-4); inset-block-end: 92px; max-inline-size: 64%; }
-  .service-links a { padding-inline: var(--space-4); }
+  /* The strip runs to the screen's edges and scrolls; about two and a half looks show at a time. */
+  .week-scroll { margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); }
+  .week-strip { grid-template-columns: repeat(6, clamp(150px, 40vw, 220px)); }
+  .service-links { grid-template-columns: minmax(0, 1fr); }
+  .service-links a { min-block-size: 80px; padding-inline: var(--space-2); }
+  .service-links a + a { border-inline-start: 0; border-block-start: 1px solid var(--color-border); }
 }
 @media (max-width: 600px) {
-  .category-tile { min-block-size: 220px; padding: var(--space-4); }
-  .category-figure { inline-size: 54%; inset-inline-end: -2%; }
-  .category-name { font-size: var(--text-2xl); }
-  .category-description > span:last-child { font-size: var(--text-xs); }
-  /* The colour panel keeps a narrow margin; its choice row bleeds to the panel's edges and scrolls. */
-  .container.shop-by-color { inline-size: calc(100% - 2 * var(--space-2)); padding-inline: var(--gutter); }
+  /* The colour choices bleed to the screen's edges and scroll. */
   .shop-color-scroll {
     margin-inline: calc(var(--gutter) * -1); inline-size: calc(100% + 2 * var(--gutter)); max-inline-size: none; padding-inline: var(--gutter);
     scroll-padding-inline: var(--gutter);
@@ -254,16 +216,13 @@
   .shop-color-result-summary { margin-block: var(--space-2) var(--space-4); font-size: var(--text-xs); }
   .shop-color-footer { margin-block-start: var(--space-5); }
   .shop-color-view-all { inline-size: 100%; }
-  .editorial-band { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
-  .editorial-art { inline-size: 100%; }
-  .editorial-copy { padding: var(--space-4) var(--space-2) var(--space-3); }
-  .editorial-copy::after { font-size: 220px; }
-  .service-links { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); margin-block-start: var(--space-5); }
-  .service-links a { min-block-size: 76px; }
-  .newsletter { min-block-size: 0; padding-block-end: 0; gap: var(--space-4); }
-  .newsletter-copy { max-inline-size: 58%; }
-  .newsletter h2 { font-size: var(--text-2xl); }
-  .newsletter p { font-size: var(--text-sm); }
-  .newsletter-figure { inline-size: 48%; inset-inline-end: -4%; }
-  .newsletter .btn { margin-block-end: var(--space-5); }
+  .week-day { font-size: var(--text-base); }
+  /* The heading takes the row; the catalog is a tap away in the bottom bar and under the arrivals. */
+  .week .section-heading > .text-link { display: none; }
+  .closing { min-block-size: 0; padding-block-end: 0; gap: var(--space-4); }
+  .closing-copy { max-inline-size: 60%; }
+  .closing h2 { font-size: var(--text-2xl); }
+  .closing p { font-size: var(--text-sm); }
+  .closing-figure { inline-size: 42%; inset-inline-end: 0; }
+  .closing .btn { margin-block-end: var(--space-6); }
 }

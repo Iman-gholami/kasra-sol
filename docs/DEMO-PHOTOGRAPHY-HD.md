@@ -1,16 +1,46 @@
-# Exact image crops from the approved Kasra Boutique mockup
+# Demo photography: one studio
 
-The user asked for **the exact photographs visible in the previously generated Kasra design image**, not unrelated stock imagery. Unsplash dependencies were removed entirely from the demo storefront.
+The demo storefront's photos are AI-generated sample imagery of one model, **not pictures of real stock**. Product
+pages and the home page say so. Before launch, replace them with real photographs of every SKU (correct colors, model
+approvals).
 
-Locally hosted files in `public/images/brand-preview/` are directly cropped from the generated mockups. They are **not newly generated people** and no color filters, automatic background segmentation, or image upscaling was used.
+## Why they were re-shot
 
-- `hero-model.avif` (458×597): same ivory-shirt model with gray studio blocks, used by the main demo hero and editorial panels.
-- `shomiz-blue.avif` (94×94): same blue-shirt category portrait.
-- `manto-cream.avif` (94×94): same cream coat category portrait.
-- `manto-pink.avif` (94×94): same pink outerwear portrait.
-- `tshirt-blue.avif` (94×94): same blue T-shirt portrait.
-- `shomiz-cream.avif` (94×94): same light shirt category portrait.
+The photos came from two sources with different backdrops: the mockup cover portrait (cool gray studio with a white
+block) and the lookbook (warm sand). Feathered into the storefront's cool-gray rooms, the sand bled into the gray, and
+the category rooms, circles and product cards enlarged 94×94 crops of the mockup, rings included, to 300px and more.
 
-The small category crops should be used at **thumbnail sizes**; enlarging them as product-gallery photography won't reveal genuine extra detail. Product images in this demo are visual samples only. Before launching, source real high-resolution apparel photography for every SKU, with correct colors and any necessary model approvals.
+`scripts/studio-photos.py` now cuts each model out of her backdrop (rembg, BiRefNet portrait model), takes the old
+backdrop's tint out of her edges, and stands her on the storefront's studio gray `--color-studio` (#EAECF0) with a
+soft floor shadow. A photo in a gray room therefore needs no mask or frame: its edges disappear. Nothing is upscaled;
+every file keeps its source's pixel size.
 
-Six original local AVIF placeholders remain available in `public/images/lookbook/` for rollback. Backend-uploaded real product images are left unchanged. The data loader isolates local mockup photos to the demo catalog.
+| File | Size | Used for |
+| --- | --- | --- |
+| `brand-preview/hero-model.avif` | 458×597 | Home cover in demo mode |
+| `lookbook/{shomiz-cream,shomiz-rose,manto-sage,manto-black,tshirt-blue}.avif` | 480×640 | Product cards and galleries, week of looks, category menu, closing room |
+| `lookbook/tshirt-white.avif` | 450×600 | The same |
+| `lookbook/{shomiz-rose,manto-sage,tshirt-blue}-portrait.avif` | 200×200 | Collection circles |
+| `brand-preview/{shomiz-blue,shomiz-cream,manto-cream,manto-pink,tshirt-blue}.avif` | 450–480 wide | Copies at the old crop URLs, for catalogs seeded from 25 October |
+
+The lookbook files keep their names, so products that already reference them in the database pick up the new photos
+with no data change. The five 94×94 mockup crops are gone too, but not their URLs: catalogs seeded from 25 October store
+`brand-preview/{shomiz-blue,shomiz-cream,manto-cream,manto-pink,tshirt-blue}.avif`, and the seed never rewrites existing
+products, so each URL now serves a copy of the studio photo that holds its slot (`LEGACY` in the script).
+`tests-unit/products-data.test.ts` fails if a demo photo smaller than its slot comes back, at any of these URLs.
+
+## Re-running
+
+The originals are the files as of commit `381c640`:
+
+```sh
+mkdir -p /tmp/originals && git archive 381c640 public/images/lookbook public/images/brand-preview | tar -x -C /tmp/originals
+python3 -m venv .venv && .venv/bin/pip install "rembg[cpu]" pillow numpy
+.venv/bin/python scripts/studio-photos.py /tmp/originals/public/images public/images
+```
+
+The first run downloads the BiRefNet model (about 1GB). If `--color-studio` changes, change `STUDIO` in the script to
+match and re-run it.
+
+Uploaded product photos are never touched: the home cover shows them as a framed plate instead of standing them in
+the room.

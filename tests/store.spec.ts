@@ -76,9 +76,13 @@ test('mobile menu and horizontal overflow', async ({ page }) => {
 });
 
 test('optimized model photos are served and used by storefront', async ({ page, request }) => {
-  // The approved mockup crops are the storefront photos; the earlier lookbook set still illustrates the category menu.
-  const photos = ['brand-preview/hero-model', 'brand-preview/shomiz-blue', 'brand-preview/shomiz-cream', 'brand-preview/manto-cream',
-    'brand-preview/manto-pink', 'brand-preview/tshirt-blue', 'lookbook/shomiz-rose', 'lookbook/manto-sage', 'lookbook/tshirt-blue'];
+  // The studio set: the cover portrait, the six lookbook looks (product cards, week of looks, category menu) and the
+  // circle portraits; the old mockup-crop URLs that earlier seeds stored now serve studio photos too.
+  const looks = ['shomiz-cream', 'shomiz-rose', 'manto-sage', 'manto-black', 'tshirt-blue', 'tshirt-white'];
+  const legacy = ['shomiz-blue', 'shomiz-cream', 'manto-cream', 'manto-pink', 'tshirt-blue'];
+  const photos = ['brand-preview/hero-model', ...looks.map(look => 'lookbook/' + look),
+    'lookbook/shomiz-rose-portrait', 'lookbook/manto-sage-portrait', 'lookbook/tshirt-blue-portrait',
+    ...legacy.map(crop => 'brand-preview/' + crop)];
   for (const photo of photos) {
     const response = await request.get('/images/' + photo + '.avif');
     expect(response.ok(), photo).toBe(true);

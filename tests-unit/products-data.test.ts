@@ -1,14 +1,23 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { brandMockupPhotos, byId, bySlug, categories, demoPhotos, getCategory, getVariant, palette, products,
-  standardSizes } from '@/data/products';
+import { byId, bySlug, categories, demoPhotos, getCategory, getVariant, palette, products, standardSizes,
+  studioPhotos } from '@/data/products';
+import { weekLooks } from '@/data/week-looks';
 import { isDemoPhoto } from '@/lib/demo-photos';
 
 // The cart, the catalog lookup API and the backend all accept only ids of this shape.
 const PRODUCT_ID = /^[a-z0-9][a-z0-9-]{1,78}$/;
 const publicFile = (path: string) => existsSync(join(process.cwd(), 'public', path));
+/** An AVIF's pixel size, from its image spatial extents ('ispe') property. */
+function avifSize(path: string) {
+  const bytes = readFileSync(join(process.cwd(), 'public', path));
+  const at = bytes.indexOf('ispe');
+  assert.ok(at > 0, path + ' has no ispe box');
+  return { width: bytes.readUInt32BE(at + 8), height: bytes.readUInt32BE(at + 12) };
+}
+const studioPhotoList = [studioPhotos.cover, studioPhotos.closing, ...Object.values(studioPhotos.portraits), ...Object.values(demoPhotos).flat()];
 
 describe('facets', () => {
   it('has unique category slugs and palette ids with valid hex colors', () => {
@@ -68,8 +77,23 @@ describe('demo catalog', () => {
       assert.ok(product.images.length > 0, product.id + ' has no photo');
       for (const image of product.images) assert.ok(publicFile(image), product.id + ' ' + image);
     }
-    for (const image of [...Object.values(brandMockupPhotos), ...Object.values(demoPhotos).flat()])
-      assert.ok(publicFile(image), image);
+    for (const image of studioPhotoList) assert.ok(publicFile(image), image);
+  });
+
+  it('shows photos large enough for their slots, never the blurry 94px mockup crops', () => {
+    for (const image of [studioPhotos.cover, studioPhotos.closing, ...Object.values(demoPhotos).flat()]) {
+      const { width, height } = avifSize(image);
+      assert.ok(width >= 450 && height >= 590, image + ' is ' + width + '×' + height);
+    }
+    for (const image of Object.values(studioPhotos.portraits)) assert.ok(avifSize(image).width >= 200, image);
+  });
+
+  it('still serves the photo URLs that catalogs seeded from 25 October store, now as studio photos', () => {
+    // The seed never rewrites existing products, so these paths stay in such databases.
+    for (const crop of ['shomiz-blue', 'shomiz-cream', 'manto-cream', 'manto-pink', 'tshirt-blue']) {
+      const { width, height } = avifSize('/images/brand-preview/' + crop + '.avif');
+      assert.ok(width >= 450 && height >= 590, crop + ' is ' + width + '×' + height);
+    }
   });
 
   it('features products from every category and leaves some sold-out sizes to exercise the UI', () => {
@@ -82,12 +106,27 @@ describe('demo catalog', () => {
 describe('demo photos', () => {
   it('recognizes every sample photo, so product pages always say they are not pictures of the real item', () => {
     for (const product of products) for (const image of product.images) assert.ok(isDemoPhoto(image), product.id + ' ' + image);
-    for (const image of Object.values(brandMockupPhotos)) assert.ok(isDemoPhoto(image), image);
-    assert.ok(isDemoPhoto('/images/lookbook/manto-black.avif'), 'the earlier photos, kept for rollback');
+    for (const image of studioPhotoList) assert.ok(isDemoPhoto(image), image);
+    for (const look of weekLooks) assert.ok(isDemoPhoto(look.image), look.image);
   });
   it('does not label uploaded product photos as samples', () => {
     assert.equal(isDemoPhoto('/api/media/0b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e.webp'), false);
     assert.equal(isDemoPhoto('/images/catalog/manto-01.jpg'), false);
+  });
+});
+
+describe('week of looks', () => {
+  it('dresses Saturday to Thursday once each, in order', () => {
+    assert.deepEqual(weekLooks.map(look => look.day), ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه']);
+    assert.equal(new Set(weekLooks.map(look => look.image)).size, weekLooks.length);
+  });
+  it('links every look to products of its category and color, with a full-size photo', () => {
+    for (const look of weekLooks) {
+      assert.ok(categories.some(category => category.slug === look.category), look.day);
+      assert.ok(palette.some(color => color.id === look.color), look.day);
+      assert.ok(products.some(p => p.category === look.category && p.colors.some(c => c.id === look.color)), look.day);
+      assert.ok(avifSize(look.image).width >= 450, look.image);
+    }
   });
 });
 

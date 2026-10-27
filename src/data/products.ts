@@ -3,20 +3,24 @@ import type { CategorySlug, Product } from '@/types/store';
 export { categories, palette, standardSizes } from '@/data/facets';
 import { categories, palette, standardSizes } from '@/data/facets';
 
-/** Exactly the models/outfits cropped from Kasra's previously approved mockup.
- * They are locally hosted prototype-only assets, not photographs of actual inventory.
- * The hero portrait is 458×597; category photos are 94×94, so don't advertise them as HD. */
-export const brandMockupPhotos = {
-  hero: '/images/brand-preview/hero-model.avif',
-  shomiz: '/images/brand-preview/shomiz-blue.avif',
-  manto: '/images/brand-preview/manto-cream.avif',
-  tshirt: '/images/brand-preview/tshirt-blue.avif'
-} as const;
+/** The demo storefront's photos: one AI-generated model, cut out of her backdrop and re-set on the storefront's studio
+ * gray by scripts/studio-photos.py, so a photo and the panel around it read as one surface. Locally hosted demo
+ * imagery, not photographs of actual inventory. The cover portrait is 458×597, the looks 480×640 (the product cards'
+ * 3:4) and the portraits 200×200 crops of the looks for the collection circles. */
+export const studioPhotos = {
+  cover: '/images/brand-preview/hero-model.avif',
+  closing: '/images/lookbook/manto-black.avif',
+  portraits: {
+    shomiz: '/images/lookbook/shomiz-rose-portrait.avif',
+    manto: '/images/lookbook/manto-sage-portrait.avif',
+    tshirt: '/images/lookbook/tshirt-blue-portrait.avif'
+  } satisfies Record<CategorySlug, string>
+};
 
 export const demoPhotos: Record<CategorySlug, readonly [string, string]> = {
-  shomiz: [brandMockupPhotos.hero, '/images/brand-preview/shomiz-blue.avif'],
-  manto: [brandMockupPhotos.manto, '/images/brand-preview/manto-pink.avif'],
-  tshirt: [brandMockupPhotos.tshirt, '/images/brand-preview/shomiz-cream.avif']
+  shomiz: ['/images/lookbook/shomiz-cream.avif', '/images/lookbook/shomiz-rose.avif'],
+  manto: ['/images/lookbook/manto-sage.avif', '/images/lookbook/manto-black.avif'],
+  tshirt: ['/images/lookbook/tshirt-blue.avif', '/images/lookbook/tshirt-white.avif']
 };
 
 const collections: {

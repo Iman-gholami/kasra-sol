@@ -16,7 +16,6 @@ export function ShopByColor({ options }: { options: ShopByColorResult[] }) {
 
   return <section className="container shop-by-color section-block" aria-labelledby="shop-by-color-title">
     <div className="shop-color-heading">
-      <p className="section-kicker">استایل به سبک شما</p>
       <h2 id="shop-by-color-title">خرید بر اساس رنگ</h2>
       <p>رنگ موردعلاقه‌ات رو انتخاب کن و لباس‌های هماهنگ رو ببین.</p>
     </div>

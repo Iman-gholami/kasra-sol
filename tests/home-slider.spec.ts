@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-// The home cover in demo mode: since Palette B it shows the approved mockup portrait as one fixed slide (the first
-// discounted shirt), so there is nothing to rotate. With the API connected, the owner's pick rotates; its autoplay,
+// The home cover in demo mode: it shows the studio cover portrait as one fixed slide (the first discounted shirt),
+// so there is nothing to rotate. With the API connected, the owner's pick rotates; its autoplay,
 // pause control, slide buttons and swipe are tested in tests-admin/admin-panel.spec.ts against the real catalog.
 
-test('shows the approved mockup portrait as a single, still cover linking to its product', async ({ page }) => {
+test('shows the studio cover portrait as a single, still cover linking to its product', async ({ page }) => {
   await page.goto('/');
   const cover = page.getByRole('region', { name: 'محصولات ویژه' });
   await expect(cover.locator('.hero-slide')).toHaveCount(1);
