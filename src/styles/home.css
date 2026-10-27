@@ -69,14 +69,6 @@
   mask-composite: intersect;
   transition: transform 900ms var(--ease-editorial);
 }
-/* The approved mockup crop already contains its own studio shadow and feathered floor.
-   Keep the complete subject opaque; blend only the outermost perimeter into the gray room. */
-.hero-figure-mockup {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 94%, transparent),
-    linear-gradient(to bottom, #000, #000 96%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 8%, #000 94%, transparent),
-    linear-gradient(to bottom, #000, #000 96%, transparent);
-}
 .hero-slide:not([data-active]) .hero-figure { transform: scale(1.04); }
 .hero-figure img { object-fit: cover; object-position: 50% 0; }
 .hero-tag {

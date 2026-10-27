@@ -16,16 +16,13 @@ const box = async (locator: Locator) => { await locator.waitFor(); return (await
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test('the approved mockup portrait and category photos replace remote Unsplash imagery', async ({ page }) => {
+  test('home photographs are the local 3:4 lookbook set, never the 94px mockup crops', async ({ page }) => {
     await page.goto('/');
     const hero = page.locator('.hero-slide[data-active] img').first();
-    await expect(hero).toHaveAttribute('src', /brand-preview%2Fhero-model\.avif/);
-    const categoryPhoto = page.locator('.collection-circle img').first();
-    await expect(categoryPhoto).toHaveAttribute('src', /brand-preview%2F/);
-    await expect(page.locator('.demo-photo-note')).toContainText('ماکاپ تأییدشده');
-    const image = await page.request.get('/images/brand-preview/hero-model.avif');
-    expect(image.ok()).toBeTruthy();
-    expect(image.headers()['content-type']).toContain('image/avif');
+    await expect(hero).toHaveAttribute('src', /lookbook%2Fshomiz-cream\.avif/);
+    const sources = await page.locator('main img').evaluateAll(images => images.map(image => image.getAttribute('src') ?? ''));
+    expect(sources.length).toBeGreaterThan(0);
+    for (const source of sources) expect(source).not.toContain('brand-preview');
   });
 
   test('the cream-and-ink palette is applied to shared chrome and discounted products', async ({ page }) => {

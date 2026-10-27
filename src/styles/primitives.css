@@ -109,8 +109,6 @@
 .collection-circle > span { position: relative; display: block; block-size: 100%; overflow: hidden; border-radius: 50%; background: var(--color-studio); }
 /* The photos are full-length; the circle shows head and shoulders. */
 .collection-circle img { object-fit: cover; object-position: 50% 0; transform: scale(1.7); transform-origin: 50% 4%; }
-/* Cropped exactly from the mockup's circular photos; never zoom a second time. */
-.collection-circle-mockup img { transform: none; object-position: center; }
 @media (hover: hover) { .collection-circles a:hover .collection-circle { border-color: var(--color-text); } }
 
 /* Round paper arrow button every soft link box ends with (the collection rooms and service links); it nudges toward

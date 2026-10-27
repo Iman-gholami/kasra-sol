@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
-import { categories, brandMockupPhotos } from '@/data/products';
+import { categories, lookbookPhotos } from '@/data/products';
 import { getCatalogProducts, getHomeSlides } from '@/lib/backend-products';
 import { ProductGrid } from '@/components/products/product-grid';
 import { ShopByColor } from '@/components/home/shop-by-color';
@@ -32,15 +32,8 @@ export default async function HomePage() {
   const [products, picked] = await Promise.all([getCatalogProducts(), getHomeSlides()]);
   const newest = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const arrivals = newest.slice(0, 4);
-  // The approved mockup depicts one cream-shirt studio campaign. In demo mode,
-  // keep that actual reference portrait in the hero, not a 94px category crop.
-  // When backend images exist, the owner's picks and normal hero rotation are unchanged.
-  const firstDemoHero = products.find(item => item.slug === 'shomiz-01') ?? coverSlides(picked, newest)[0];
-  const heroProducts = process.env.BACKEND_INTERNAL_URL
-    ? coverSlides(picked, newest)
-    : firstDemoHero ? [firstDemoHero] : [];
-  const slides = heroProducts.map(({ id, slug, name, images, price, compareAt }) =>
-    ({ id, slug, name, image: process.env.BACKEND_INTERNAL_URL ? images[0] : brandMockupPhotos.hero, price, compareAt }));
+  const slides = coverSlides(picked, newest).map(({ id, slug, name, images, price, compareAt }) =>
+    ({ id, slug, name, image: images[0], price, compareAt }));
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
   const colors = getShopByColorResults(products);
 
@@ -72,7 +65,7 @@ export default async function HomePage() {
           </Link>
         </li>)}
       </ul>
-      <p className="demo-photo-note"><Info size={15} aria-hidden="true"/> این تصاویر عین مدل‌های ماکاپ تأییدشده هستند و عکس محصولات واقعی فروشگاه نیستند.</p>
+      <p className="demo-photo-note"><Info size={15} aria-hidden="true"/> تصاویر این نسخه با هوش مصنوعی ساخته شده‌اند و برای نمایش حال‌وهوای فروشگاه هستند.</p>
     </section>
 
     <ShopByColor options={colors}/>
@@ -87,7 +80,7 @@ export default async function HomePage() {
 
     <section className="container wide-editorial editorial-band" aria-labelledby="edit-title">
       <div className="editorial-art">
-        <Image src={brandMockupPhotos.hero} alt="مدل نمایشی با شومیز روشن در استودیوی کسرا" fill sizes="(max-width: 600px) 86vw, 460px"/>
+        <Image src={lookbookPhotos.mantoBlack} alt="عکس نمایشی مانتوی مشکی بر تن مدل" fill sizes="(max-width: 600px) 86vw, 460px"/>
       </div>
       <div className="editorial-copy">
         <p className="editorial-super" dir="ltr">THE KASRA EDIT</p>
@@ -112,7 +105,7 @@ export default async function HomePage() {
     </nav>
 
     <section className="container newsletter" aria-labelledby="closing-title">
-      <span className="newsletter-figure"><Image src={brandMockupPhotos.hero} alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>
+      <span className="newsletter-figure"><Image src={lookbookPhotos.tshirtWhite} alt="" fill sizes="(max-width: 600px) 46vw, 300px"/></span>
       <div className="newsletter-copy"><h2 id="closing-title">یک انتخاب برای امروز، یک استایل به سبک تو.</h2><p>لباس‌های موردعلاقه‌ات را پیدا کن و با علامت قلب برای بعد نگه دار.</p></div>
       <Link href="/shop" className="btn btn-primary">دیدن همه لباس‌ها <ArrowLeft size={18} aria-hidden="true"/></Link>
     </section>

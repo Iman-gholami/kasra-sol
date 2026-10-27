@@ -1,14 +1,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { categories } from '@/data/facets';
-import { brandMockupPhotos } from '@/data/products';
+import { lookbookPhotos } from '@/data/products';
 import type { CategorySlug } from '@/types/store';
 
-/** Crops of the exact circular category photographs in the approved Kasra mockup. */
+/** One model photo per collection, for the circles and the home page's collection cards. */
 export const collectionPhotos: Record<CategorySlug, string> = {
-  shomiz: brandMockupPhotos.shomiz,
-  manto: brandMockupPhotos.manto,
-  tshirt: brandMockupPhotos.tshirt
+  shomiz: lookbookPhotos.shomizRose,
+  manto: lookbookPhotos.mantoSage,
+  tshirt: lookbookPhotos.tshirtBlue
 };
 
 /** The collections as story-style circles: a model on the studio sand inside an oxblood ring, the name below.
@@ -18,7 +18,7 @@ export function CollectionCircles() {
   return <ul className="collection-circles">
     {categories.map(category => <li key={category.slug}>
       <Link href={'/category/' + category.slug} prefetch={demoPrefetch}>
-        <span className="collection-circle collection-circle-mockup" aria-hidden="true">
+        <span className="collection-circle" aria-hidden="true">
           <span><Image src={collectionPhotos[category.slug]} alt="" fill sizes="(max-width: 600px) 96px, 132px"/></span>
         </span>
         {category.title}
