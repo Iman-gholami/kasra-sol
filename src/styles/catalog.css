@@ -22,8 +22,34 @@
 /* ---------- Product grid and card ---------- */
 .product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-6) var(--space-4); }
 .product-card { position: relative; display: flex; flex-direction: column; min-inline-size: 0; }
+
+/* Home rows (`components/products/product-rail.tsx`). Every card spans the row's four tracks through subgrids
+   (item → card → info), so the photo, name, price and colour dots each share one line across the row. Phones and
+   tablets scroll the row sideways (bleeding to the screen edge, snapping to each card); from 821px four columns fit the
+   page and only the first four cards show. The category label and colour count stay for catalog pages. */
+.product-rail {
+  display: grid; grid-template-rows: repeat(4, auto); grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--space-4); margin: 0; padding: 0; list-style: none;
+}
+.product-rail > li, .product-rail .product-card { display: grid; grid-row: 1 / span 4; grid-template-rows: subgrid; row-gap: 0; min-inline-size: 0; }
+.product-rail > li:nth-child(n + 5) { display: none; }
+.product-rail .product-info { display: grid; grid-row: span 3; grid-template-rows: subgrid; row-gap: var(--space-1); align-content: start; }
+.product-rail .product-category, .product-rail .color-dots small { display: none; }
+@media (max-width: 820px) {
+  .product-rail {
+    grid-template-columns: none; grid-auto-columns: calc((100% - var(--space-3)) / 2.2); column-gap: var(--space-3);
+    margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter);
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
+  }
+  .product-rail::-webkit-scrollbar { display: none; }
+  .product-rail > li { scroll-snap-align: start; }
+  .product-rail > li:nth-child(n + 5) { display: grid; }
+}
+@media (min-width: 601px) and (max-width: 820px) {
+  .product-rail { grid-auto-columns: calc((100% - 2 * var(--space-4)) / 3.3); column-gap: var(--space-4); }
+}
 .product-visual {
-  position: relative; aspect-ratio: 3 / 4; overflow: hidden; border-radius: var(--radius-md);
+  position: relative; aspect-ratio: 3 / 4; overflow: hidden; border-radius: var(--radius-photo);
   background: var(--color-surface-sunken); timeline-scope: --card-photos;
 }
 /* Touch screens: the photos are a scroll-snap track (swipe follows RTL natively). */
@@ -33,7 +59,7 @@
 }
 .product-image-link::-webkit-scrollbar { display: none; }
 .product-slide { position: relative; flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; }
-.product-image-link img { object-fit: cover; object-position: center 14%; transition: transform 1400ms var(--ease-editorial), opacity 700ms var(--ease-editorial); }
+.product-image-link img { object-fit: cover; object-position: center 14%; transition: transform var(--duration-photo) var(--ease-standard), opacity var(--duration-photo) var(--ease-standard); }
 /* Where the photo is: two short rules; a scroll-driven thumb slides across them where supported. */
 .product-photo-bar {
   position: absolute; inset-block-end: var(--space-3); inset-inline: 34%; block-size: 2px; pointer-events: none;
@@ -46,21 +72,22 @@
   }
   @keyframes card-photo-thumb { to { transform: translateX(calc(-100% - 4px)); } }
 }
-/* Fine pointers: the second photo crossfades in on hover (or keyboard focus within the card) over a slow zoom. */
+/* Fine pointers: the second photo crossfades in on hover (or keyboard focus within the card) over a slight zoom. */
 @media (hover: hover) and (pointer: fine) {
   .product-image-link { display: block; overflow: hidden; }
   .product-slide { position: absolute; inset: 0; }
   .product-slide + .product-slide img { opacity: 0; }
   .product-card:is(:hover, :focus-within) .product-slide + .product-slide img { opacity: 1; }
-  .product-card:hover .product-image-link img { transform: scale(1.045); }
+  .product-card:hover .product-image-link img { transform: scale(1.03); }
   .product-photo-bar { display: none; }
 }
-/* Sale and sold-out tags: a small paper pill on the photo; the discount speaks in the accent, sold out stays neutral. */
+/* Tags: a small paper pill on the photo. The discount speaks in the accent; new and sold out stay ink and muted. */
 .product-badge {
-  position: absolute; inset-block-start: var(--space-3); inset-inline-start: var(--space-3); padding: 3px 12px;
+  position: absolute; inset-block-start: var(--space-3); inset-inline-start: var(--space-3); padding: 2px 10px;
   border-radius: var(--radius-pill); background: var(--color-surface); color: var(--color-accent);
-  font-size: var(--text-xs); font-weight: var(--font-weight-bold); line-height: 1.8;
+  font-size: var(--text-xs); font-weight: var(--font-weight-semibold); line-height: 1.8;
 }
+.new-tag { color: var(--color-text); }
 .is-sold-out .product-badge { color: var(--color-text-muted); }
 .is-sold-out .product-image-link { filter: grayscale(0.5); opacity: 0.75; }
 /* The heart sits on a 34px paper disc inside its 44px target, aligned with the tag's top edge. */
@@ -91,7 +118,7 @@
 .product-link {
   display: block; padding-block: 12px; margin-block: -12px;
   text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 6px; text-decoration-thickness: 1px;
-  transition: text-decoration-color 400ms var(--ease-editorial);
+  transition: text-decoration-color var(--duration-base) var(--ease-standard);
 }
 .product-link > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .product-link::after { content: ""; position: absolute; inset: 0; }

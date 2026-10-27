@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
 import { categories, lookbookPhotos } from '@/data/products';
 import { getCatalogProducts, getHomeSlides } from '@/lib/backend-products';
-import { ProductGrid } from '@/components/products/product-grid';
+import { ProductRail } from '@/components/products/product-rail';
 import { ShopByColor } from '@/components/home/shop-by-color';
 import { HeroSlider } from '@/components/home/hero-slider';
 import { collectionPhotos } from '@/components/home/collection-circles';
@@ -31,7 +31,7 @@ export default async function HomePage() {
   // With the API enabled every section reflects published products only: archived ones disappear and new ones appear.
   const [products, picked] = await Promise.all([getCatalogProducts(), getHomeSlides()]);
   const newest = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const arrivals = newest.slice(0, 4);
+  const arrivals = newest.slice(0, 8);
   const slides = coverSlides(picked, newest).map(({ id, slug, name, images, price, compareAt }) =>
     ({ id, slug, name, image: images[0], price, compareAt }));
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
@@ -74,7 +74,7 @@ export default async function HomePage() {
         <div><p className="section-kicker">انتخاب تازه</p><h2 id="arrivals-title">تازه رسیده‌ها</h2></div>
         <Link className="text-link" href="/shop?sort=newest">مشاهده همه <ArrowLeft size={18} aria-hidden="true"/></Link>
       </div>
-      <ProductGrid products={arrivals}/>
+      <ProductRail products={arrivals} label="تازه‌ترین محصولات"/>
     </section>
 
     <section className="container wide-editorial editorial-band" aria-labelledby="edit-title">
@@ -94,7 +94,7 @@ export default async function HomePage() {
         <div><p className="section-kicker">از میان کالکشن‌ها</p><h2 id="picks-title">منتخب کسری</h2></div>
         <Link className="text-link" href="/shop?sort=featured">همه پیشنهادها <ArrowLeft size={18} aria-hidden="true"/></Link>
       </div>
-      <ProductGrid products={picks}/>
+      <ProductRail products={picks} label="منتخب کسری"/>
     </section>
 
     <nav className="container service-links" aria-label="راهنمای خرید از کسری">

@@ -7,7 +7,12 @@ import { discountPercent, formatNumber, formatPercent } from '@/lib/format';
 import type { Product } from '@/types/store';
 
 export type ProductCardData = Pick<Product,
-  'id' | 'slug' | 'name' | 'category' | 'price' | 'compareAt' | 'images' | 'colors'> & Partial<Pick<Product, 'variants'>>;
+  'id' | 'slug' | 'name' | 'category' | 'price' | 'compareAt' | 'images' | 'colors'> & Partial<Pick<Product, 'variants' | 'createdAt'>>;
+
+/** A product counts as new for this long after it is added. */
+const NEW_FOR_MS = 30 * 24 * 60 * 60 * 1000;
+/** Read per render; a server/client clock difference cannot flip a 30-day window in practice. */
+const isNew = (createdAt: string | undefined) => Boolean(createdAt) && Date.now() - Date.parse(createdAt!) < NEW_FOR_MS;
 
 const SIZES = '(max-width: 600px) 46vw, (max-width: 1080px) 31vw, (max-width: 1439px) 24vw, 330px';
 
@@ -20,6 +25,7 @@ export type CardImageLoading = 'lcp' | 'eager' | 'lazy';
  * screens (a CSS scroll-snap track with a scroll-driven position bar; no client JavaScript). */
 export function ProductCard({ product, loading = 'lazy', sizes = SIZES }: { product: ProductCardData; loading?: CardImageLoading; sizes?: string }) {
   const discount = discountPercent(product.price, product.compareAt);
+  const fresh = isNew(product.createdAt);
   const category = categories.find(item => item.slug === product.category)?.title ?? '';
   const soldOut = product.variants ? !product.variants.some(variant => variant.stock > 0) : false;
   const href = '/product/' + product.slug;
@@ -34,8 +40,10 @@ export function ProductCard({ product, loading = 'lazy', sizes = SIZES }: { prod
         {alternate && <span className="product-slide"><Image src={alternate} alt="" fill sizes={sizes} fetchPriority="low"/></span>}
       </Link>
       {alternate && <span className="product-photo-bar" aria-hidden="true"/>}
+      {/* One tag at most, by what matters to a shopper: sold out, then the discount, then new. */}
       {soldOut ? <span className="product-badge">ناموجود</span>
-        : discount > 0 && <span className="product-badge discount-tag">{formatPercent(discount)} تخفیف</span>}
+        : discount > 0 ? <span className="product-badge discount-tag">{formatPercent(discount)} تخفیف</span>
+          : fresh && <span className="product-badge new-tag">جدید</span>}
       <WishlistButton productId={product.id} productName={product.name}/>
     </div>
     <div className="product-info">
