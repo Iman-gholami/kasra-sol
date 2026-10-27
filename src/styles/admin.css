@@ -559,3 +559,18 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .admin-table th { background: none; }
   .admin-subcard, .admin-table tr { break-inside: avoid; }
 }
+
+
+/* Compact homepage slider management: current arrangement first, editing inline. */
+.admin-slider-summary { display:flex; flex-direction:column; gap:3px; padding:10px 12px; border-radius:12px; background:var(--admin-surface, #f5f8f8); }
+.admin-slider-summary strong { font-size:14px; }
+.admin-slider-current { max-height:340px; overflow-y:auto; }
+.admin-slider-current .admin-slide { padding:7px 10px; gap:10px; }
+.admin-slider-current .admin-product-image { flex-shrink:0; }
+.admin-slider-bottom { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.admin-slider-bottom .admin-btn-primary { margin-inline-start:auto; }
+.admin-slider-picker { padding:12px; border:1px solid var(--admin-line); border-radius:12px; background:#fafbfc; display:grid; gap:12px; }
+@media (max-width:640px) {
+  .admin-slider-current { max-height:none; }
+  .admin-slider-bottom .admin-btn-primary { margin-inline-start:0; }
+}
