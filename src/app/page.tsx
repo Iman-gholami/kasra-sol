@@ -1,17 +1,19 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, ArrowUpLeft, Info } from 'lucide-react';
+import { ArrowLeft, ArrowUpLeft } from 'lucide-react';
 import { categories, lookbookPhotos } from '@/data/products';
 import { getCatalogProducts, getHomeSlides } from '@/lib/backend-products';
 import { ProductRail } from '@/components/products/product-rail';
 import { ShopByColor } from '@/components/home/shop-by-color';
 import { HeroSlider } from '@/components/home/hero-slider';
 import { collectionPhotos } from '@/components/home/collection-circles';
+import { SectionHeading } from '@/components/home/section-heading';
+import { formatNumber } from '@/lib/format';
 import { getShopByColorResults } from '@/lib/shop-by-color';
 import type { Product } from '@/types/store';
 
-// Each room's figure takes about 60% of its panel (three panels side by side from 1081px, stacked below).
-const roomFigureSizes = '(max-width: 600px) 52vw, (max-width: 1080px) 40vw, (max-width: 1520px) 19vw, 290px';
+// Collection cards: about 2.2 in view on phones, then up to three across the page width.
+const categorySizes = '(max-width: 600px) 44vw, (max-width: 1520px) 31vw, 470px';
 
 // The cover photo runs edge to edge on phones and stands as a plate of at most 600px beside the copy from 601px.
 const slideSizes = '(max-width: 600px) 100vw, (max-width: 820px) 420px, 600px';
@@ -36,6 +38,11 @@ export default async function HomePage() {
     ({ id, slug, name, image: images[0], price, compareAt }));
   const picks = ['manto-03', 'shomiz-06', 'tshirt-02', 'manto-08'].map(slug => products.find(p => p.slug === slug)!).filter(Boolean);
   const colors = getShopByColorResults(products);
+  // With the API, each collection shows its newest product's photo, so real photography appears without code changes.
+  const collections = categories.map(({ slug, title }) => ({
+    slug, title, count: products.filter(item => item.category === slug).length,
+    photo: (process.env.BACKEND_INTERNAL_URL && newest.find(item => item.category === slug)?.images[0]) || collectionPhotos[slug]
+  }));
 
   return <>
     <section className="hero" aria-labelledby="hero-title">
@@ -50,30 +57,23 @@ export default async function HomePage() {
       {slides.length > 0 && <HeroSlider slides={slides} sizes={slideSizes}/>}
     </section>
 
-    <section className="container section-block category-section" aria-labelledby="categories-title">
-      <div className="section-heading">
-        <div><p className="section-kicker">از کجا شروع کنیم؟</p><h2 id="categories-title">کالکشن‌ها رو کشف کن</h2></div>
-        <p>هر روز، یک سبک تازه از خودت.</p>
-      </div>
-      <ul className="category-grid">
-        {categories.map(category => <li key={category.slug}>
-          <Link href={'/category/' + category.slug} prefetch={demoPrefetch} className="category-tile">
-            <span className="category-figure"><Image src={collectionPhotos[category.slug]} alt="" fill sizes={roomFigureSizes}/></span>
-            <span className="category-description"><span className="category-name">{category.title}</span><span>{category.description}</span></span>
-            <span className="arrow-disc" aria-hidden="true"><ArrowUpLeft size={20}/></span>
+    <section className="container home-section category-section" aria-labelledby="categories-title">
+      <SectionHeading id="categories-title" title="دسته‌بندی‌ها" href="/shop" linkLabel="همه‌ی محصولات"/>
+      <ul className="category-row">
+        {collections.map(({ slug, title, photo, count }) => <li key={slug}>
+          <Link href={'/category/' + slug} prefetch={demoPrefetch} className="category-card">
+            <span className="category-card-photo"><Image src={photo} alt="" fill sizes={categorySizes}/></span>
+            <span className="category-card-name">{title}</span>
+            <span className="category-card-count">{formatNumber(count)} مدل</span>
           </Link>
         </li>)}
       </ul>
-      <p className="demo-photo-note"><Info size={15} aria-hidden="true"/> تصاویر این نسخه با هوش مصنوعی ساخته شده‌اند و برای نمایش حال‌وهوای فروشگاه هستند.</p>
     </section>
 
     <ShopByColor options={colors}/>
 
-    <section className="container section-block" aria-labelledby="arrivals-title">
-      <div className="section-heading">
-        <div><p className="section-kicker">انتخاب تازه</p><h2 id="arrivals-title">تازه رسیده‌ها</h2></div>
-        <Link className="text-link" href="/shop?sort=newest">مشاهده همه <ArrowLeft size={18} aria-hidden="true"/></Link>
-      </div>
+    <section className="container home-section" aria-labelledby="arrivals-title">
+      <SectionHeading id="arrivals-title" title="تازه‌ترین‌ها" href="/shop?sort=newest" linkLabel="مشاهده‌ی همه"/>
       <ProductRail products={arrivals} label="تازه‌ترین محصولات"/>
     </section>
 
@@ -89,11 +89,8 @@ export default async function HomePage() {
       </div>
     </section>
 
-    <section className="container section-block" aria-labelledby="picks-title">
-      <div className="section-heading">
-        <div><p className="section-kicker">از میان کالکشن‌ها</p><h2 id="picks-title">منتخب کسری</h2></div>
-        <Link className="text-link" href="/shop?sort=featured">همه پیشنهادها <ArrowLeft size={18} aria-hidden="true"/></Link>
-      </div>
+    <section className="container home-section" aria-labelledby="picks-title">
+      <SectionHeading id="picks-title" title="منتخب کسری" href="/shop?sort=featured" linkLabel="مشاهده‌ی همه"/>
       <ProductRail products={picks} label="منتخب کسری"/>
     </section>
 
