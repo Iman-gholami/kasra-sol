@@ -77,17 +77,17 @@ test('mobile menu and horizontal overflow', async ({ page }) => {
 
 test('optimized model photos are served and used by storefront', async ({ page, request }) => {
   // The studio set: the cover portrait, the six lookbook looks (product cards, week of looks, category menu) and the
-  // circle portraits. The 94px mockup crops they replace are gone.
+  // circle portraits; the old mockup-crop URLs that earlier seeds stored now serve studio photos too.
   const looks = ['shomiz-cream', 'shomiz-rose', 'manto-sage', 'manto-black', 'tshirt-blue', 'tshirt-white'];
+  const legacy = ['shomiz-blue', 'shomiz-cream', 'manto-cream', 'manto-pink', 'tshirt-blue'];
   const photos = ['brand-preview/hero-model', ...looks.map(look => 'lookbook/' + look),
-    'lookbook/shomiz-rose-portrait', 'lookbook/manto-sage-portrait', 'lookbook/tshirt-blue-portrait'];
+    'lookbook/shomiz-rose-portrait', 'lookbook/manto-sage-portrait', 'lookbook/tshirt-blue-portrait',
+    ...legacy.map(crop => 'brand-preview/' + crop)];
   for (const photo of photos) {
     const response = await request.get('/images/' + photo + '.avif');
     expect(response.ok(), photo).toBe(true);
     expect(response.headers()['content-type']).toContain('image/avif');
   }
-  for (const crop of ['shomiz-blue', 'shomiz-cream', 'manto-cream', 'manto-pink', 'tshirt-blue'])
-    expect((await request.get('/images/brand-preview/' + crop + '.avif')).status(), crop).toBe(404);
   await page.goto('/');
   await expect(page.locator('.hero-visual img')).toHaveAttribute('src', /hero-model.avif/);
   await page.goto('/category/manto');

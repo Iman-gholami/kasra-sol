@@ -88,6 +88,14 @@ describe('demo catalog', () => {
     for (const image of Object.values(studioPhotos.portraits)) assert.ok(avifSize(image).width >= 200, image);
   });
 
+  it('still serves the photo URLs that catalogs seeded from 25 October store, now as studio photos', () => {
+    // The seed never rewrites existing products, so these paths stay in such databases.
+    for (const crop of ['shomiz-blue', 'shomiz-cream', 'manto-cream', 'manto-pink', 'tshirt-blue']) {
+      const { width, height } = avifSize('/images/brand-preview/' + crop + '.avif');
+      assert.ok(width >= 450 && height >= 590, crop + ' is ' + width + '×' + height);
+    }
+  });
+
   it('features products from every category and leaves some sold-out sizes to exercise the UI', () => {
     for (const category of categories)
       assert.ok(products.some(p => p.category === category.slug && p.featured), category.slug);

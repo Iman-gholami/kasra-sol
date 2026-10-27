@@ -21,10 +21,13 @@ every file keeps its source's pixel size.
 | `lookbook/{shomiz-cream,shomiz-rose,manto-sage,manto-black,tshirt-blue}.avif` | 480×640 | Product cards and galleries, week of looks, category menu, closing room |
 | `lookbook/tshirt-white.avif` | 450×600 | The same |
 | `lookbook/{shomiz-rose,manto-sage,tshirt-blue}-portrait.avif` | 200×200 | Collection circles |
+| `brand-preview/{shomiz-blue,shomiz-cream,manto-cream,manto-pink,tshirt-blue}.avif` | 450–480 wide | Copies at the old crop URLs, for catalogs seeded from 25 October |
 
 The lookbook files keep their names, so products that already reference them in the database pick up the new photos
-with no data change. The five 94×94 mockup crops were deleted; `tests-unit/products-data.test.ts` fails if a demo photo
-smaller than its slot comes back.
+with no data change. The five 94×94 mockup crops are gone too, but not their URLs: catalogs seeded from 25 October store
+`brand-preview/{shomiz-blue,shomiz-cream,manto-cream,manto-pink,tshirt-blue}.avif`, and the seed never rewrites existing
+products, so each URL now serves a copy of the studio photo that holds its slot (`LEGACY` in the script).
+`tests-unit/products-data.test.ts` fails if a demo photo smaller than its slot comes back, at any of these URLs.
 
 ## Re-running
 

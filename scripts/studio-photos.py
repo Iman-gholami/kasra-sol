@@ -13,6 +13,7 @@ SOURCE_DIR holds the originals in the same layout as public/images (lookbook/*.a
 They are the files as of commit 381c640: git archive 381c640 public/images/lookbook public/images/brand-preview.
 """
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -26,6 +27,10 @@ SHADOW = np.array([118, 123, 133], dtype=np.float32) / 255  # the floor's shade 
 LOOKS = ['shomiz-cream', 'shomiz-rose', 'manto-black', 'manto-sage', 'tshirt-blue', 'tshirt-white']
 PORTRAITS = ['shomiz-rose', 'manto-sage', 'tshirt-blue']  # the collection circles
 PORTRAIT_SIZE = 200
+# Catalogs seeded from 25 October store these mockup-crop URLs (the seed never rewrites existing products), so each
+# keeps serving the studio photo that now holds its slot (same category, same position in the product's photos).
+LEGACY = {'shomiz-blue': 'shomiz-rose', 'manto-cream': 'manto-sage', 'manto-pink': 'manto-black',
+          'tshirt-blue': 'tshirt-blue', 'shomiz-cream': 'tshirt-white'}
 
 
 def box_blur(a: np.ndarray, r: int) -> np.ndarray:
@@ -110,6 +115,9 @@ def main(source: Path, out: Path):
         look = name.split('/')[-1]
         if look in PORTRAITS:
             save(portrait(photo, alpha), out / 'lookbook' / (look + '-portrait.avif'))
+    for crop, look in LEGACY.items():
+        shutil.copyfile(out / 'lookbook' / (look + '.avif'), out / 'brand-preview' / (crop + '.avif'))
+        print('copied', look, 'to brand-preview/' + crop)
 
 
 if __name__ == '__main__':
