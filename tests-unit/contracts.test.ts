@@ -205,7 +205,11 @@ describe('admin panel ↔ API', () => {
     const uuid = '0b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e';
     for (const { method, path } of routes) {
       if (dedicated.includes(method + ' ' + path)) continue;
-      const concrete = path.replace(/^(products)\/:id/, '$1/manto-01').replace(/:id/g, uuid);
+      // Shop receipts, sales and held invoices are numbered (serial ids); `:code` is a shop label's EAN-13
+      // (src/lib/ean13.ts), which the proxy accepts as 13 digits.
+      const concrete = path.replace(/^(products)\/:id/, '$1/manto-01')
+        .replace(/^(stock-receipts|store-sales|store-holds)\/:id/, '$1/42')
+        .replace(/:id/g, uuid).replace(/:code/g, '2000000000015');
       const handler = adminProxy[method as 'GET' | 'POST' | 'PATCH' | 'PUT'];
       assert.ok(handler, method + ' is not proxied at all');
       const request = new NextRequest('http://shop.test/api/admin/' + concrete, { method,

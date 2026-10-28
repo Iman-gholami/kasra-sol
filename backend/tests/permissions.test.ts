@@ -6,9 +6,10 @@ const OWNER_ONLY: Permission[] = ['staff:manage', 'payments:configure'];
 
 it('gives each role its documented defaults', () => {
   assert.deepEqual(effectivePermissions('owner').sort(), [...PERMISSIONS].sort());
+  // sales:pos is the shop counter (docs/STORE-INVENTORY.md): staff and managers sell there by default.
   assert.deepEqual(effectivePermissions('manager').sort(), ['inventory:read', 'inventory:write', 'orders:export',
-    'orders:fulfill', 'orders:read', 'products:price', 'products:read', 'products:write', 'reports:read']);
-  assert.deepEqual(effectivePermissions('staff').sort(), ['inventory:read', 'orders:read', 'products:read']);
+    'orders:fulfill', 'orders:read', 'products:price', 'products:read', 'products:write', 'reports:read', 'sales:pos']);
+  assert.deepEqual(effectivePermissions('staff').sort(), ['inventory:read', 'orders:read', 'products:read', 'sales:pos']);
 });
 it('never lets a manager or staff member hold an owner-only permission, whatever their grants', () => {
   for (const role of ['manager', 'staff'] as const)

@@ -40,12 +40,32 @@ const ENDPOINTS: [method: string, route: string, permission: Permission][] = [
   ['GET', '/v1/admin/reports/overview', 'reports:read'],
   ['GET', '/v1/admin/reports/traffic', 'reports:read'],
   ['GET', '/v1/admin/home-slider', 'products:read'],
-  ['PUT', '/v1/admin/home-slider', 'products:write']
+  ['PUT', '/v1/admin/home-slider', 'products:write'],
+  // Shop and website stock (store-routes.ts): labels and receiving, the counter, and voids.
+  ['POST', '/v1/admin/products/:id/barcodes', 'inventory:read'],
+  ['GET', '/v1/admin/barcodes/:code', 'inventory:read'],
+  ['GET', '/v1/admin/stock-receipts', 'inventory:read'],
+  ['GET', '/v1/admin/stock-receipts/:id', 'inventory:read'],
+  ['POST', '/v1/admin/stock-receipts', 'inventory:write'],
+  ['POST', '/v1/admin/store-sales', 'sales:pos'],
+  ['GET', '/v1/admin/store-sales', 'sales:pos'],
+  ['POST', '/v1/admin/store-sales/:id/void', 'inventory:write'],
+  ['GET', '/v1/admin/store-holds', 'sales:pos'],
+  ['POST', '/v1/admin/store-holds', 'sales:pos'],
+  ['POST', '/v1/admin/store-holds/:id/resume', 'sales:pos'],
+  ['DELETE', '/v1/admin/store-holds/:id', 'sales:pos'],
+  // Custom roles (role-routes.ts).
+  ['GET', '/v1/admin/roles', 'staff:manage'],
+  ['POST', '/v1/admin/roles', 'staff:manage'],
+  ['PUT', '/v1/admin/roles/:id', 'staff:manage'],
+  ['DELETE', '/v1/admin/roles/:id', 'staff:manage']
 ];
 // Session endpoints work for any signed-in account; the public image route needs no session.
 const SESSION_ONLY = ['POST /v1/admin/auth/login', 'GET /v1/admin/auth/me', 'POST /v1/admin/auth/logout',
   'POST /v1/admin/auth/password', 'GET /v1/media/:file'];
-const concrete = (route: string) => route.replace('/products/:id', '/products/manto-01').replace(':id', UUID);
+// Products use their slug, shop receipts/sales/held invoices a serial number, labels an EAN-13.
+const concrete = (route: string) => route.replace('/products/:id', '/products/manto-01')
+  .replace(/\/(stock-receipts|store-sales|store-holds)\/:id/, '/$1/42').replace(':code', '2000000000015').replace(':id', UUID);
 
 type Account = { id?: string; role: Role; grants?: Permission[]; revokes?: Permission[] };
 /** Signs `account` in under TOKEN; every other query gets `rest` (default: an error, i.e. "past the guard"). */
@@ -124,7 +144,7 @@ describe('the signed-in account', () => {
   it('describes itself with its effective permissions and never its password hash', async () => {
     signedIn({ role: 'staff', grants: ['orders:export'], revokes: ['inventory:read'] });
     const { user } = (await send(app, 'GET', '/v1/admin/auth/me')).json();
-    assert.deepEqual(user.permissions.sort(), ['orders:export', 'orders:read', 'products:read']);
+    assert.deepEqual(user.permissions.sort(), ['orders:export', 'orders:read', 'products:read', 'sales:pos']);
     assert.ok(!JSON.stringify(user).includes('password'));
   });
 
@@ -191,7 +211,8 @@ describe('login', () => {
   const login = (password: string, username = 'owner') =>
     app.inject({ method: 'POST', url: '/v1/admin/auth/login', payload: { username, password } });
   function accounts(rows: object[]) {
-    database(query => query.text.startsWith('SELECT * FROM admin_users') ? { rows } : { rows: [] });
+    // The account lookup by username (it also reads the account's custom role, if any).
+    database(query => query.text.includes('FROM admin_users') && query.text.includes('username=$1') ? { rows } : { rows: [] });
   }
   beforeEach(async () => { passwordHash ||= await hashPassword('the correct password'); });
 
