@@ -45,7 +45,9 @@ Documentation-only changes (`docs/`, `*.md`, `.claude/`) do not start a release.
 - Do not trigger the Release workflow or any Production operations task without telling the owner what it will
   do; every such run waits for the owner's approval in GitHub anyway.
 - Never weaken the gate: keep `environment: production` and the `production-gate` action on every job that uses the
-  production secrets, and keep those secrets environment-scoped (not repository secrets).
+  production secrets or the `kasra-prod` runner, keep those secrets environment-scoped (not repository secrets),
+  never give the runner user `github-runner` Docker access or more sudo rights, and never let `kasra-gate` run
+  anything without checking `DEPLOY_TOKEN`.
 - Actions logs are public. Never print secrets, `.env` contents, raw application logs or customer data; use
   `status.sh`/`logfilter.py` output only.
 - Migrations must stay backward compatible with the previous release (see DEPLOYMENT.md).

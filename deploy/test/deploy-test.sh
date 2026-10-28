@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # End-to-end test of the server scripts on a DISPOSABLE machine (the GitHub runner in images.yml):
-# provision, first deployment, owner creation, a second release, rollback, a broken release that must
-# roll itself back, backup and restore, and the sanitized status report. Never run it on the server.
+# provision, the runner installer and kasra-gate (privileges, token check), a first deployment through
+# the gate as the release workflow does it, owner creation, a second release, rollback, a broken release
+# that must roll itself back, backup and restore, and the sanitized status report. Never run it on the server.
 # Usage: sudo KASRA_TEST_MACHINE=yes deploy/test/deploy-test.sh <commit>
 #   (images kasra-frontend:<commit> and kasra-backend:<commit> must already be loaded)
-#   SKIP_PROVISION=yes skips provision.sh where there is no systemd/apt (prepares /opt/kasra directly).
+#   SKIP_PROVISION=yes skips provision.sh where there is no systemd/apt (prepares /opt/kasra directly) and
+#   installs the runner pieces offline.
 set -euo pipefail
 release=${1:?usage: deploy-test.sh <commit>}
 [ "${KASRA_TEST_MACHINE:-}" = yes ] || { echo "Refusing: this test replaces /opt/kasra. Set KASRA_TEST_MACHINE=yes on a disposable machine."; exit 1; }
@@ -25,7 +27,7 @@ if [ "${SKIP_PROVISION:-no}" = yes ]; then
   install -d -m 0700 "$KASRA_DIR" "$BIN" "$KASRA_DIR/releases" "$KASRA_DIR/incoming" "$BACKUP_DIR"
   install -m 0700 "$DEPLOY"/server/*.sh "$DEPLOY"/server/*.py "$BIN/"
   printf '%s\n' POSTGRES_USER=kasra POSTGRES_DB=kasra "POSTGRES_PASSWORD=$(openssl rand -hex 32)" \
-    "ORDER_TOKEN_SECRET=$(openssl rand -hex 32)" "ADMIN_API_KEY=$(openssl rand -hex 32)" \
+    "ORDER_TOKEN_SECRET=$(openssl rand -hex 32)" "ADMIN_API_KEY=$(openssl rand -hex 32)" "REDIS_PASSWORD=$(openssl rand -hex 32)" \
     NEXT_PUBLIC_SITE_URL=https://127.0.0.1 SEED_DEMO_DATA=true KASRA_RELEASE= KASRA_PREVIOUS_RELEASE= > "$ENV_FILE"
   chmod 600 "$ENV_FILE"
 else
@@ -36,14 +38,34 @@ else
   expect_env ORDER_TOKEN_SECRET "$secret"
   systemctl is-enabled --quiet kasra-backup.timer || fail "backup timer not enabled"
 fi
-for image in $(KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x NEXT_PUBLIC_SITE_URL=x \
+for image in $(KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x REDIS_PASSWORD=x NEXT_PUBLIC_SITE_URL=x \
     docker compose -f "$DEPLOY/compose.production.yaml" config --images | grep -v '^kasra-'); do
   docker image inspect "$image" >/dev/null 2>&1 || docker pull -q "$image"
 done
 
-group "First deployment"
-bash "$DEPLOY/server/deploy.sh" "$release"
+group "Runner user and kasra-gate"
+token=$(openssl rand -hex 32)
+offline=(); [ "${SKIP_PROVISION:-no}" = yes ] && offline=(--offline)
+KASRA_TEST_TOKEN=$token bash "$DEPLOY/server/install-runner.sh" --test --rotate-token "${offline[@]}"
+as_runner() { runuser -u github-runner -- "$@"; }
+gate() { printf '%s\n' "$token" | as_runner sudo -n /usr/local/sbin/kasra-gate "$@"; }
+if as_runner sudo -n true 2>/dev/null; then fail "github-runner may run other commands as root"; fi
+if as_runner docker ps >/dev/null 2>&1; then fail "github-runner can use Docker"; fi
+if printf 'wrong\n' | as_runner sudo -n /usr/local/sbin/kasra-gate status >/dev/null 2>&1; then fail "the gate accepted a wrong token"; fi
+if as_runner sudo -n /usr/local/sbin/kasra-gate status </dev/null >/dev/null 2>&1; then fail "the gate ran without a token"; fi
+echo "The runner user can do nothing as root without DEPLOY_TOKEN"
+# A checkout and downloaded bundle as the release job has them, owned by the runner user.
+workspace=$(mktemp -d /home/github-runner/workspace.XXXXXX)
+cp -r "$DEPLOY" "$workspace/deploy"
+mkdir "$workspace/bundle"
+docker save "kasra-frontend:$release" "kasra-backend:$release" | gzip -1 > "$workspace/bundle/kasra-images-$release.tar.gz"
+chown -R github-runner: "$workspace"
+[ -z "$(gate infra-missing "$workspace")" ] || fail "infra-missing reports images that are present"
+
+group "First deployment (through the gate)"
+gate deploy "$release" "$workspace"
 expect_env KASRA_RELEASE "$release"
+[ ! -e "$workspace/bundle/kasra-images-$release.tar.gz" ] || fail "the gate left the bundle in the workspace"
 [ "$(product_total)" = 36 ] || fail "demo catalog not seeded"
 (cd "$REPO/backend" && node tests/smoke.mjs) || fail "API smoke test"
 for path in / /shop /product/manto-01 /category/manto /cart /admin/login; do

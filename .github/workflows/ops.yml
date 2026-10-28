@@ -1,6 +1,7 @@
 name: Production operations
 # Server tasks outside a normal release. Every run uses the protected "production" environment, so it
 # waits for the owner's approval (Actions > this run > Review deployments) before touching the server.
+# It runs on the server's own runner and acts only through kasra-gate with DEPLOY_TOKEN (see release.yml).
 # Logs are public: the scripts print no secrets and strip personal data from application logs.
 on:
   workflow_dispatch:
@@ -52,7 +53,7 @@ concurrency:
 jobs:
   run:
     name: ${{ inputs.task }}
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, kasra-prod]
     timeout-minutes: 30
     environment:
       name: production
@@ -87,45 +88,32 @@ jobs:
             provision) [[ $SITE_URL =~ ^https://[a-z0-9.-]+$ ]] || fail "set the repository variable PRODUCTION_SITE_URL first (e.g. https://<server IP>)" ;;
             status) [[ $LOG_WINDOW =~ ^[0-9]+[smh]$ ]] || fail "log_window looks like 30m or 6h" ;;
           esac
-      - uses: ./.github/actions/production-ssh
-        with:
-          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-      - name: Upload this commit's server scripts
-        if: contains(fromJSON('["inspect", "provision", "enable-domain"]'), inputs.task)
-        run: |
-          dir=$(tar -czf - deploy | ssh kasra-prod 'd=$(mktemp -d /root/kasra-setup.XXXXXX) && tar -xzf - -C "$d" && echo "$d"')
-          echo "SETUP_DIR=$dir" >> "$GITHUB_ENV"
       - name: Run ${{ inputs.task }}
         env:
-          SERVER_IP: ${{ secrets.SSH_HOST }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
           OWNER_PASSWORD: ${{ secrets.ADMIN_OWNER_PASSWORD }}
         run: |
           set -euo pipefail
-          remote() { ssh kasra-prod "$(printf '%q ' "$@")"; }
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::The production environment has no DEPLOY_TOKEN secret (printed by deploy/server/install-runner.sh)."
+            exit 1
+          fi
+          gate() { printf '%s\n' "$DEPLOY_TOKEN" | sudo -n /usr/local/sbin/kasra-gate "$@"; }
           case "$TASK" in
-            inspect) remote bash "$SETUP_DIR/deploy/server/inspect.sh" ;;
+            inspect) gate inspect "$GITHUB_WORKSPACE" ;;
             provision)
-              remote bash "$SETUP_DIR/deploy/server/inspect.sh"
-              remote env SERVER_IP="$SERVER_IP" SITE_URL="$SITE_URL" SEED_DEMO_DATA="$DEMO_DATA" HARDEN="$HARDEN" \
-                bash "$SETUP_DIR/deploy/server/provision.sh" ;;
-            status) remote /opt/kasra/bin/status.sh "$LOG_WINDOW" ;;
-            backup) remote /opt/kasra/bin/backup.sh manual ;;
-            rollback) remote /opt/kasra/bin/rollback.sh ${TARGET:+"$TARGET"} ;;
-            restore) remote /opt/kasra/bin/restore.sh "$TARGET" ${EXTRA:+"$EXTRA"} ;;
+              gate inspect "$GITHUB_WORKSPACE"
+              gate provision "$GITHUB_WORKSPACE" "$SITE_URL" "$DEMO_DATA" "$HARDEN" ;;
+            status) gate status "$LOG_WINDOW" ;;
+            backup) gate backup ;;
+            rollback) gate rollback ${TARGET:+"$TARGET"} ;;
+            restore) gate restore "$TARGET" ${EXTRA:+"$EXTRA"} ;;
             create-owner)
               if [ -z "$OWNER_PASSWORD" ]; then
                 echo "::error::Add the environment secret ADMIN_OWNER_PASSWORD (12-256 characters) to production first."
                 exit 1
               fi
-              printf '%s' "$OWNER_PASSWORD" | remote /opt/kasra/bin/create-owner.sh "$TARGET"
+              { printf '%s\n' "$DEPLOY_TOKEN"; printf '%s' "$OWNER_PASSWORD"; } | sudo -n /usr/local/sbin/kasra-gate create-owner "$TARGET"
               echo "Owner '$TARGET' created. You can now delete the ADMIN_OWNER_PASSWORD secret." ;;
-            enable-domain)
-              remote env DOMAIN="$TARGET" EMAIL="$EXTRA" WWW="$WWW" SKIP_DNS_CHECK="$SKIP_DNS_CHECK" \
-                bash "$SETUP_DIR/deploy/server/enable-domain.sh" ;;
+            enable-domain) gate enable-domain "$GITHUB_WORKSPACE" "$TARGET" "$EXTRA" "$WWW" "$SKIP_DNS_CHECK" ;;
           esac
-      - name: Remove the uploaded scripts
-        if: always() && env.SETUP_DIR != ''
-        run: ssh kasra-prod "rm -rf $SETUP_DIR"

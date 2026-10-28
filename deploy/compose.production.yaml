@@ -30,7 +30,10 @@ services:
   redis:
     image: redis:7.4.12-alpine
     restart: unless-stopped
-    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    # A password although Redis is only on the private network: local users (the deployment runner)
+    # can reach container addresses.
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no",
+      "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD}"]
     security_opt:
       - no-new-privileges:true
     logging: *logging
@@ -49,7 +52,7 @@ services:
       NODE_ENV: production
       API_PORT: "4000"
       DATABASE_URL: postgres://${POSTGRES_USER:-kasra}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-kasra}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379
       ORDER_TOKEN_SECRET: ${ORDER_TOKEN_SECRET:?Set ORDER_TOKEN_SECRET}
       # The API port is bound to loopback and the Compose network; only the Next.js server forwards visitors.
       TRUST_PROXY: "true"

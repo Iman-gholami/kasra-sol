@@ -15,7 +15,19 @@ Visitor ──HTTPS──▶ Nginx on the VPS (TLS, maintenance page)
 ```
 
 Only Nginx listens publicly (80/443). The API listens on `127.0.0.1:4000` for health checks; PostgreSQL and
-Redis are reachable only on the private Docker network.
+Redis are reachable only on the private Docker network and both require passwords.
+
+The server is in an Iranian data center that **accepts no connections from abroad** (verified: GitHub's
+runners time out on port 22 although no firewall exists on the server or in the ParsPack panel), while its
+outgoing connections to GitHub work. Deployment therefore runs the other way round: a GitHub Actions runner
+installed on the server connects out to GitHub and executes the approved production jobs.
+
+```text
+GitHub (abroad)                                   ParsPack server (Iran)
+  Release / Production operations run   ◀── polls ──  actions runner (user github-runner, unprivileged)
+  ⏸ owner approves → job gets DEPLOY_TOKEN ──────────▶   sudo kasra-gate <task>   (checks the token, then root)
+                                                           └─ deploy.sh / provision.sh / status.sh …
+```
 
 ```text
 pull request ──▶ Storefront CI · Fastify Backend CI · Admin panel E2E · Production images (deploy test)
@@ -28,10 +40,10 @@ merge to main ──▶ Release: the same checks ─▶ images built and proven 
 | Decision | Why |
 | --- | --- |
 | **Docker Compose on the single VPS** | The repository already ships hardened Dockerfiles and Compose; one 8 vCPU / 16 GB server fits the expected load. No paid services, no orchestrator. |
-| **Images are built in GitHub Actions, never on the server** | The server needs no access to Docker Hub, npm or GitHub (Iranian networks are often refused or filtered by them). The exact images that passed the tests are what gets deployed. Server CPU is not spent on builds. Images move with `docker save` over SSH (~90 MB per release). |
-| **GitHub-hosted runners deploy over SSH** | The SSH key is a secret of the protected `production` environment, so only an approved job can read it. A self-hosted runner on the server was rejected: this repository is public, and forked pull requests could reach such a runner. |
+| **Images are built in GitHub Actions, never on the server** | The server needs no access to Docker Hub or npm (refused or filtered from Iran). The exact images that passed the tests are what gets deployed, and server CPU is not spent on builds. The images (~90 MB per release) and, when the server lacks them, the pinned PostgreSQL/Redis images travel as workflow artifacts. |
+| **A runner on the server, with a token gate** | GitHub cannot connect in, so the server's own runner runs the production jobs. Its user `github-runner` has no Docker access and no sudo except `/usr/local/sbin/kasra-gate`, which refuses every call without `DEPLOY_TOKEN`. That token is a secret of the protected `production` environment, so only an approved job has it: an unapproved workflow on the runner cannot change the server. Public-repository risk is limited further by requiring approval before workflows from forks run (step 4 below). Accepted residual risk: someone with write access to the repository could run unprivileged code on the server through the runner. |
 | **Approval gate = GitHub environment "required reviewers"** | Free for public repositories. Every job that can touch the server (release deployment and every ops task) waits for the owner's click. The `production-gate` action also stops the job if the protection rule is ever removed or the job is not on `main`. |
-| **Application secrets are generated on the server** | `POSTGRES_PASSWORD`, `ORDER_TOKEN_SECRET` and `ADMIN_API_KEY` are created once by `provision.sh` in `/opt/kasra/.env` (root-only, mode 600). They are never in GitHub or in the repository. |
+| **Application secrets are generated on the server** | `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `ORDER_TOKEN_SECRET` and `ADMIN_API_KEY` are created by `provision.sh` in `/opt/kasra/.env` (root-only, mode 600). They are never in GitHub or in the repository. Only a SHA-256 hash of `DEPLOY_TOKEN` is on the server. |
 | **Logs are sanitized** | Actions logs of a public repository are public. Scripts print no secrets (GitHub also masks every secret value), and `logfilter.py` removes IP addresses, phone numbers, long digit runs and query strings from application logs. The server's address itself is not secret: it is in `PRODUCTION_SITE_URL` and, later, in DNS. |
 
 ## What is on the server
@@ -45,82 +57,69 @@ merge to main ──▶ Release: the same checks ─▶ images built and proven 
 | `/opt/kasra/deploy-history.log` | One line per deployment, rollback, restore and owner creation. |
 | `/var/backups/kasra/` | Database dumps and media archives (see [Backups](#backups-and-restore)). |
 | `/etc/nginx/sites-available/kasra` | Nginx site (IP or domain variant), shared settings in `/etc/nginx/snippets/kasra-proxy.conf`. |
+| `/opt/actions-runner/` | The GitHub Actions runner (service `actions.runner.Iman-gholami-kasra-sol.kasra-prod`, user `github-runner`). |
+| `/usr/local/sbin/kasra-gate`, `/etc/sudoers.d/kasra-gate`, `/etc/kasra/gate.sha256` | The gate, the runner's only sudo rule, and the hash of `DEPLOY_TOKEN`. |
 
 Useful commands as root on the server: `cd /opt/kasra && docker compose ps`, `docker compose logs -f --tail 100 backend`,
 `/opt/kasra/bin/status.sh`, `cat /opt/kasra/deploy-history.log`.
 
 ## One-time setup
 
-Only the repository owner can do steps 1–4 (they involve your GitHub settings and your server password). None of
-them requires pasting a password or private key into a chat.
+Only the repository owner can do these steps (they involve your GitHub settings and the server's root
+password). None of them requires pasting a password, key or token into a chat.
 
 ### 1. Protect the `production` environment (GitHub)
 
 Repository **Settings → Environments → New environment** → name `production` → **Configure environment**:
 
 - **Required reviewers**: tick it and add yourself (`Iman-gholami`). Leave **Prevent self-review** unticked:
-  merges and releases run under your account, and you must be able to approve them.
+  merges and releases run under your account, and you must be able to approve them. Untick **Allow
+  administrators to bypass configured protection rules** if it is shown.
 - **Deployment branches and tags**: choose **Selected branches and tags** → **Add deployment branch or tag rule** → `main`.
 - **Save protection rules**.
 
-### 2. Create a deployment key and install it on the server (your computer)
-
-In a terminal (macOS/Linux, or PowerShell on Windows 10/11), replacing `SERVER_IP`:
-
-```bash
-ssh-keygen -t ed25519 -N "" -C kasra-github-deploy -f kasra_deploy
-```
-
-This creates `kasra_deploy` (private key) and `kasra_deploy.pub` (public key). If it asks for a passphrase, press
-Enter twice: GitHub must be able to use the key unattended. Add the public key to the server,
-limited with `restrict` (no port forwarding, agent forwarding or terminal for this key). The command asks for
-the root password from ParsPack; you type it only into your own terminal:
-
-```bash
-ssh root@SERVER_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo 'restrict $(cat kasra_deploy.pub)' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-```
-
-On Windows PowerShell use instead:
-
-```powershell
-$key = Get-Content kasra_deploy.pub
-ssh root@SERVER_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo 'restrict $key' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-```
-
-Then record the server's host key (so GitHub can detect an impostor server):
-
-```bash
-ssh-keyscan -t ed25519 SERVER_IP
-```
-
-If SSH is not on port 22, add `-p PORT` to the `ssh`/`ssh-keyscan` commands.
-
-### 3. Add the secrets and the variable (GitHub)
-
-**Settings → Environments → production → Environment secrets → Add environment secret**:
-
-| Secret | Value |
-| --- | --- |
-| `SSH_HOST` | The server's IPv4 address |
-| `SSH_PRIVATE_KEY` | The whole content of the `kasra_deploy` file (including the `BEGIN`/`END` lines) |
-| `SSH_KNOWN_HOSTS` | The output line of `ssh-keyscan` (starts with the address, then `ssh-ed25519 …`) |
-| `SSH_PORT` | Only if SSH is not on port 22 |
-| `ADMIN_OWNER_PASSWORD` | Later, for the back-office owner (12–256 characters); delete it after the owner exists |
+### 2. Repository variable
 
 **Settings → Secrets and variables → Actions → Variables → New repository variable**:
 `PRODUCTION_SITE_URL` = `https://SERVER_IP` now, `https://your-domain` later. It is baked into the storefront
 build (canonical URLs, admin login origin).
 
-You may delete the local `kasra_deploy` private key afterwards. If it is ever exposed, remove its line from the
-server's `/root/.ssh/authorized_keys` and repeat steps 2–3 with a new key.
+### 3. Install the runner on the server
 
-### 4. Provision the server (Actions → Production operations)
+1. In GitHub open **Settings → Actions → Runners → New self-hosted runner** (Linux, x64). In the **Configure**
+   box, copy only the value after `--token` (valid for one hour). Do not run the commands shown there.
+2. Log in to the server as root (from your computer: `ssh root@SERVER_IP`) and run:
+
+   ```bash
+   apt-get install -y git && git clone --depth 1 https://github.com/Iman-gholami/kasra-sol.git /root/kasra-sol
+   ```
+
+   ```bash
+   bash /root/kasra-sol/deploy/server/install-runner.sh
+   ```
+
+   It checks that the server reaches GitHub, installs the runner as the unprivileged user `github-runner`
+   (download verified against its published SHA-256), registers it as `kasra-prod`, starts it as a service,
+   installs `kasra-gate` and its sudo rule, and asks for the registration token (hidden input).
+3. At the end it prints **DEPLOY_TOKEN** once. Add it in **Settings → Environments → production →
+   Environment secrets → Add environment secret** with the name `DEPLOY_TOKEN`, then run `clear`.
+4. **Settings → Actions → Runners** now lists `kasra-prod` as *Idle*.
+
+Re-running the script is safe; `--rotate-token` issues a new `DEPLOY_TOKEN` (update the secret afterwards).
+
+### 4. Do not let forks run workflows without your approval
+
+The repository is public. **Settings → Actions → General → Approval for running fork pull request workflows
+from contributors** → choose **Require approval for all external contributors** → **Save**. Never approve
+a fork's workflow run that targets `kasra-prod`.
+
+### 5. Provision the server (Actions → Production operations)
 
 **Actions → Production operations → Run workflow** (branch `main`), task **provision**, then approve the run
 (**Review deployments → production → Approve and deploy**). Options:
 
-- `demo_data`: `true` loads the 36 demo products into an empty database (they can be archived later in the
-  admin; there is no hard delete), `false` starts with an empty catalog.
+- `demo_data`: `true` loads the 36 demo products into an empty database (see [Removing the demo
+  catalog](#removing-the-demo-catalog-before-launch)), `false` starts with an empty catalog.
 - `harden`: enables the UFW firewall (only the SSH port, 80 and 443 stay open) and fail2ban for SSH.
 
 `provision.sh` first prints the read-only `inspect.sh` report and stops without changing anything if the OS is
@@ -130,7 +129,7 @@ refused), Nginx, unattended security upgrades, log rotation and the nightly back
 `/opt/kasra/.env` with new random secrets, a self-signed certificate for the IP address, and the Nginx site.
 It is idempotent and never overwrites `.env`, data or an enabled domain site.
 
-### 5. First release, then the owner account
+### 6. First release, then the owner account
 
 Merging to `main` (or **Actions → Release → Run workflow** on `main`) builds, tests and waits for approval; see
 [RELEASING.md](RELEASING.md). After the first deployment, add the `ADMIN_OWNER_PASSWORD` secret and run
@@ -168,8 +167,16 @@ and make sure the CDN forwards `/.well-known/acme-challenge/` on port 80 to the 
 certificate with SSL mode "Full". With a CDN in front, configure Nginx `set_real_ip_from` with the CDN's published
 address ranges so rate limits and analytics see visitors, not the CDN.
 
-If Let's Encrypt is unreachable from the server's network, use a certificate from your DNS/CDN provider instead:
-put it in `/etc/letsencrypt/live/kasra/{fullchain,privkey}.pem`, then run enable-domain.
+**Important for this server:** Let's Encrypt checks the domain by connecting to it *from abroad*, which this
+data center does not allow today (see [Architecture](#architecture)). Unless international access has been
+restored by then, use one of these instead of a direct Let's Encrypt check:
+- **ParsPack CDN** (or another Iranian CDN) in front of the domain, with the CDN's certificate and SSL mode
+  "Full" towards the server; run enable-domain with `skip_dns_check` after putting a certificate the CDN accepts
+  in place, or keep the self-signed one if the CDN allows it;
+- a certificate obtained through a **DNS check** (DNS-01) at your DNS provider, or bought from a provider, placed in
+  `/etc/letsencrypt/live/kasra/{fullchain,privkey}.pem` before running enable-domain.
+
+Decide this when the domain is ready; it may involve a paid CDN plan.
 
 ## Releases, approval and rollback
 
@@ -253,10 +260,12 @@ removes accounts, settings and the audit log.
 
 ## Troubleshooting
 
-- **"SSH to the server failed"**: check the secrets; `SSH_KNOWN_HOSTS` must match `ssh-keyscan` output; the
-  `restrict …` line must be in `/root/.ssh/authorized_keys`. Servers inside Iran can lose international
-  connectivity (GitHub's runners are abroad); if that persists, the fallback is a self-hosted runner on the server
-  with the deploy job limited to `main` (discuss before switching: the repository is public).
+- **A production job stays "Waiting for a runner"**: the runner on the server is offline. **Settings → Actions →
+  Runners** shows its state; on the server `systemctl status 'actions.runner.*'` and
+  `journalctl -u 'actions.runner.*' --since -1h`. It needs outgoing HTTPS to GitHub; a full Iranian internet
+  shutdown pauses deployments (the site keeps running).
+- **"refused: missing or wrong DEPLOY_TOKEN"**: the environment secret does not match the server; run
+  `install-runner.sh --rotate-token` on the server and update the `DEPLOY_TOKEN` secret.
 - **Deployment rolled back**: the job log shows the sanitized lines of each container. On the server,
   `cd /opt/kasra && docker compose logs --tail 200 backend` shows everything.
 - **Disk**: `status` shows usage; old images are pruned to the last five releases, backups are rotated.

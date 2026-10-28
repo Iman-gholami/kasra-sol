@@ -9,5 +9,7 @@ before changing anything that ships, and `docs/DEPLOYMENT.md` for the server.
   Release workflow, which stops at the protected `production` environment until the owner approves it in GitHub.
 - Never deploy, roll back, restore or change the server without the owner's explicit approval in the chat, and
   never approve a GitHub deployment review yourself. Before asking, post the approval summary from `docs/RELEASING.md`.
+- The server (Iran) accepts no connections from abroad: production jobs run on its own runner (`kasra-prod`) and act
+  only through `sudo kasra-gate` with the `DEPLOY_TOKEN` secret. Never weaken that (see `docs/RELEASING.md`).
 - Actions logs are public: never print secrets, `/opt/kasra/.env`, raw app logs or customer data.
 - Migrations must keep the previous release working (rollbacks do not undo them).

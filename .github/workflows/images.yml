@@ -1,7 +1,7 @@
 name: Production images
 # Builds the production Docker images and proves the whole server toolchain on a disposable runner:
-# provision.sh, a first deployment, a second release, rollback, a broken release that must roll itself
-# back, backup/restore and owner creation (deploy/test/deploy-test.sh). Called by release.yml, which also
+# the runner installer and kasra-gate, provision.sh, a first deployment, a second release, rollback, a
+# broken release that must roll itself back, backup/restore and owner creation (deploy/test/deploy-test.sh). Called by release.yml, which also
 # publishes the tested images as the release bundle; runs on pull requests so problems surface before merge.
 on:
   pull_request:
@@ -65,7 +65,9 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
       - name: Provision, deploy, roll back and restore on this runner
-        run: sudo env "PATH=$PATH" KASRA_TEST_MACHINE=yes bash deploy/test/deploy-test.sh "$RELEASE"
+        env:
+          GITHUB_API_TOKEN: ${{ github.token }}
+        run: sudo env "PATH=$PATH" "GITHUB_API_TOKEN=$GITHUB_API_TOKEN" KASRA_TEST_MACHINE=yes bash deploy/test/deploy-test.sh "$RELEASE"
       - name: Package the tested images
         if: env.PUBLISH == 'true'
         run: |
@@ -81,6 +83,24 @@ jobs:
         with:
           name: release-${{ github.sha }}
           path: bundle/
+          retention-days: 30
+          compression-level: 0
+      # Docker Hub is not reachable from the server, so the pinned PostgreSQL/Redis images travel as an
+      # artifact too; the deployment downloads it only when the server lacks one of them.
+      - name: Package the database and cache images
+        if: env.PUBLISH == 'true'
+        run: |
+          mkdir -p infra
+          images=$(KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x REDIS_PASSWORD=x NEXT_PUBLIC_SITE_URL=x \
+            docker compose -f deploy/compose.production.yaml config --images | grep -v '^kasra-')
+          # shellcheck disable=SC2086  # one argument per image
+          docker save $images | gzip -1 > infra/infra-images.tar.gz
+          ls -lh infra
+      - uses: actions/upload-artifact@v4
+        if: env.PUBLISH == 'true'
+        with:
+          name: infra-${{ github.sha }}
+          path: infra/
           retention-days: 30
           compression-level: 0
       - name: Server logs on failure
