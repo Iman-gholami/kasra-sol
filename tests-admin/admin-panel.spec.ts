@@ -468,6 +468,49 @@ test('goods arrive with barcode labels, the counter sells them by scan, and the 
   expect([...problems, ...counterProblems]).toEqual([]);
 });
 
+test('a label scanned while a sale is being recorded stays on the counter instead of vanishing', async ({ page, request }) => {
+  const problems = watchConsole(page);
+  const headers = { 'X-Forwarded-For': visitorAddress() };
+  const owner = await (await request.post(API + '/v1/admin/auth/login', { data: accounts().owner, headers })).json() as { token: string };
+  const auth = { ...headers, Authorization: 'Bearer ' + owner.token };
+  const codes = await (await request.post(API + '/v1/admin/products/' + COUNTER_PRODUCT + '/barcodes', { headers: auth })).json() as
+    { items: { size: string; code: string }[] };
+  const medium = codes.items.find(item => item.size === 'M')!.code;
+  const websiteStock = async () => ((await (await request.get(API + '/v1/products/' + COUNTER_PRODUCT)).json()) as
+    { variants: { size: string; stock: number }[] }).variants.find(variant => variant.size === 'M')!.stock;
+  const before = await websiteStock();
+  expect(before).toBeGreaterThanOrEqual(2);
+
+  await signIn(page, accounts().staff);
+  const scan = page.getByLabel('اسکن بارکد کالا');
+  await scan.fill(medium);
+  await scan.press('Enter');
+  await expect(page.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۱');
+  // Hold the sale's answer until the cashier has scanned one more label.
+  let release!: () => void;
+  const answered = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/admin/store-sales', async route => {
+    if (route.request().method() === 'POST') await answered;
+    await route.continue();
+  });
+  await page.getByRole('radio', { name: 'نقدی' }).check();
+  await page.getByRole('button', { name: 'ثبت فروش و کم کردن از موجودی' }).click();
+  await expect(page.getByRole('button', { name: 'در حال ثبت…' })).toBeVisible();
+  await scan.fill(medium);
+  await scan.press('Enter');
+  await expect(page.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۲');
+  release();
+  await expect(page.getByText(/فروش شماره .* به مبلغ ۶۴۰٬۰۰۰ تومان ثبت شد/)).toContainText('در سبد مانده است');
+  // One unit was sold; the one scanned meanwhile waits on the counter for the next sale.
+  await expect(page.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۱');
+  expect(await websiteStock()).toBe(before - 1);
+  await page.unroute('**/api/admin/store-sales');
+  page.on('dialog', dialog => void dialog.accept());
+  await page.getByRole('button', { name: 'خالی کردن سبد' }).click();
+  await expect(page.getByText('سبد خالی است؛ اولین کالا را اسکن کنید.')).toBeVisible();
+  expect(problems).toEqual([]);
+});
+
 test('product editor: unsaved changes are guarded, Back moves between screens, a copy starts as an empty draft', async ({ page }) => {
   const problems = watchConsole(page);
   await signIn(page, accounts().owner);

@@ -125,19 +125,27 @@ export function StockReceiving({ onUnsaved }: { onUnsaved?: (question: string | 
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const valid = lines.filter(line => Number(line.quantity) > 0);
-    if (!valid.length || busy) return;
-    const body = { ...(note.trim() ? { note: note.trim() } : {}), lines: valid.map(line => ({ productId: line.productId,
-      colorId: line.colorId, size: line.size, quantity: Number(line.quantity) })) };
-    const signature = JSON.stringify(body);
-    if (attempt.current.signature !== signature) attempt.current = { signature, ref: newClientRef() };
+    if (!lines.some(line => Number(line.quantity) > 0) || busy) return;
     setBusy(true); setMessage(null);
     try {
+      // A scan still being looked up belongs to this receipt; what is scanned or changed from here on stays for the next.
+      await queue.current;
+      const sent = linesRef.current.filter(line => Number(line.quantity) > 0)
+        .map(line => ({ productId: line.productId, colorId: line.colorId, size: line.size, quantity: Number(line.quantity) }));
+      if (!sent.length) return;
+      const body = { ...(note.trim() ? { note: note.trim() } : {}), lines: sent };
+      const signature = JSON.stringify(body);
+      if (attempt.current.signature !== signature) attempt.current = { signature, ref: newClientRef() };
       const { receipt } = await adminApi<{ receipt: { id: string; items: { quantity: number }[] } }>('stock-receipts', {
         method: 'POST', body: { clientRef: attempt.current.ref, ...body } });
-      commit([]); setNote('');
+      const left = linesRef.current.flatMap(line => {
+        const quantity = Number(line.quantity) - (sent.find(item => keyOf(item) === keyOf(line))?.quantity ?? 0);
+        return quantity > 0 ? [{ ...line, quantity: String(quantity) }] : [];
+      });
+      commit(left); setNote('');
       attempt.current = { signature: '', ref: '' };
       setDone({ id: receipt.id, units: receipt.items.reduce((sum, item) => sum + item.quantity, 0) });
+      if (left.length) setMessage({ tone: 'warning', text: 'کالایی که هنگام ثبت رسید اسکن یا اضافه شد، برای رسید بعدی مانده است.' });
       setVersion(v => v + 1);
     } catch (cause) { setMessage({ tone: 'error', text: errorMessage(cause) }); } finally { setBusy(false); }
   }

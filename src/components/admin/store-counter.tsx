@@ -137,6 +137,13 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
     return () => { controller.abort(); window.removeEventListener('focus', load); };
   }, [holdsVersion]);
 
+  /** The cart after `sent` (code → quantity) was recorded: what was scanned while the request was in flight stays. */
+  const withoutSent = (sent: { code: string; quantity: number }[]) => linesRef.current.flatMap(line => {
+    const left = line.quantity - (sent.find(item => item.code === line.code)?.quantity ?? 0);
+    return left > 0 ? [{ ...line, quantity: left }] : [];
+  });
+  const LEFT_ON_COUNTER = ' کالایی که هنگام ثبت اسکن شد، در سبد مانده است.';
+
   async function add(code: string) {
     const problem = barcodeProblem(code);
     if (problem) { setMessage({ tone: 'error', text: problem }); return; }
@@ -177,20 +184,23 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
 
   /** Puts the cart on hold for a customer still in the fitting room and empties the counter for the next one. */
   async function park() {
-    const current = linesRef.current;
-    if (!current.length) return;
-    await adminApi('store-holds', { method: 'POST', body: { ...(note.trim() ? { note: note.trim() } : {}),
-      lines: current.map(line => ({ code: line.code, quantity: line.quantity })) } });
-    commit([]); setNote(''); setDiscount(''); setShortage([]);
+    // A scan still being looked up belongs to this cart.
+    await queue.current;
+    const held = linesRef.current.map(line => ({ code: line.code, quantity: line.quantity }));
+    if (!held.length) return [];
+    await adminApi('store-holds', { method: 'POST', body: { ...(note.trim() ? { note: note.trim() } : {}), lines: held } });
+    const left = withoutSent(held);
+    commit(left); setNote(''); setDiscount(''); setShortage([]);
     attempt.current = { signature: '', ref: '' };
+    return left;
   }
   async function holdCart() {
     if (!lines.length || busy) return;
     setBusy(true); setMessage(null);
     try {
-      await park();
+      const left = await park();
       setMessage({ tone: 'success', text: 'فاکتور معلق شد و صندوق برای مشتری بعدی خالی است. وقتی مشتری برگشت، در «فاکتورهای معلق» ' +
-        '«ادامه» را بزنید.' });
+        '«ادامه» را بزنید.' + (left.length ? LEFT_ON_COUNTER : '') });
     } catch (cause) { setMessage({ tone: 'error', text: errorMessage(cause) }); }
     finally { setBusy(false); setHoldsVersion(v => v + 1); refocus(); }
   }
@@ -205,7 +215,7 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
       await park();
       const { hold } = await adminApi<{ hold: Held }>('store-holds/' + held.id + '/resume', { method: 'POST' });
       const warnings = hold.missing ? [formatNumber(hold.missing) + ' قلم از مشخصات محصول حذف شده بود'] : [];
-      commit(hold.items.flatMap(item => {
+      const resumed = hold.items.flatMap(item => {
         const label = '«' + item.name + '» (' + item.colorName + ' / ' + item.size + ')';
         if (item.stock <= 0) { warnings.push(label + ' دیگر موجودی ندارد'); return []; }
         if (item.quantity > item.stock) {
@@ -213,7 +223,13 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
           return [{ ...item, quantity: item.stock }];
         }
         return [item];
-      }));
+      });
+      // Anything scanned while the cart was being swapped stays: added to the same resumed line, or after them.
+      const scannedMeanwhile = linesRef.current;
+      commit([...resumed.map(item => {
+        const extra = scannedMeanwhile.find(line => line.code === item.code)?.quantity ?? 0;
+        return extra ? { ...item, quantity: Math.min(item.quantity + extra, item.stock) } : item;
+      }), ...scannedMeanwhile.filter(line => !resumed.some(item => item.code === line.code))]);
       setNote(hold.note ?? '');
       setMessage(warnings.length ? { tone: 'warning', text: 'فاکتور معلق شماره ' + number + ' باز شد، ولی ' + warnings.join('؛ ') + '.' }
         : { tone: 'success', text: 'فاکتور معلق شماره ' + number + ' باز شد.' });
@@ -231,18 +247,25 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
   async function record(event: FormEvent) {
     event.preventDefault();
     if (!lines.length || busy) return;
-    if (off > subtotal) { setMessage({ tone: 'error', text: 'تخفیف نمی‌تواند از جمع خرید بیشتر باشد.' }); return; }
-    const body = { payment, discount: off, ...(note.trim() ? { note: note.trim() } : {}),
-      lines: lines.map(line => ({ code: line.code, quantity: line.quantity })) };
-    const signature = JSON.stringify(body);
-    if (attempt.current.signature !== signature) attempt.current = { signature, ref: newClientRef() };
     setBusy(true); setMessage(null); setShortage([]);
     try {
+      // A scan still being looked up belongs to this sale; what is scanned from here on stays for the next one.
+      await queue.current;
+      const sold = linesRef.current.map(line => ({ code: line.code, quantity: line.quantity }));
+      if (!sold.length) return;
+      if (off > linesRef.current.reduce((sum, line) => sum + line.price * line.quantity, 0)) {
+        setMessage({ tone: 'error', text: 'تخفیف نمی‌تواند از جمع خرید بیشتر باشد.' });
+        return;
+      }
+      const body = { payment, discount: off, ...(note.trim() ? { note: note.trim() } : {}), lines: sold };
+      const signature = JSON.stringify(body);
+      if (attempt.current.signature !== signature) attempt.current = { signature, ref: newClientRef() };
       const { sale } = await adminApi<{ sale: Sale }>('store-sales', { method: 'POST', body: { clientRef: attempt.current.ref, ...body } });
-      commit([]); setDiscount(''); setNote(''); setPayment('card');
+      const left = withoutSent(sold);
+      commit(left); setDiscount(''); setNote(''); setPayment('card');
       attempt.current = { signature: '', ref: '' };
       setMessage({ tone: 'success', text: 'فروش شماره ' + formatNumber(Number(sale.id)) + ' به مبلغ ' + formatToman(sale.total) +
-        ' ثبت شد و از موجودی فروشگاه و سایت کم شد.' });
+        ' ثبت شد و از موجودی فروشگاه و سایت کم شد.' + (left.length ? LEFT_ON_COUNTER : '') });
       setSalesVersion(v => v + 1);
     } catch (cause) {
       if (cause instanceof AdminApiError && cause.code === 'insufficient_stock') {
