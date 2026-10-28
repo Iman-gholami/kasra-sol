@@ -89,6 +89,7 @@ fi
 # --- Kasra directory, scripts and secrets ------------------------------------------------------------------
 install -d -m 0700 "$KASRA_DIR" "$KASRA_DIR/bin" "$KASRA_DIR/releases" "$KASRA_DIR/incoming" "$BACKUP_DIR"
 install -m 0700 "$SOURCE"/server/*.sh "$SOURCE"/server/*.py "$KASRA_DIR/bin/"
+refresh_runner_side "$SOURCE"
 [ -f "$KASRA_DIR/compose.yaml" ] || install -m 0600 "$SOURCE/compose.production.yaml" "$KASRA_DIR/compose.yaml"
 
 if [ ! -f "$ENV_FILE" ]; then

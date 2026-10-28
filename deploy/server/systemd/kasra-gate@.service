@@ -1,0 +1,9 @@
+[Unit]
+Description=Kasra deployment gate request
+
+[Service]
+ExecStart=/usr/local/sbin/kasra-gate
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+RuntimeMaxSec=3600

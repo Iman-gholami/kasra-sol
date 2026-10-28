@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # End-to-end test of the server scripts on a DISPOSABLE machine (the GitHub runner in images.yml):
-# provision, the runner installer and kasra-gate (privileges, token check), a first deployment through
-# the gate as the release workflow does it, owner creation, a second release, rollback, a broken release
-# that must roll itself back, backup and restore, and the sanitized status report. Never run it on the server.
+# provision, the runner side (gate socket, approval codes, the job sandbox's isolation), a first deployment
+# from a sandboxed job through the gate as deploy.yml does it, owner creation, a second release, rollback,
+# a broken release that must roll itself back, backup and restore, and the sanitized status report.
+# Never run it on the server.
 # Usage: sudo KASRA_TEST_MACHINE=yes deploy/test/deploy-test.sh <commit>
 #   (images kasra-frontend:<commit> and kasra-backend:<commit> must already be loaded)
-#   SKIP_PROVISION=yes skips provision.sh where there is no systemd/apt (prepares /opt/kasra directly) and
-#   installs the runner pieces offline.
+#   SKIP_PROVISION=yes skips provision.sh where there is no systemd/apt (prepares /opt/kasra directly),
+#   installs the runner side offline and stands in for the gate socket (no sandbox without systemd).
 set -euo pipefail
 release=${1:?usage: deploy-test.sh <commit>}
 [ "${KASRA_TEST_MACHINE:-}" = yes ] || { echo "Refusing: this test replaces /opt/kasra. Set KASRA_TEST_MACHINE=yes on a disposable machine."; exit 1; }
@@ -43,29 +44,73 @@ for image in $(KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x REDIS_PA
   docker image inspect "$image" >/dev/null 2>&1 || docker pull -q "$image"
 done
 
-group "Runner user and kasra-gate"
-token=$(openssl rand -hex 32)
+group "Runner side: gate, approval codes and job sandbox"
+totp_secret=$(python3 -c 'import base64,os; print(base64.b32encode(os.urandom(20)).decode())')
 offline=(); [ "${SKIP_PROVISION:-no}" = yes ] && offline=(--offline)
-KASRA_TEST_TOKEN=$token bash "$DEPLOY/server/install-runner.sh" --test --rotate-token "${offline[@]}"
-as_runner() { runuser -u github-runner -- "$@"; }
-gate() { printf '%s\n' "$token" | as_runner sudo -n /usr/local/sbin/kasra-gate "$@"; }
-if as_runner sudo -n true 2>/dev/null; then fail "github-runner may run other commands as root"; fi
-if as_runner docker ps >/dev/null 2>&1; then fail "github-runner can use Docker"; fi
-if printf 'wrong\n' | as_runner sudo -n /usr/local/sbin/kasra-gate status >/dev/null 2>&1; then fail "the gate accepted a wrong token"; fi
-if as_runner sudo -n /usr/local/sbin/kasra-gate status </dev/null >/dev/null 2>&1; then fail "the gate ran without a token"; fi
-echo "The runner user can do nothing as root without DEPLOY_TOKEN"
-# A checkout and downloaded bundle as the release job has them, owned by the runner user.
-workspace=$(mktemp -d /home/github-runner/workspace.XXXXXX)
+KASRA_TEST_TOTP_SECRET=$totp_secret bash "$DEPLOY/server/install-runner.sh" --test --rotate-totp "${offline[@]}"
+approval_code() { # the authenticator app's current code
+  python3 - "$totp_secret" <<'PY'
+import base64, hashlib, hmac, struct, sys, time
+secret = base64.b32decode(sys.argv[1]); counter = int(time.time() // 30)
+digest = hmac.new(secret, struct.pack(">Q", counter), hashlib.sha1).digest(); offset = digest[-1] & 15
+print("%06d" % ((struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF) % 1000000))
+PY
+}
+if [ -d /run/systemd/system ]; then
+  systemctl is-active --quiet kasra-gate.socket || fail "kasra-gate.socket is not listening"
+  # Exactly how a production job runs: a throwaway dynamic user in the runner sandbox.
+  in_job() { KASRA_SANDBOX_PASS="APPROVAL_CODE REDIS_IP" /usr/local/sbin/kasra-runner-supervisor --sandbox "$@"; }
+else
+  python3 "$DEPLOY/test/fake-gate-socket.py" /run/kasra-gate.sock /usr/local/sbin/kasra-gate &
+  fake_socket=$!
+  trap 'kill $fake_socket 2>/dev/null' EXIT
+  sleep 1
+  in_job() { "$@"; }
+fi
+# The job's checkout and downloaded bundle, readable by the sandbox (its /tmp is private).
+workspace=/srv/kasra-test-workspace
+rm -rf "$workspace"
+install -d -m 0755 "$workspace" "$workspace/bundle"
 cp -r "$DEPLOY" "$workspace/deploy"
-mkdir "$workspace/bundle"
 docker save "kasra-frontend:$release" "kasra-backend:$release" | gzip -1 > "$workspace/bundle/kasra-images-$release.tar.gz"
-chown -R github-runner: "$workspace"
-[ -z "$(gate infra-missing "$workspace")" ] || fail "infra-missing reports images that are present"
+chmod -R a+rX "$workspace"
+client=(python3 "$workspace/deploy/server/gate-client.py")
+expect_refused() {
+  local status=0
+  APPROVAL_CODE=$1 in_job "${client[@]}" "${@:2}" >/dev/null 2>&1 || status=$?
+  [ "$status" = 77 ] || fail "the gate did not refuse '${*:2}' with code '$1' (exit $status)"
+}
+expect_refused "" deploy "$release" "$workspace"
+expect_refused 000000 deploy "$release" "$workspace"
+[ -z "$(APPROVAL_CODE='' in_job "${client[@]}" infra-missing "$workspace")" ] || fail "infra-missing reports images that are present"
+echo "The gate refuses a job without the owner's code"
 
-group "First deployment (through the gate)"
-gate deploy "$release" "$workspace"
+group "First deployment (job -> gate, with the owner's code)"
+code=$(approval_code)
+APPROVAL_CODE=$code in_job "${client[@]}" deploy "$release" "$workspace"
 expect_env KASRA_RELEASE "$release"
-[ ! -e "$workspace/bundle/kasra-images-$release.tar.gz" ] || fail "the gate left the bundle in the workspace"
+expect_refused "$code" backup
+echo "A used approval code is refused"
+if [ -d /run/systemd/system ]; then
+  cat > "$workspace/probe.sh" <<'PROBE'
+#!/usr/bin/env bash
+bad() { echo "SANDBOX ESCAPE: $*"; exit 1; }
+[ -r /opt/kasra/.env ] && bad "reads /opt/kasra/.env"
+ls /root >/dev/null 2>&1 && bad "lists /root"
+[ -r /etc/kasra/totp.secret ] && bad "reads the approval secret"
+docker ps >/dev/null 2>&1 && bad "uses Docker"
+curl -s -m 5 -o /dev/null http://127.0.0.1:4000/health/ready && bad "reaches the API on localhost"
+timeout 5 bash -c "exec 3<>/dev/tcp/$REDIS_IP/6379" 2>/dev/null && bad "reaches Redis on the Docker network"
+touch /usr/local/bin/kasra-probe 2>/dev/null && bad "writes to the system"
+curl -fsS -m 15 -o /dev/null https://github.com || bad "cannot reach GitHub (the runner needs it)"
+APPROVAL_CODE= python3 "$(dirname "$0")/deploy/server/gate-client.py" status 5m >/dev/null || bad "status through the gate failed"
+echo "sandbox isolation holds"
+PROBE
+  chmod 755 "$workspace/probe.sh"
+  REDIS_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$(container_id redis)")
+  export REDIS_IP
+  in_job bash "$workspace/probe.sh" || fail "the job sandbox is not isolated"
+fi
 [ "$(product_total)" = 36 ] || fail "demo catalog not seeded"
 (cd "$REPO/backend" && node tests/smoke.mjs) || fail "API smoke test"
 for path in / /shop /product/manto-01 /category/manto /cart /admin/login; do

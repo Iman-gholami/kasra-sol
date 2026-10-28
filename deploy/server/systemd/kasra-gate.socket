@@ -1,0 +1,13 @@
+[Unit]
+Description=Kasra deployment gate (jobs request root actions here; see kasra-gate)
+
+[Socket]
+ListenStream=/run/kasra-gate.sock
+SocketUser=root
+SocketGroup=kasra-gate
+SocketMode=0660
+Accept=yes
+MaxConnections=4
+
+[Install]
+WantedBy=sockets.target

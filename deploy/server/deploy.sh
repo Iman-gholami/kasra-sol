@@ -30,6 +30,7 @@ for image in $(KASRA_RELEASE=$release docker compose --project-directory "$KASRA
 done
 # Later operations (backup timer, rollback, status) use the newest scripts.
 install -m 0700 "$SOURCE"/server/*.sh "$SOURCE"/server/*.py "$KASRA_DIR/bin/"
+refresh_runner_side "$SOURCE"
 
 previous=$(env_get KASRA_RELEASE)
 fallback=$previous

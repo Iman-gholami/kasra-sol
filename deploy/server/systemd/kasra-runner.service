@@ -1,0 +1,14 @@
+[Unit]
+Description=Kasra production runner (one sandboxed GitHub Actions job at a time)
+Wants=network-online.target
+After=network-online.target kasra-gate.socket docker.service
+
+[Service]
+ExecStart=/usr/local/sbin/kasra-runner-supervisor
+Restart=always
+RestartSec=30
+# Stopping the service must not kill a deployment in progress: job sandboxes are their own units.
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

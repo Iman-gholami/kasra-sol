@@ -13,14 +13,16 @@ The process for every change, bug fix or feature. Server setup and operations ar
 3. **Push the branch and open a pull request** against `main`. GitHub runs Storefront CI, Fastify Backend CI,
    Admin panel E2E (when relevant) and Production images (builds the images and runs the whole deployment test).
 4. **Merge** when every check is green. The merge starts **Actions → Release**, which runs the checks again on
-   `main`, builds the production images, proves them with the deployment test and publishes them as the release
-   bundle. Its last job, **Deploy to production**, then **waits for approval** — nothing has touched the server yet.
-5. **Approval.** Claude posts a summary in the chat (below) and asks; the owner approves in GitHub:
-   Actions → the Release run → **Review deployments** → tick `production` → **Approve and deploy**
-   (or **Reject**). GitHub also sends an e-mail/notification with a link.
-6. **Deployment and verification.** The job backs up the database, switches the containers, checks health and
-   rolls back automatically on failure. Claude reads the job log, runs **Production operations → status** if more
-   detail is needed (another approval), and reports the result.
+   `main`, builds the production images, proves them with the deployment test and stores them as the release.
+   Nothing has touched the server yet.
+5. **Approval.** Claude posts a summary in the chat (below) and asks. The owner approves by sending the current
+   6-digit code of the authenticator app. Without that code the server refuses every change: GitHub's own approval
+   button is not available for private repositories on this plan, and the code also stops anyone who only has
+   GitHub access (including Claude).
+6. **Deployment and verification.** Claude starts **Actions → Deploy** with the release and the code right away
+   (a code works once, for ten minutes). The job backs up the database, switches the containers, checks health and
+   rolls back automatically on failure. Claude reads the job log, runs **Production operations → status** (no code
+   needed) for more detail, and reports the result. The owner can also start Deploy in GitHub with the code.
 
 Documentation-only changes (`docs/`, `*.md`, `.claude/`) do not start a release.
 
@@ -40,14 +42,13 @@ Documentation-only changes (`docs/`, `*.md`, `.claude/`) do not start a release.
 ## Rules for Claude sessions
 
 - Never deploy, roll back, restore or change the server without the owner's explicit approval **in the chat** for
-  that specific action, and never approve a GitHub deployment review on the owner's behalf. The GitHub approval is
-  the owner's click; the chat approval comes first.
-- Do not trigger the Release workflow or any Production operations task without telling the owner what it will
-  do; every such run waits for the owner's approval in GitHub anyway.
-- Never weaken the gate: keep `environment: production` and the `production-gate` action on every job that uses the
-  production secrets or the `kasra-prod` runner, keep those secrets environment-scoped (not repository secrets),
-  never give the runner user `github-runner` Docker access or more sudo rights, and never let `kasra-gate` run
-  anything without checking `DEPLOY_TOKEN`.
+  that specific action. The owner's approval is the 6-digit code they send; use each code only for the action it
+  was given for, right away, and never ask for codes in advance or store them.
+- Running **Production operations → status** needs no code and is fine at any time; tell the owner when you start
+  anything else.
+- Never weaken the gate or the sandbox: every server-changing task in `kasra-gate` must require the approval code;
+  jobs on `kasra-prod` must keep running in the runner supervisor's sandbox (no Docker, no local network, nothing
+  persistent); never add another way to reach root from a job.
 - Actions logs are public. Never print secrets, `.env` contents, raw application logs or customer data; use
   `status.sh`/`logfilter.py` output only.
 - Migrations must stay backward compatible with the previous release (see DEPLOYMENT.md).

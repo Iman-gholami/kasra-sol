@@ -1,103 +1,196 @@
-#!/usr/bin/env bash
-# The only command the GitHub runner's user may run as root (/etc/sudoers.d/kasra-gate). Every call must
-# send DEPLOY_TOKEN on the first line of stdin. Only jobs approved in the protected "production" GitHub
-# environment receive that secret, so a workflow that was not approved cannot change the server even
-# though it runs on it. Installed as /usr/local/sbin/kasra-gate by install-runner.sh.
-#
-#   printf '%s\n' "$DEPLOY_TOKEN" | sudo -n /usr/local/sbin/kasra-gate <task> [arguments]
-#
-# Tasks that run repository code (inspect, provision, enable-domain, deploy) take the job's checkout
-# directory and copy deploy/ into a root-only directory first, so the runner cannot change it mid-run.
-set -euo pipefail
-umask 077
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-BIN=/opt/kasra/bin
-fail() { echo "kasra-gate: $*" >&2; exit 2; }
+#!/usr/bin/env python3
+"""The only way a deployment job reaches root on the Kasra server.
 
-[ "$(id -u)" = 0 ] || fail "run through sudo"
-expected=$(cat /etc/kasra/gate.sha256 2>/dev/null) || fail "not installed (run install-runner.sh)"
-IFS= read -r token || true
-if [ "$(printf '%s' "${token:-}" | sha256sum | cut -d' ' -f1)" != "$expected" ]; then
-  sleep 3
-  fail "refused: missing or wrong DEPLOY_TOKEN (only approved production jobs have it)"
-fi
-unset token
+systemd starts one instance per connection on /run/kasra-gate.sock (kasra-gate.socket, Accept=yes), with
+the connection as stdin/stdout. A request is one JSON line: {"code": "123456", "task": "...", "args": [...]}.
+Output streams back; the last line is "__KASRA_GATE_EXIT__ <status>".
 
-task=${1:-}
-[ $# -gt 0 ] && shift
+Every task that changes the server needs the owner's one-time approval code: the current 6-digit code
+of the authenticator app scanned during install-runner.sh (TOTP, RFC 6238). A code is accepted once, for at
+most ten minutes, so neither someone with access to the GitHub repository nor a job on the runner can
+change the server without the owner's phone. Only "status" (installed scripts, read-only) needs no code.
 
-# Copies <checkout>/deploy to a fresh root-owned directory and prints its path.
-stage() {
-  local src=$1 dir
-  [ -f "$src/deploy/server/lib.sh" ] || fail "$src does not contain the deploy/ scripts"
-  dir=$(mktemp -d /root/kasra-stage.XXXXXX)
-  tar -C "$src" -cf - deploy | tar -C "$dir" -xf - --no-same-owner
-  echo "$dir"
-}
-cleanup() { [ -n "${staged:-}" ] && rm -rf "$staged"; return 0; }
-trap cleanup EXIT
+Tasks that run repository code copy the job's checkout of deploy/ into a root-only directory first.
+"""
+import base64
+import fcntl
+import hashlib
+import hmac
+import json
+import os
+import re
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import time
 
-# A newer gate shipped with the repository replaces this one atomically (bash keeps reading the old file).
-refresh_gate() {
-  local new=$staged/deploy/server/kasra-gate
-  if [ -f "$new" ] && ! cmp -s "$new" /usr/local/sbin/kasra-gate; then
-    install -m 0755 "$new" /usr/local/sbin/kasra-gate.new && mv /usr/local/sbin/kasra-gate.new /usr/local/sbin/kasra-gate
-    echo "kasra-gate updated"
-  fi
-}
+ETC = os.environ.get("KASRA_GATE_ETC", "/etc/kasra")
+BIN = "/opt/kasra/bin"
+STEP = 30
+WINDOW = 20          # accept codes up to 10 minutes old (artifact downloads from Iran can be slow)
+MAX_FAILURES = 5     # then refuse every code for 15 minutes
+LOCKOUT = 900
+os.environ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+os.umask(0o077)
 
-case "$task" in
-  inspect)
-    staged=$(stage "${1:?checkout directory}")
-    bash "$staged/deploy/server/inspect.sh" ;;
-  provision)
-    src=${1:?checkout}; site_url=${2:?site url}; demo=${3:?demo data true/false}; harden=${4:?harden true/false}
-    [[ $site_url =~ ^https://[a-z0-9.-]+$ ]] || fail "site url must look like https://host"
-    [[ $demo =~ ^(true|false)$ && $harden =~ ^(true|false)$ ]] || fail "demo data and harden are true or false"
-    host=${site_url#https://}
-    server_ip=""
-    [[ $host =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && server_ip=$host
-    staged=$(stage "$src")
-    SERVER_IP=$server_ip SITE_URL=$site_url SEED_DEMO_DATA=$demo HARDEN=$harden bash "$staged/deploy/server/provision.sh"
-    refresh_gate ;;
-  enable-domain)
-    src=${1:?checkout}; domain=${2:?domain}; email=${3:-}; www=${4:-false}; skip=${5:-false}
-    [[ $www =~ ^(true|false)$ && $skip =~ ^(true|false)$ ]] || fail "www and skip-dns-check are true or false"
-    staged=$(stage "$src")
-    DOMAIN=$domain EMAIL=$email WWW=$www SKIP_DNS_CHECK=$skip bash "$staged/deploy/server/enable-domain.sh" ;;
-  infra-missing)
-    # Prints the database/cache images the release needs that are not on the server yet.
-    command -v docker >/dev/null 2>&1 || fail "the server is not provisioned yet (Production operations > provision)"
-    staged=$(stage "${1:?checkout}")
-    KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x REDIS_PASSWORD=x NEXT_PUBLIC_SITE_URL=x \
-      docker compose -f "$staged/deploy/compose.production.yaml" config --images | grep -v '^kasra-' |
-      while read -r image; do docker image inspect "$image" >/dev/null 2>&1 || echo "$image"; done ;;
-  deploy)
-    release=${1:?commit}; src=${2:?checkout}
-    [[ $release =~ ^[0-9a-f]{40}$ ]] || fail "release must be a 40-character commit"
-    bundle=$src/bundle/kasra-images-$release.tar.gz
-    [ -f "$bundle" ] || fail "release bundle $bundle is missing"
-    [ -d /opt/kasra ] || fail "the server is not provisioned yet (Production operations > provision)"
-    staged=$(stage "$src")
-    install -d -m 0700 /opt/kasra/incoming
-    install -m 0600 "$bundle" "/opt/kasra/incoming/kasra-images-$release.tar.gz"
-    if [ -f "$src/infra/infra-images.tar.gz" ]; then
-      install -m 0600 "$src/infra/infra-images.tar.gz" /opt/kasra/incoming/infra-images.tar.gz
-    fi
-    rm -f "$bundle"
-    bash "$staged/deploy/server/deploy.sh" "$release"
-    refresh_gate ;;
-  status)
-    "$BIN/status.sh" "${1:-2h}" ;;
-  backup)
-    "$BIN/backup.sh" manual ;;
-  rollback)
-    "$BIN/rollback.sh" ${1:+"$1"} ;;
-  restore)
-    "$BIN/restore.sh" "${1:?backup file}" ${2:+"$2"} ;;
-  create-owner)
-    # The rest of stdin (after the token line) is the owner's password.
-    "$BIN/create-owner.sh" "${1:?username}" ;;
-  *)
-    fail "unknown task '$task' (inspect provision enable-domain infra-missing deploy status backup rollback restore create-owner)" ;;
-esac
+out = sys.stdout
+
+
+def say(text):
+    out.write(text + "\n")
+    out.flush()
+
+
+def finish(status, message=None):
+    if message:
+        say("kasra-gate: " + message)
+    say("__KASRA_GATE_EXIT__ %d" % status)
+    sys.exit(0)
+
+
+def totp(secret, counter):
+    digest = hmac.new(secret, struct.pack(">Q", counter), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    value = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+    return "%06d" % (value % 1000000)
+
+
+def approve(code):
+    """True once per valid code; records the code's time step so it can never be used again."""
+    with open(os.path.join(ETC, "totp.lock"), "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        failures_file = os.path.join(ETC, "totp.failures")
+        now = time.time()
+        try:
+            failures = [float(x) for x in open(failures_file).read().split()]
+        except (OSError, ValueError):
+            failures = []
+        failures = [t for t in failures if now - t < LOCKOUT]
+        if len(failures) >= MAX_FAILURES:
+            return False, "too many wrong codes; try again in 15 minutes"
+        secret = base64.b32decode(open(os.path.join(ETC, "totp.secret")).read().strip())
+        try:
+            last = int(open(os.path.join(ETC, "totp.last")).read().strip() or 0)
+        except (FileNotFoundError, ValueError):
+            last = 0
+        current = int(now // STEP)
+        if re.fullmatch(r"\d{6}", code or ""):
+            for counter in range(current + 1, current - WINDOW - 1, -1):
+                if counter > last and hmac.compare_digest(totp(secret, counter), code):
+                    with open(os.path.join(ETC, "totp.last"), "w") as f:
+                        f.write(str(counter))
+                    open(failures_file, "w").close()
+                    return True, None
+        failures.append(now)
+        with open(failures_file, "w") as f:
+            f.write(" ".join("%.0f" % t for t in failures))
+        return False, "approval code is wrong, expired or already used"
+
+
+def stage(checkout):
+    if not os.path.isfile(os.path.join(checkout, "deploy/server/lib.sh")):
+        finish(2, "%s does not contain the deploy/ scripts" % checkout)
+    directory = tempfile.mkdtemp(prefix="kasra-stage.", dir="/root")
+    subprocess.run(["tar", "-C", checkout, "-cf", directory + "/deploy.tar", "deploy"], check=True)
+    subprocess.run(["tar", "-C", directory, "-xf", directory + "/deploy.tar", "--no-same-owner"], check=True)
+    os.remove(directory + "/deploy.tar")
+    return directory
+
+
+def run(command, env=None):
+    """Runs a command, streaming its output to the client; returns its exit status."""
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               stdin=subprocess.DEVNULL, env={**os.environ, **(env or {})})
+    for line in iter(process.stdout.readline, b""):
+        out.write(line.decode("utf-8", "replace"))
+        out.flush()
+    return process.wait()
+
+
+def infra_missing(compose_file):
+    # Read the pinned images without running Compose on files a job supplied.
+    images = re.findall(r"^\s+image:\s*((?:postgres|redis):[\w.-]+)\s*$", open(compose_file).read(), re.M)
+    return [i for i in images if subprocess.run(["docker", "image", "inspect", i],
+                                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode]
+
+
+def main():
+    try:
+        request = json.loads(sys.stdin.readline())
+        task, args, code = request["task"], [str(a) for a in request.get("args", [])], request.get("code")
+    except (ValueError, KeyError, TypeError):
+        finish(2, "malformed request")
+    sha = re.compile(r"^[0-9a-f]{40}$")
+    staged = None
+    try:
+        if task == "status":
+            window = args[0] if args else "2h"
+            if not re.fullmatch(r"\d+[smh]", window):
+                finish(2, "status window looks like 30m or 6h")
+            finish(run([BIN + "/status.sh", window]))
+        if task == "infra-missing":
+            # Read-only: which pinned database/cache images the server lacks.
+            if len(args) != 1 or shutil.which("docker") is None:
+                finish(2, "usage: infra-missing <checkout> (on a provisioned server)")
+            for image in infra_missing(os.path.join(args[0], "deploy/compose.production.yaml")):
+                say(image)
+            finish(0)
+
+        ok, why = approve(code)
+        if not ok:
+            time.sleep(3)
+            finish(77, "refused: " + why)
+        say("kasra-gate: approved by the owner's one-time code")
+
+        if task == "inspect":
+            staged = stage(args[0])
+            finish(run(["bash", staged + "/deploy/server/inspect.sh"]))
+        if task == "provision":
+            checkout, site_url, demo, harden = args
+            if not re.fullmatch(r"https://[a-z0-9.-]+", site_url) or demo not in ("true", "false") \
+                    or harden not in ("true", "false"):
+                finish(2, "usage: provision <checkout> <https://host> <demo true|false> <harden true|false>")
+            host = site_url[len("https://"):]
+            server_ip = host if re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", host) else ""
+            staged = stage(checkout)
+            finish(run(["bash", staged + "/deploy/server/provision.sh"], {
+                "SERVER_IP": server_ip, "SITE_URL": site_url, "SEED_DEMO_DATA": demo, "HARDEN": harden}))
+        if task == "enable-domain":
+            checkout, domain, email, www, skip = (args + ["", "false", "false"])[:5]
+            staged = stage(checkout)
+            finish(run(["bash", staged + "/deploy/server/enable-domain.sh"], {
+                "DOMAIN": domain, "EMAIL": email, "WWW": www, "SKIP_DNS_CHECK": skip}))
+        if task == "deploy":
+            release, checkout = args
+            if not sha.fullmatch(release):
+                finish(2, "release must be a 40-character commit")
+            bundle = os.path.join(checkout, "bundle", "kasra-images-%s.tar.gz" % release)
+            if not os.path.isfile(bundle):
+                finish(2, "release bundle %s is missing" % bundle)
+            if not os.path.isdir("/opt/kasra"):
+                finish(2, "the server is not provisioned yet (Production operations > provision)")
+            staged = stage(checkout)
+            os.makedirs("/opt/kasra/incoming", mode=0o700, exist_ok=True)
+            shutil.copyfile(bundle, "/opt/kasra/incoming/kasra-images-%s.tar.gz" % release)
+            infra = os.path.join(checkout, "infra", "infra-images.tar.gz")
+            if os.path.isfile(infra):
+                shutil.copyfile(infra, "/opt/kasra/incoming/infra-images.tar.gz")
+            finish(run(["bash", staged + "/deploy/server/deploy.sh", release]))
+        if task == "backup":
+            finish(run([BIN + "/backup.sh", "manual"]))
+        if task == "rollback":
+            if args and not sha.fullmatch(args[0]):
+                finish(2, "rollback target must be a 40-character commit")
+            finish(run([BIN + "/rollback.sh"] + args[:1]))
+        if task == "restore":
+            finish(run([BIN + "/restore.sh"] + args[:2]))
+        finish(2, "unknown task '%s'" % task)
+    finally:
+        if staged:
+            shutil.rmtree(staged, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,18 +1,22 @@
 name: Production operations
-# Server tasks outside a normal release. Every run uses the protected "production" environment, so it
-# waits for the owner's approval (Actions > this run > Review deployments) before touching the server.
-# It runs on the server's own runner and acts only through kasra-gate with DEPLOY_TOKEN (see release.yml).
-# Logs are public: the scripts print no secrets and strip personal data from application logs.
+# Server tasks outside a normal release, on the server's sandboxed runner through kasra-gate. Everything
+# except "status" changes the server and needs the owner's one-time approval code from the authenticator
+# app; "status" only runs the installed read-only report. Started from Actions > Production operations >
+# Run workflow, or by Claude (with the code the owner sent in the chat).
 on:
   workflow_dispatch:
     inputs:
       task:
         description: What to do
         type: choice
-        options: [status, inspect, provision, backup, rollback, restore, create-owner, enable-domain]
+        options: [status, inspect, provision, backup, rollback, restore, enable-domain]
         default: status
+      approval_code:
+        description: "Owner's current 6-digit code from the authenticator app (not needed for status)"
+        type: string
+        default: ""
       target:
-        description: "rollback: commit to return to (empty = previous) | restore: db-….dump file | create-owner: login name | enable-domain: domain"
+        description: "rollback: commit to return to (empty = previous) | restore: db-….dump file | enable-domain: domain"
         type: string
         default: ""
       extra:
@@ -46,7 +50,6 @@ on:
         default: 2h
 permissions:
   contents: read
-  actions: read
 concurrency:
   group: production-ops
   cancel-in-progress: false
@@ -55,11 +58,9 @@ jobs:
     name: ${{ inputs.task }}
     runs-on: [self-hosted, kasra-prod]
     timeout-minutes: 30
-    environment:
-      name: production
-      url: ${{ vars.PRODUCTION_SITE_URL }}
     env:
       TASK: ${{ inputs.task }}
+      APPROVAL_CODE: ${{ inputs.approval_code }}
       TARGET: ${{ inputs.target }}
       EXTRA: ${{ inputs.extra }}
       CONFIRM: ${{ inputs.confirm }}
@@ -70,50 +71,33 @@ jobs:
       LOG_WINDOW: ${{ inputs.log_window }}
       SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/production-gate
       - name: Validate the inputs
         run: |
+          [ -z "$APPROVAL_CODE" ] || echo "::add-mask::$APPROVAL_CODE"
           fail() { echo "::error::$*"; exit 1; }
+          [ "$TASK" = status ] || [[ $APPROVAL_CODE =~ ^[0-9]{6}$ ]] || fail "this task needs the owner's 6-digit approval code"
           case "$TASK" in
             rollback) [ -z "$TARGET" ] || [[ $TARGET =~ ^[0-9a-f]{40}$ ]] || fail "target must be a full 40-character commit" ;;
             restore)
               [[ $TARGET =~ ^db-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\.dump$ ]] || fail "target must be a db-….dump file name (see the status task)"
               [ -z "$EXTRA" ] || [[ $EXTRA =~ ^media-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\.tar\.gz$ ]] || fail "extra must be a media-….tar.gz file name"
               [ "$CONFIRM" = "RESTORE $TARGET" ] || fail "type exactly: RESTORE $TARGET" ;;
-            create-owner) [[ $TARGET =~ ^[a-z0-9][a-z0-9_.-]{2,63}$ ]] || fail "target must be the owner login (a-z 0-9 _ . -)" ;;
             enable-domain)
               [[ $TARGET =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$ ]] || fail "target must be the domain, e.g. shop.example.ir"
               [ -z "$EXTRA" ] || [[ $EXTRA =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] || fail "extra must be an e-mail address" ;;
             provision) [[ $SITE_URL =~ ^https://[a-z0-9.-]+$ ]] || fail "set the repository variable PRODUCTION_SITE_URL first (e.g. https://<server IP>)" ;;
             status) [[ $LOG_WINDOW =~ ^[0-9]+[smh]$ ]] || fail "log_window looks like 30m or 6h" ;;
           esac
+      - uses: actions/checkout@v4
       - name: Run ${{ inputs.task }}
-        env:
-          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
-          OWNER_PASSWORD: ${{ secrets.ADMIN_OWNER_PASSWORD }}
         run: |
-          set -euo pipefail
-          if [ -z "$DEPLOY_TOKEN" ]; then
-            echo "::error::The production environment has no DEPLOY_TOKEN secret (printed by deploy/server/install-runner.sh)."
-            exit 1
-          fi
-          gate() { printf '%s\n' "$DEPLOY_TOKEN" | sudo -n /usr/local/sbin/kasra-gate "$@"; }
+          gate() { python3 deploy/server/gate-client.py "$@"; }
           case "$TASK" in
+            status) APPROVAL_CODE='' gate status "$LOG_WINDOW" ;;
             inspect) gate inspect "$GITHUB_WORKSPACE" ;;
-            provision)
-              gate inspect "$GITHUB_WORKSPACE"
-              gate provision "$GITHUB_WORKSPACE" "$SITE_URL" "$DEMO_DATA" "$HARDEN" ;;
-            status) gate status "$LOG_WINDOW" ;;
+            provision) gate provision "$GITHUB_WORKSPACE" "$SITE_URL" "$DEMO_DATA" "$HARDEN" ;;
             backup) gate backup ;;
             rollback) gate rollback ${TARGET:+"$TARGET"} ;;
             restore) gate restore "$TARGET" ${EXTRA:+"$EXTRA"} ;;
-            create-owner)
-              if [ -z "$OWNER_PASSWORD" ]; then
-                echo "::error::Add the environment secret ADMIN_OWNER_PASSWORD (12-256 characters) to production first."
-                exit 1
-              fi
-              { printf '%s\n' "$DEPLOY_TOKEN"; printf '%s' "$OWNER_PASSWORD"; } | sudo -n /usr/local/sbin/kasra-gate create-owner "$TARGET"
-              echo "Owner '$TARGET' created. You can now delete the ADMIN_OWNER_PASSWORD secret." ;;
             enable-domain) gate enable-domain "$GITHUB_WORKSPACE" "$TARGET" "$EXTRA" "$WWW" "$SKIP_DNS_CHECK" ;;
           esac

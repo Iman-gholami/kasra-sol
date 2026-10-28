@@ -94,6 +94,26 @@ nginx_http2_compat() {
   fi
 }
 
+# Ships fixes to the gate, the runner supervisor and their units with every provision and deployment,
+# once install-runner.sh has set them up. Nothing is restarted: a job in progress keeps its gate.
+refresh_runner_side() {
+  local src=$1/server changed=false file
+  [ -f /etc/systemd/system/kasra-gate.socket ] || return 0
+  for file in kasra-gate:kasra-gate runner-supervisor.sh:kasra-runner-supervisor; do
+    if ! cmp -s "$src/${file%%:*}" "/usr/local/sbin/${file#*:}"; then
+      install -m 0755 "$src/${file%%:*}" "/usr/local/sbin/${file#*:}.new"
+      mv "/usr/local/sbin/${file#*:}.new" "/usr/local/sbin/${file#*:}"
+    fi
+  done
+  for file in kasra-gate.socket kasra-gate@.service kasra-runner.service; do
+    if ! cmp -s "$src/systemd/$file" "/etc/systemd/system/$file"; then
+      install -m 0644 "$src/systemd/$file" /etc/systemd/system/
+      changed=true
+    fi
+  done
+  [ "$changed" = false ] || systemctl daemon-reload
+}
+
 record() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $*" >> "$KASRA_DIR/deploy-history.log"; }
 
 # HTTP checks through every layer a visitor uses: API, Next.js, and Nginx with TLS.
