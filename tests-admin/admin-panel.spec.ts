@@ -511,6 +511,41 @@ test('a label scanned while a sale is being recorded stays on the counter instea
   expect(problems).toEqual([]);
 });
 
+test('a barcode lookup that answers while the cashier types a note leaves the cursor in the note', async ({ page, request }) => {
+  const problems = watchConsole(page);
+  const headers = { 'X-Forwarded-For': visitorAddress() };
+  const owner = await (await request.post(API + '/v1/admin/auth/login', { data: accounts().owner, headers })).json() as { token: string };
+  const codes = await (await request.post(API + '/v1/admin/products/' + COUNTER_PRODUCT + '/barcodes',
+    { headers: { ...headers, Authorization: 'Bearer ' + owner.token } })).json() as { items: { size: string; code: string }[] };
+  const medium = codes.items.find(item => item.size === 'M')!.code;
+
+  await signIn(page, accounts().staff);
+  const scan = page.getByLabel('اسکن بارکد کالا');
+  const note = page.getByLabel('یادداشت (اختیاری)');
+  // Hold the lookup's answer until the cashier has started typing the note.
+  let release!: () => void;
+  const answered = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/admin/barcodes/*', async route => { await answered; await route.continue(); });
+  await scan.fill(medium);
+  await scan.press('Enter');
+  await note.click();
+  await note.pressSequentially('مشتری ');
+  release();
+  await expect(page.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۱');
+  await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await note.pressSequentially('منتظر سایز بزرگ‌تر');
+  await expect(note).toHaveValue('مشتری منتظر سایز بزرگ‌تر');
+  await expect(note).toBeFocused();
+  await expect(scan).toHaveValue('');
+  await page.unroute('**/api/admin/barcodes/*');
+  // An action of the cashier's own still brings the cursor back for the next scan.
+  page.on('dialog', dialog => void dialog.accept());
+  await page.getByRole('button', { name: 'خالی کردن سبد' }).click();
+  await expect(page.getByText('سبد خالی است؛ اولین کالا را اسکن کنید.')).toBeVisible();
+  await expect(scan).toBeFocused();
+  expect(problems).toEqual([]);
+});
+
 test('product editor: unsaved changes are guarded, Back moves between screens, a copy starts as an empty draft', async ({ page }) => {
   const problems = watchConsole(page);
   await signIn(page, accounts().owner);
