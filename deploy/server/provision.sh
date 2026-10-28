@@ -89,6 +89,7 @@ fi
 # --- Kasra directory, scripts and secrets ------------------------------------------------------------------
 install -d -m 0700 "$KASRA_DIR" "$KASRA_DIR/bin" "$KASRA_DIR/releases" "$KASRA_DIR/incoming" "$BACKUP_DIR"
 install -m 0700 "$SOURCE"/server/*.sh "$SOURCE"/server/*.py "$KASRA_DIR/bin/"
+refresh_runner_side "$SOURCE"
 [ -f "$KASRA_DIR/compose.yaml" ] || install -m 0600 "$SOURCE/compose.production.yaml" "$KASRA_DIR/compose.yaml"
 
 if [ ! -f "$ENV_FILE" ]; then
@@ -101,6 +102,7 @@ if [ ! -f "$ENV_FILE" ]; then
     echo "POSTGRES_PASSWORD=$(secret)"
     echo "ORDER_TOKEN_SECRET=$(secret)"
     echo "ADMIN_API_KEY=$(secret)"
+    echo "REDIS_PASSWORD=$(secret)"
     echo "NEXT_PUBLIC_SITE_URL=$SITE_URL"
     echo "SEED_DEMO_DATA=$SEED_DEMO_DATA"
     echo "KASRA_RELEASE="
@@ -109,6 +111,7 @@ if [ ! -f "$ENV_FILE" ]; then
   chmod 600 "$ENV_FILE"
 else
   log "Keeping the existing $ENV_FILE (secrets unchanged)"
+  [ -n "$(env_get REDIS_PASSWORD)" ] || env_set REDIS_PASSWORD "$(openssl rand -hex 32)"
   env_set SEED_DEMO_DATA "$SEED_DEMO_DATA"
   [ -n "$(env_get KASRA_DOMAIN)" ] || env_set NEXT_PUBLIC_SITE_URL "$SITE_URL"
 fi

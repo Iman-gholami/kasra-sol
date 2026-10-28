@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Deploys one release: loads its images, backs up the database, switches the containers, verifies them,
 # and returns to the previous release automatically if the new one does not come up healthy.
-# Run by .github/workflows/release.yml after the production approval, from the release's own copy of
-# deploy/ (so script changes ship with the release), with the images in
-# /opt/kasra/incoming/kasra-images-<commit>.tar.gz.   Usage: deploy.sh <40-character commit>
+# Run through kasra-gate by .github/workflows/release.yml after the production approval, from the
+# release's own copy of deploy/ (so script changes ship with the release), with the images in
+# /opt/kasra/incoming/kasra-images-<commit>.tar.gz (and, when the server lacks them, the database and
+# cache images in /opt/kasra/incoming/infra-images.tar.gz).   Usage: deploy.sh <40-character commit>
 source "$(dirname "$0")/lib.sh"
 SOURCE=$(cd "$(dirname "$0")/.." && pwd)
 require_root
@@ -12,12 +13,15 @@ valid_release "$release" || die "usage: deploy.sh <commit sha>"
 [ -f "$ENV_FILE" ] || die "the server is not provisioned yet (ops workflow, task provision)"
 take_lock
 
-bundle=$KASRA_DIR/incoming/kasra-images-$release.tar.gz
-if [ -f "$bundle" ]; then
-  log "Loading images"
-  gunzip -c "$bundle" | docker load -q
-  rm -f "$bundle"
-fi
+for bundle in "$KASRA_DIR/incoming/infra-images.tar.gz" "$KASRA_DIR/incoming/kasra-images-$release.tar.gz"; do
+  if [ -f "$bundle" ]; then
+    log "Loading $(basename "$bundle")"
+    gunzip -c "$bundle" | docker load -q
+    rm -f "$bundle"
+  fi
+done
+# Servers provisioned before Redis had a password get one now (the cache restarts with it).
+[ -n "$(env_get REDIS_PASSWORD)" ] || env_set REDIS_PASSWORD "$(openssl rand -hex 32)"
 install -d -m 0700 "$KASRA_DIR/releases/$release"
 install -m 0600 "$SOURCE/compose.production.yaml" "$KASRA_DIR/releases/$release/compose.yaml"
 for image in $(KASRA_RELEASE=$release docker compose --project-directory "$KASRA_DIR" \
@@ -26,6 +30,7 @@ for image in $(KASRA_RELEASE=$release docker compose --project-directory "$KASRA
 done
 # Later operations (backup timer, rollback, status) use the newest scripts.
 install -m 0700 "$SOURCE"/server/*.sh "$SOURCE"/server/*.py "$KASRA_DIR/bin/"
+refresh_runner_side "$SOURCE"
 
 previous=$(env_get KASRA_RELEASE)
 fallback=$previous

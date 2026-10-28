@@ -33,8 +33,11 @@ jobs:
     name: Deploy to production
     needs: images
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # Waits for the owner's approval in the protected "production" environment, which alone holds
+    # DEPLOY_TOKEN. Runs on the server in a throwaway sandbox (deploy/server/runner-supervisor.sh) and
+    # reaches root only through kasra-gate, which demands that token.
+    runs-on: [self-hosted, kasra-prod]
+    timeout-minutes: 40
     environment:
       name: production
       url: ${{ vars.PRODUCTION_SITE_URL }}
@@ -55,52 +58,29 @@ jobs:
         with:
           name: release-${{ github.sha }}
           path: bundle
-      - uses: ./.github/actions/production-ssh
-        id: ssh
+      - name: Find the database and cache images the server does not have yet
+        id: infra
+        run: |
+          missing=$(python3 deploy/server/gate-client.py infra-missing "$GITHUB_WORKSPACE" | tr '\n' ' ')
+          echo "Missing on the server: ${missing:-none}"
+          echo "missing=$missing" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        if: steps.infra.outputs.missing != ''
         with:
-          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-      - name: Upload the release to the server
-        run: |
-          ssh kasra-prod test -f /opt/kasra/.env || {
-            echo "::error::The server is not provisioned yet: run Actions > Production operations > provision first."
-            exit 1
-          }
-          ssh kasra-prod "install -d -m 0700 /opt/kasra/incoming && rm -rf /opt/kasra/incoming/deploy-$RELEASE"
-          scp -q "bundle/kasra-images-$RELEASE.tar.gz" "kasra-prod:/opt/kasra/incoming/"
-          tar -czf - deploy | ssh kasra-prod "mkdir /opt/kasra/incoming/deploy-$RELEASE && tar -xzf - -C /opt/kasra/incoming/deploy-$RELEASE"
-      - name: Ship the database and cache images the server does not have yet
-        run: |
-          images=$(KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x NEXT_PUBLIC_SITE_URL=x \
-            docker compose -f deploy/compose.production.yaml config --images | grep -v '^kasra-')
-          for image in $images; do
-            if ssh kasra-prod docker image inspect "$image" >/dev/null 2>&1; then
-              echo "$image already on the server"
-            else
-              docker pull -q "$image"
-              docker save "$image" | gzip -1 | ssh kasra-prod 'gunzip | docker load -q'
-            fi
-          done
+          name: infra-${{ github.sha }}
+          path: infra
       - name: Deploy (backup, switch, verify, automatic rollback on failure)
-        run: ssh kasra-prod "bash /opt/kasra/incoming/deploy-$RELEASE/deploy/server/deploy.sh $RELEASE"
-      - name: Check the site from the internet
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
-          # The temporary IP address uses a self-signed certificate; a real domain must verify properly.
-          insecure=""
-          [[ $SITE_URL =~ ^https://[0-9.]+$ ]] && insecure=-k
-          for attempt in 1 2 3; do
-            curl -fsS $insecure --max-time 20 -o /dev/null "$SITE_URL/api/health" && curl -fsS $insecure --max-time 20 -o /dev/null "$SITE_URL/" && exit 0
-            sleep 5
-          done
-          echo "::warning::The server is healthy locally but $SITE_URL did not answer from GitHub's network (firewall, DNS or international routing)."
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::The production environment has no DEPLOY_TOKEN secret (printed by deploy/server/install-runner.sh)."
+            exit 1
+          fi
+          python3 deploy/server/gate-client.py deploy "$RELEASE" "$GITHUB_WORKSPACE"
       - name: Production status (personal data removed)
-        if: always() && steps.ssh.outcome == 'success'
-        run: ssh kasra-prod 'test -x /opt/kasra/bin/status.sh && /opt/kasra/bin/status.sh 15m' || true
-      - name: Clean up the upload
-        if: always() && steps.ssh.outcome == 'success'
-        run: ssh kasra-prod "rm -rf /opt/kasra/incoming/deploy-$RELEASE /opt/kasra/incoming/kasra-images-$RELEASE.tar.gz" || true
+        if: always() && steps.infra.outcome == 'success'
+        run: python3 deploy/server/gate-client.py status 15m || true
       - name: Summary
         if: always()
         run: |

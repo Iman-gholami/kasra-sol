@@ -101,7 +101,7 @@ The upstream is [Amin Abedi's official Estedad repository](https://github.com/am
 
 ## Deployment
 
-Production runs on a ParsPack VPS: Nginx in front of the Compose stack in [`deploy/compose.production.yaml`](deploy/compose.production.yaml), with images built and tested by GitHub Actions. Every merge to `main` runs the **Release** workflow, which deploys only after the owner approves it in the protected `production` environment, then verifies the site and rolls back automatically on failure.
+Production runs on a ParsPack VPS: Nginx in front of the Compose stack in [`deploy/compose.production.yaml`](deploy/compose.production.yaml), with images built and tested by GitHub Actions. Every merge to `main` runs the **Release** workflow (tests and images), whose deployment waits for the owner's approval in GitHub (the protected `production` environment), then installs the release on the server, verifies the site and rolls back automatically on failure.
 
 - [Production deployment](docs/DEPLOYMENT.md): architecture, one-time setup, temporary IP access, connecting the domain and HTTPS, backups, restore, rollback, operations.
 - [Releasing a change](docs/RELEASING.md): the change → pull request → approval → deployment process.

@@ -1,17 +1,18 @@
 name: Production operations
-# Server tasks outside a normal release. Every run uses the protected "production" environment, so it
-# waits for the owner's approval (Actions > this run > Review deployments) before touching the server.
-# Logs are public: the scripts print no secrets and strip personal data from application logs.
+# Server tasks outside a normal release, on the server's sandboxed runner through kasra-gate. Every task
+# except "status" changes the server: it waits for the owner's approval in the protected "production"
+# environment (Actions > this run > Review deployments), which alone holds DEPLOY_TOKEN. "status" only runs
+# the installed read-only report and needs neither.
 on:
   workflow_dispatch:
     inputs:
       task:
         description: What to do
         type: choice
-        options: [status, inspect, provision, backup, rollback, restore, create-owner, enable-domain]
+        options: [status, inspect, provision, backup, rollback, restore, enable-domain]
         default: status
       target:
-        description: "rollback: commit to return to (empty = previous) | restore: db-….dump file | create-owner: login name | enable-domain: domain"
+        description: "rollback: commit to return to (empty = previous) | restore: db-….dump file | enable-domain: domain"
         type: string
         default: ""
       extra:
@@ -45,18 +46,35 @@ on:
         default: 2h
 permissions:
   contents: read
-  actions: read
 concurrency:
   group: production-ops
   cancel-in-progress: false
 jobs:
+  status:
+    name: status
+    if: inputs.task == 'status'
+    runs-on: [self-hosted, kasra-prod]
+    timeout-minutes: 10
+    env:
+      LOG_WINDOW: ${{ inputs.log_window }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Production status (personal data removed)
+        run: |
+          [[ $LOG_WINDOW =~ ^[0-9]+[smh]$ ]] || { echo "::error::log_window looks like 30m or 6h"; exit 1; }
+          python3 deploy/server/gate-client.py status "$LOG_WINDOW"
+
   run:
     name: ${{ inputs.task }}
-    runs-on: ubuntu-24.04
+    if: inputs.task != 'status'
+    runs-on: [self-hosted, kasra-prod]
     timeout-minutes: 30
     environment:
       name: production
       url: ${{ vars.PRODUCTION_SITE_URL }}
+    permissions:
+      contents: read
+      actions: read
     env:
       TASK: ${{ inputs.task }}
       TARGET: ${{ inputs.target }}
@@ -66,11 +84,8 @@ jobs:
       HARDEN: ${{ inputs.harden }}
       WWW: ${{ inputs.www }}
       SKIP_DNS_CHECK: ${{ inputs.skip_dns_check }}
-      LOG_WINDOW: ${{ inputs.log_window }}
       SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/production-gate
       - name: Validate the inputs
         run: |
           fail() { echo "::error::$*"; exit 1; }
@@ -80,52 +95,27 @@ jobs:
               [[ $TARGET =~ ^db-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\.dump$ ]] || fail "target must be a db-….dump file name (see the status task)"
               [ -z "$EXTRA" ] || [[ $EXTRA =~ ^media-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\.tar\.gz$ ]] || fail "extra must be a media-….tar.gz file name"
               [ "$CONFIRM" = "RESTORE $TARGET" ] || fail "type exactly: RESTORE $TARGET" ;;
-            create-owner) [[ $TARGET =~ ^[a-z0-9][a-z0-9_.-]{2,63}$ ]] || fail "target must be the owner login (a-z 0-9 _ . -)" ;;
             enable-domain)
               [[ $TARGET =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$ ]] || fail "target must be the domain, e.g. shop.example.ir"
               [ -z "$EXTRA" ] || [[ $EXTRA =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] || fail "extra must be an e-mail address" ;;
             provision) [[ $SITE_URL =~ ^https://[a-z0-9.-]+$ ]] || fail "set the repository variable PRODUCTION_SITE_URL first (e.g. https://<server IP>)" ;;
-            status) [[ $LOG_WINDOW =~ ^[0-9]+[smh]$ ]] || fail "log_window looks like 30m or 6h" ;;
           esac
-      - uses: ./.github/actions/production-ssh
-        with:
-          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-      - name: Upload this commit's server scripts
-        if: contains(fromJSON('["inspect", "provision", "enable-domain"]'), inputs.task)
-        run: |
-          dir=$(tar -czf - deploy | ssh kasra-prod 'd=$(mktemp -d /root/kasra-setup.XXXXXX) && tar -xzf - -C "$d" && echo "$d"')
-          echo "SETUP_DIR=$dir" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/production-gate
       - name: Run ${{ inputs.task }}
         env:
-          SERVER_IP: ${{ secrets.SSH_HOST }}
-          OWNER_PASSWORD: ${{ secrets.ADMIN_OWNER_PASSWORD }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
-          set -euo pipefail
-          remote() { ssh kasra-prod "$(printf '%q ' "$@")"; }
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::The production environment has no DEPLOY_TOKEN secret (printed by deploy/server/install-runner.sh)."
+            exit 1
+          fi
+          gate() { python3 deploy/server/gate-client.py "$@"; }
           case "$TASK" in
-            inspect) remote bash "$SETUP_DIR/deploy/server/inspect.sh" ;;
-            provision)
-              remote bash "$SETUP_DIR/deploy/server/inspect.sh"
-              remote env SERVER_IP="$SERVER_IP" SITE_URL="$SITE_URL" SEED_DEMO_DATA="$DEMO_DATA" HARDEN="$HARDEN" \
-                bash "$SETUP_DIR/deploy/server/provision.sh" ;;
-            status) remote /opt/kasra/bin/status.sh "$LOG_WINDOW" ;;
-            backup) remote /opt/kasra/bin/backup.sh manual ;;
-            rollback) remote /opt/kasra/bin/rollback.sh ${TARGET:+"$TARGET"} ;;
-            restore) remote /opt/kasra/bin/restore.sh "$TARGET" ${EXTRA:+"$EXTRA"} ;;
-            create-owner)
-              if [ -z "$OWNER_PASSWORD" ]; then
-                echo "::error::Add the environment secret ADMIN_OWNER_PASSWORD (12-256 characters) to production first."
-                exit 1
-              fi
-              printf '%s' "$OWNER_PASSWORD" | remote /opt/kasra/bin/create-owner.sh "$TARGET"
-              echo "Owner '$TARGET' created. You can now delete the ADMIN_OWNER_PASSWORD secret." ;;
-            enable-domain)
-              remote env DOMAIN="$TARGET" EMAIL="$EXTRA" WWW="$WWW" SKIP_DNS_CHECK="$SKIP_DNS_CHECK" \
-                bash "$SETUP_DIR/deploy/server/enable-domain.sh" ;;
+            inspect) gate inspect "$GITHUB_WORKSPACE" ;;
+            provision) gate provision "$GITHUB_WORKSPACE" "$SITE_URL" "$DEMO_DATA" "$HARDEN" ;;
+            backup) gate backup ;;
+            rollback) gate rollback ${TARGET:+"$TARGET"} ;;
+            restore) gate restore "$TARGET" ${EXTRA:+"$EXTRA"} ;;
+            enable-domain) gate enable-domain "$GITHUB_WORKSPACE" "$TARGET" "$EXTRA" "$WWW" "$SKIP_DNS_CHECK" ;;
           esac
-      - name: Remove the uploaded scripts
-        if: always() && env.SETUP_DIR != ''
-        run: ssh kasra-prod "rm -rf $SETUP_DIR"
