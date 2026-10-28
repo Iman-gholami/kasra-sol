@@ -201,7 +201,7 @@ export function OrderManager({ canFulfill, canExport }: { canFulfill: boolean; c
     onBack={() => { setSelected(null); setLoading(true); }}/>;
   function submit(event: FormEvent) {
     event.preventDefault();
-    setLoading(true); setPage(1); setSearch(query.trim());
+    setLoading(true); setPage(1); setSearch(query.trim()); setVersion(v => v + 1);
   }
   /** The filtered list (every page) as a CSV file for Excel or Google Sheets. */
   async function exportCsv() {

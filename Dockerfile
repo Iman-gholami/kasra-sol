@@ -2,7 +2,11 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# NPM_REGISTRY (set in .env for local builds) points the install at a mirror where registry.npmjs.org is slow or
+# unreachable, as it often is from Iran; production images are built by GitHub Actions with the default. The lockfile
+# pins every version, and downloaded packages stay in a build cache, so a retry after a dropped connection continues.
+ARG NPM_REGISTRY=https://registry.npmjs.org/
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --registry="$NPM_REGISTRY"
 
 FROM node:22-alpine AS build
 WORKDIR /app
