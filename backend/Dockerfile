@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1
 FROM node:22-alpine AS build
 WORKDIR /app/backend
-COPY backend/package.json ./
-RUN npm install --no-audit --no-fund
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
 COPY backend ./
 COPY src /app/src
-RUN npm run build
+# The bundle in dist/ still imports the runtime dependencies; the build tools are not shipped.
+RUN npm run build && npm prune --omit=dev --no-audit --no-fund
 
 FROM node:22-alpine
 WORKDIR /app/backend

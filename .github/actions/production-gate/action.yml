@@ -1,0 +1,31 @@
+name: Production gate
+description: >-
+  Refuses to touch production unless this job runs from main inside the "production" environment and that
+  environment requires a reviewer's approval and only accepts main. A missing or weakened protection rule
+  therefore stops the job instead of deploying without approval.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPOSITORY: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        if [ "$GITHUB_REF" != refs/heads/main ]; then
+          echo "::error::Production is changed only from main (this run is on $GITHUB_REF)."
+          exit 1
+        fi
+        environment=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/$REPOSITORY/environments/production")
+        reviewers=$(jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' <<<"$environment")
+        branches=$(jq -c '.deployment_branch_policy' <<<"$environment")
+        if [ "$reviewers" -lt 1 ]; then
+          echo "::error::The production environment has no required reviewer, so this job could run without approval. Add one under Settings > Environments > production (docs/DEPLOYMENT.md)."
+          exit 1
+        fi
+        if [ "$branches" = null ]; then
+          echo "::error::The production environment accepts every branch. Limit it to main under Settings > Environments > production > Deployment branches and tags."
+          exit 1
+        fi
+        echo "Approved by a required reviewer; environment limited to $branches."

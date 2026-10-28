@@ -1,0 +1,10 @@
+[Unit]
+Description=Kasra daily backup (PostgreSQL dump and uploaded media)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/kasra/bin/backup.sh daily
+Nice=10
+IOSchedulingClass=idle

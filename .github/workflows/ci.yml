@@ -1,8 +1,8 @@
 name: Storefront CI
+# Pull requests, and every push to main through release.yml (which deploys only after these pass).
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_call:
 concurrency:
   group: storefront-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -15,12 +15,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       # The storefront ↔ API contract tests in tests-unit/ import the API's validation code.
       - name: Install API dependencies
         working-directory: backend
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Lint
         run: npm run lint
       - name: Typecheck

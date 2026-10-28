@@ -30,7 +30,7 @@ Run Playwright against a built app. Do not use the development server for perfor
 Run the fast suites before every push; they need no database or browser and finish in seconds:
 
 ```bash
-npm install && npm --prefix backend install
+npm ci && npm --prefix backend ci
 npm test                 # storefront unit + contract tests, then API unit tests
 ```
 
@@ -42,10 +42,11 @@ npm test                 # storefront unit + contract tests, then API unit tests
 | API integration | see `.github/workflows/backend-ci.yml` | Real PostgreSQL: stock under concurrency, idempotency, payment safety, staff and order workflows |
 | Storefront E2E | `npm run build && npm run test:e2e` | Shopping flows in Chromium; `tests/smoke.spec.ts` opens every page, crawls internal links and checks the sitemap |
 | Admin E2E | see `.github/workflows/admin-e2e.yml` | The back office against the real API |
+| Deployment | `.github/workflows/images.yml` (`deploy/test/deploy-test.sh`) | Production images, server provisioning, deployment, rollback, a broken release rolling itself back, backup and restore |
 
 When you add a feature, a failing test usually names the place to update: a new admin endpoint must be listed with its permission in `backend/tests/admin-routes.test.ts`; a new API error code, audit action, permission or order status needs its Persian label in `src/components/admin/`; a new SQL file must be listed in `backend/src/db/migrate.ts`.
 
-> The repository was bootstrapped without a generated npm lockfile because the authoring environment had no npm registry connectivity. Before a production release, run `npm install --package-lock-only` in a networked environment, commit `package-lock.json`, change the Docker dependency stage and CI to `npm ci`, and then verify reproducible builds.
+Dependencies are pinned by `package-lock.json` and `backend/package-lock.json`; CI and the Docker images install with `npm ci`. After changing a `package.json`, run `npm install` (or `npm --prefix backend install`) and commit the updated lockfile.
 
 ## Included customer flows
 
@@ -57,7 +58,7 @@ When you add a feature, a failing test usually names the place to update: a new 
 - Two-step Iranian checkout with validation, sample shipping/payment/discount rules and a simulated gateway; **no** real payment, server-side storage of addresses, or real order placement (the draft stays in the tab's sessionStorage)
 - Provisional FAQ, contact, about, shipping, size guide, 404, health check
 - Mobile responsive layouts, semantic labels, keyboard-friendly interactions, reduced-motion CSS
-- Docker standalone runtime, Compose, Nginx sample, GitHub Actions and Playwright cases
+- Docker standalone runtime, Compose, Nginx, GitHub Actions release pipeline with an approval gate, and Playwright cases
 
 **No actual purchases, prices, commercial policies, real social proof, auth or shipping guarantees exist.** The checkout confirmation explicitly means "demo complete", never "order placed".
 
@@ -80,7 +81,7 @@ src/
 public/images/          Original local SVG placeholders; NOT product photographs
 tests/                  Playwright critical-path tests
 tests-unit/             Storefront unit and storefront ↔ API contract tests (node:test)
-deploy/nginx/           Reverse-proxy starter
+deploy/                 Production Compose file, Nginx site templates, server scripts (provision, deploy, backup…)
 docs/                   Deployment and verification reports
 ```
 
@@ -100,18 +101,12 @@ The upstream is [Amin Abedi's official Estedad repository](https://github.com/am
 
 ## Deployment
 
-```bash
-cp .env.production.example .env
-# Set NEXT_PUBLIC_SITE_URL to your actual HTTPS domain
-docker compose build
-docker compose up -d
-docker compose ps
-curl -f http://127.0.0.1:3000/api/health
-```
+Production runs on a ParsPack VPS: Nginx in front of the Compose stack in [`deploy/compose.production.yaml`](deploy/compose.production.yaml), with images built and tested by GitHub Actions. Every merge to `main` runs the **Release** workflow, which deploys only after the owner approves it in the protected `production` environment, then verifies the site and rolls back automatically on failure.
 
-Compose publishes only to `127.0.0.1:3000` by design; configure host-level Nginx and HTTPS first. See [ParsPack Ubuntu deployment steps](docs/DEPLOYMENT.md).
+- [Production deployment](docs/DEPLOYMENT.md): architecture, one-time setup, temporary IP access, connecting the domain and HTTPS, backups, restore, rollback, operations.
+- [Releasing a change](docs/RELEASING.md): the change → pull request → approval → deployment process.
 
-Production deployment to a VPS, Docker image verification, browser tests and load testing must only be treated as complete when actually executed. Current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
+For a local or staging copy of the full stack, `compose.yaml` still builds everything on the machine (see [PostgreSQL + Fastify backend](#postgresql--fastify-backend)). Load testing must only be treated as complete when actually executed; current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
 ## Cart & Checkout 10.0
 
