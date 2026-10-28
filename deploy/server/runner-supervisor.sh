@@ -27,7 +27,9 @@ ensure_job_user() {
   getent group kasra-gate >/dev/null || groupadd --system kasra-gate
   id -u kasra-job >/dev/null 2>&1 || useradd --system --user-group --no-create-home \
     --home-dir /nonexistent --shell /usr/sbin/nologin kasra-job
-  install -d -m 0711 -o root -g root "$JOBS"
+  # Readable: the runner refuses to start unless every directory above its folder can be listed. The job
+  # folders themselves are 0700.
+  install -d -m 0755 -o root -g root "$JOBS"
 }
 
 api() { # api METHOD PATH [JSON] — GitHub REST call with the token, which never appears in a process list
@@ -142,7 +144,8 @@ while true; do
   rm -rf "${JOBS:?}/$name"
   # A runner that took a job is removed by GitHub; one that never connected would stay listed as offline.
   [ -n "$runner_id" ] && api DELETE "/repos/$REPO/actions/runners/$runner_id" >/dev/null 2>&1 || true
-  if [ "$status" != 0 ] && [ $((SECONDS - started)) -lt 60 ]; then
+  # The runner exits 0 on some start-up errors too, so judge by whether it took a job.
+  if [ $((SECONDS - started)) -lt 60 ] && ! journalctl -u "kasra-job-$name" -q --no-pager | grep -q 'Running job:'; then
     # Failing right away is not going to fix itself in seconds: back off up to 15 minutes.
     failures=$((failures + 1))
     delay=$((30 * (1 << (failures < 5 ? failures : 5))))
