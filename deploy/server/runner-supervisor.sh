@@ -113,6 +113,9 @@ while true; do
   if [ ! -s "$TOKEN_FILE" ]; then log "no GitHub token in $TOKEN_FILE (run install-runner.sh)"; sleep 300; continue; fi
   # One runner at a time: wait while a job sandbox (e.g. from before a restart) is still running.
   while systemctl list-units --plain --no-legend --state=active 'kasra-job-*' | grep -q .; do sleep 15; done
+  # No job runs now: remove every job folder, including one a restarted supervisor never cleaned up, so
+  # the next job (the same user) cannot read what an earlier one left.
+  find "$JOBS" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
   if [ $((SECONDS - last_update)) -ge 86400 ] || [ $last_update = 0 ]; then
     update_runner || log "runner update failed; keeping the installed version"
     last_update=$SECONDS
