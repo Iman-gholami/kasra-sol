@@ -302,8 +302,9 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 .admin-login-form { display: grid; gap: 18px; }
 .admin-login label, .admin-login-field { display: grid; gap: 7px; font-size: 14px; font-weight: 700; }
 .admin-password { position: relative; display: block; }
-.admin-login .admin-password input { padding-inline-end: 48px; }
-.admin-password-toggle { position: absolute; inset-inline-end: 4px; top: 4px; width: 40px; height: 40px; display: grid; place-items: center;
+/* The password is typed left to right, so the eye sits on the right, in the room the input leaves there. */
+.admin-login .admin-password input { padding-right: 48px; }
+.admin-password-toggle { position: absolute; right: 4px; top: 4px; width: 40px; height: 40px; display: grid; place-items: center;
   border: 0; border-radius: 8px; background: transparent; color: #3e5160; }
 .admin-login button[type="submit"] { width: 100%; min-height: 48px; font-size: 14px; }
 .admin-login-error { margin: 0; padding: 11px 13px; border-radius: 10px; background: #fdf0ef; border: 1px solid #f0c4bf; color: #7d241e; font-size: 13px; }

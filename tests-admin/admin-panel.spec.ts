@@ -693,6 +693,12 @@ test('login: generic error, password reveal, logout and private routes', async (
   await page.getByLabel('نام کاربری').fill(accounts().owner.username);
   const password = page.getByLabel('رمز عبور', { exact: true });
   await password.fill('definitely-not-the-password');
+  // The eye sits at the right end of the field, clear of the password, which is typed from the left.
+  const field = (await password.boundingBox())!;
+  const eye = (await page.getByRole('button', { name: 'نمایش رمز' }).boundingBox())!;
+  expect(eye.x + eye.width).toBeLessThanOrEqual(field.x + field.width);
+  expect(eye.x).toBeGreaterThan(field.x + field.width - 48);
+  expect(await password.evaluate(input => parseFloat(getComputedStyle(input).paddingRight))).toBeGreaterThanOrEqual(eye.width);
   await page.getByRole('button', { name: 'نمایش رمز' }).click();
   await expect(password).toHaveAttribute('type', 'text');
   await page.getByRole('button', { name: /ورود به پنل مدیریت/ }).click();
