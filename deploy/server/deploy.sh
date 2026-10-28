@@ -40,8 +40,12 @@ log "Switching to $release (previous: ${previous:-none})"
 if switch_release "$release" && verify_release "$release"; then
   [ -n "$previous" ] && [ "$previous" != "$release" ] && env_set KASRA_PREVIOUS_RELEASE "$previous"
   record "deployed $release (previous ${previous:-none})"
-  # Keep the five newest releases (compose files and images) for rollbacks.
-  ls -1t "$KASRA_DIR/releases" | tail -n +6 | while read -r old; do rm -rf "${KASRA_DIR:?}/releases/$old"; done
+  # Keep the newest releases (compose files and images) for rollbacks, and always the recorded previous
+  # one: after a rollback to an old release it is the oldest folder, yet the default rollback target.
+  keep_previous=$(env_get KASRA_PREVIOUS_RELEASE)
+  ls -1t "$KASRA_DIR/releases" | tail -n +$((${KEEP_RELEASES:-5} + 1)) | while read -r old; do
+    [ "$old" = "$release" ] || [ "$old" = "$keep_previous" ] || rm -rf "${KASRA_DIR:?}/releases/$old"
+  done
   for repo in kasra-frontend kasra-backend; do
     docker image ls "$repo" --format '{{.Tag}}' | while read -r tag; do
       [ -d "$KASRA_DIR/releases/$tag" ] || docker image rm "$repo:$tag" >/dev/null 2>&1 || true

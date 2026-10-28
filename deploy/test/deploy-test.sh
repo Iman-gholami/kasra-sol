@@ -74,6 +74,18 @@ group "Rollback"
 expect_env KASRA_RELEASE "$release"
 expect_env KASRA_PREVIOUS_RELEASE "$second"
 
+group "Retention keeps the release we came from"
+# The running release is now the oldest folder; with room for only two, pruning must still keep it.
+third=$(fake_release "third-$release")
+docker tag "kasra-frontend:$release" "kasra-frontend:$third"
+docker tag "kasra-backend:$release" "kasra-backend:$third"
+KEEP_RELEASES=2 bash "$DEPLOY/server/deploy.sh" "$third"
+expect_env KASRA_PREVIOUS_RELEASE "$release"
+[ -d "$KASRA_DIR/releases/$release" ] && docker image inspect "kasra-backend:$release" >/dev/null \
+  || fail "the previous release was pruned"
+"$BIN/rollback.sh"
+expect_env KASRA_RELEASE "$release"
+
 group "Broken release rolls itself back"
 broken=$(fake_release "broken-$release")
 printf 'FROM kasra-backend:%s\nCMD ["sh", "-c", "echo broken release >&2; exit 1"]\n' "$release" | docker build -q -t "kasra-backend:$broken" - >/dev/null
