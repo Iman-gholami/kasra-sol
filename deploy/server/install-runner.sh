@@ -110,15 +110,22 @@ if [ "$test_mode" = false ]; then
       "================================================================================"
   fi
   # A runner from before (e.g. an older supervisor) that is only waiting for a job is replaced right away;
-  # one whose job is talking to the gate is left to finish.
-  if systemctl list-units --plain --no-legend --state=active 'kasra-gate@*' | grep -q .; then
-    log "A production task is running; the new runner starts after it"
-  else
-    systemctl stop 'kasra-job-*' 2>/dev/null || true
-  fi
+  # one that has taken a job ("Running job:" in its log) is left to finish, and the new runner follows it.
+  busy=false
+  for unit in $(systemctl list-units --plain --no-legend --state=active 'kasra-job-*' | awk '{print $1}'); do
+    if journalctl -u "$unit" --no-pager -q | grep -q 'Running job:'; then
+      busy=true
+    else
+      systemctl stop "$unit" || true
+    fi
+  done
   started=$(date '+%Y-%m-%d %H:%M:%S')
   systemctl enable kasra-runner.service >/dev/null
   systemctl restart kasra-runner.service
+  if [ "$busy" = true ]; then
+    log "A production job is running; the new runner starts when it ends (check Settings > Actions > Runners)."
+    exit 0
+  fi
   # Success only once the runner in its sandbox has connected to GitHub, not merely been registered.
   for _ in $(seq 1 24); do
     journalctl -u 'kasra-job-*' --since "$started" --no-pager -q | grep -q 'Listening for Jobs' && break
