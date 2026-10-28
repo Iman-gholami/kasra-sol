@@ -214,6 +214,28 @@ by `status`), optional `extra` = a `media-….tar.gz`, `confirm` = `RESTORE <db 
 first, stops the API and storefront, restores in a single transaction (on error nothing changes), and starts them
 again. Media files are added back; none are deleted.
 
+## Removing the demo catalog before launch
+
+Production starts with the 36 demo products (owner's decision, 28 October 2026). They are to be removed when the
+real products are uploaded. This deletes data, so it needs the owner's explicit approval at that time; it is not
+an ops task yet. The order of steps matters:
+
+1. **Backup** (ops task `backup`).
+2. **Turn the seed off**: set `SEED_DEMO_DATA=false` in `/opt/kasra/.env` (provision with `demo_data` = `false`).
+   The seed runs whenever the products table is empty, so without this step the demo catalog returns at the next
+   API restart.
+3. **Delete the demo products** by their ids, `shomiz-01`…`shomiz-12`, `manto-01`…`manto-12` and `tshirt-01`…`tshirt-12`
+   (generated in `src/data/products.ts`; ids are unique, so a product created in the admin cannot hold one of
+   these while the demo products exist).
+   Their variants and home-slider entries are removed with them (`ON DELETE CASCADE`). Order lines keep their own
+   copy of the product name and price and have no foreign key to products, so existing orders stay readable. Demo
+   photos are served from the storefront image, not the media volume, so there are no files to delete.
+4. Optionally delete test orders placed during the preview, and reset the traffic statistics (`page_views`).
+
+Alternative before any real order or staff setup exists: a **fresh database** (stop the stack, remove the
+`kasra_postgres_data` volume, deploy with `SEED_DEMO_DATA=false`, run create-owner again). It is simpler, but it also
+removes accounts, settings and the audit log.
+
 ## Operations workflow
 
 **Actions → Production operations → Run workflow** on `main`; every run needs your approval.
