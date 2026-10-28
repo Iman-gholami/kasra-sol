@@ -1,8 +1,7 @@
-/** eNamad trust seal, issued for kasraboutique.ir and kept as eNamad hands it out. eNamad checks the page's origin
- * through the referrer, so the link must not carry rel="noopener noreferrer" (the seal then stops showing). */
-const ID = '8198877';
-const CODE = '8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa';
-const QUERY = '?id=' + ID + '&Code=' + CODE;
+/** eNamad trust seal for kasraboutique.ir, exactly as eNamad's panel issued it. eNamad asks for the code unchanged,
+ * and its checker may look for this very text in the page, so it is inserted verbatim (single quotes, raw &,
+ * no rel: eNamad verifies the seal through the referrer, and rel="noopener noreferrer" would hide it). */
+export const ENAMAD_SNIPPET = "<a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8198877&Code=8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8198877&Code=8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa' alt='' style='cursor:pointer' code='8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa'></a>";
 
 /** Only the production domain shows the seal: elsewhere (local builds, CI, previews) it would be an invalid seal
  * and a third-party image in every page. */
@@ -11,13 +10,5 @@ export function enamadEnabled(siteUrl = process.env.NEXT_PUBLIC_SITE_URL) {
 }
 
 export function EnamadSeal() {
-  return (
-    // No rel on purpose: eNamad verifies the seal through the referrer.
-    <a className="footer-enamad" referrerPolicy="origin" target="_blank" href={'https://trustseal.enamad.ir/' + QUERY}
-      aria-label="نماد اعتماد الکترونیکی کسری بوتیک">
-      {/* eslint-disable-next-line @next/next/no-img-element -- eNamad's own image, served by eNamad as issued. */}
-      <img referrerPolicy="origin" src={'https://trustseal.enamad.ir/logo.aspx' + QUERY} alt="" style={{ cursor: 'pointer' }}
-        {...{ code: CODE }}/>
-    </a>
-  );
+  return <div className="footer-enamad" dangerouslySetInnerHTML={{ __html: ENAMAD_SNIPPET }}/>;
 }

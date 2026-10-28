@@ -2,7 +2,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { EnamadSeal, enamadEnabled } from '@/components/layout/enamad-seal';
+import { ENAMAD_SNIPPET, EnamadSeal, enamadEnabled } from '@/components/layout/enamad-seal';
+
+// The code exactly as eNamad's panel issued it for kasraboutique.ir.
+const ISSUED = "<a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8198877&Code=8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8198877&Code=8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa' alt='' style='cursor:pointer' code='8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa'></a>";
 
 describe('eNamad trust seal', () => {
   it('shows only on the production domain', () => {
@@ -12,18 +15,11 @@ describe('eNamad trust seal', () => {
       'https://kasraboutique.ir.example.com', '', undefined]) assert.equal(enamadEnabled(other), false, String(other));
   });
 
-  it('keeps the markup eNamad issued: its link and image, the origin referrer, and no rel', () => {
-    // React may also emit an image preload ahead of it, which carries a rel of its own; check the seal itself.
-    const markup = renderToStaticMarkup(createElement(EnamadSeal));
-    const html = markup.slice(markup.indexOf('<a '));
-    const query = '?id=8198877&amp;Code=8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa';
-    assert.match(html, /^<a [^>]*href="https:\/\/trustseal\.enamad\.ir\/\?id=8198877&amp;Code=8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa"/);
-    assert.ok(html.includes('src="https://trustseal.enamad.ir/logo.aspx' + query + '"'), html);
-    assert.ok(html.includes('code="8Cs5SUjq6iuI0fu3Zd1Atj4qsk529SHa"'), html);
-    assert.equal(html.match(/referrerpolicy="origin"/gi)?.length, 2, html);
-    assert.match(html, /target="_blank"/);
+  it('puts the issued code into the page byte for byte', () => {
+    assert.equal(ENAMAD_SNIPPET, ISSUED);
+    const html = renderToStaticMarkup(createElement(EnamadSeal));
+    assert.equal(html, '<div class="footer-enamad">' + ISSUED + '</div>');
     // rel="noopener noreferrer" would hide the referrer eNamad checks, and the seal would not show.
     assert.doesNotMatch(html, /\srel=/);
-    assert.match(html, /aria-label="نماد اعتماد الکترونیکی کسری بوتیک"/);
   });
 });
