@@ -68,19 +68,21 @@ sandbox() {
     -p NoNewPrivileges=yes -p RestrictSUIDSGID=yes -p LockPersonality=yes \
     -p ProtectKernelTunables=yes -p ProtectKernelModules=yes -p ProtectControlGroups=yes -p ProtectClock=yes \
     -p InaccessiblePaths="-/opt/kasra -/etc/kasra -/var/backups/kasra -/var/lib/docker -/run/docker.sock -/var/run/docker.sock -/root -/home" \
-    -p IPAddressDeny="localhost link-local multicast 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7" \
+    -p IPAddressDeny="127.0.0.0/8 ::1/128 169.254.0.0/16 fe80::/10 224.0.0.0/4 ff00::/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7" \
     -p IPAddressAllow="127.0.0.53 127.0.0.54" \
     -p MemoryMax=6G -p TasksMax=4096 -p RuntimeMaxSec=7200 \
-    "${SANDBOX_ENV[@]}" "$@"
+    "${SANDBOX_ARGS[@]}" "$@"
 }
-SANDBOX_ENV=()
+SANDBOX_ARGS=()
 
 case "${1:-}" in
   --update-runner) update_runner; exit ;;
   --sandbox)
     shift
     name=test-$$
-    for var in ${KASRA_SANDBOX_PASS:-}; do SANDBOX_ENV+=(--setenv="$var=${!var:-}"); done
+    # --pipe: the command's output and exit status come back to the caller (the runner's go to the journal).
+    SANDBOX_ARGS=(--pipe)
+    for var in ${KASRA_SANDBOX_PASS:-}; do SANDBOX_ARGS+=(--setenv="$var=${!var:-}"); done
     status=0; sandbox "$name" "$@" || status=$?
     rm -rf "/var/lib/private/kasra-jobs/$name"
     exit "$status" ;;
@@ -105,7 +107,7 @@ while true; do
     continue
   fi
   log "runner $name is waiting for a job"
-  SANDBOX_ENV=(--setenv="KASRA_JIT=$jit")
+  SANDBOX_ARGS=(--setenv="KASRA_JIT=$jit")
   status=0
   sandbox "$name" /bin/sh -c 'cp -a /opt/actions-runner/. "$HOME"/ && cd "$HOME" && exec ./run.sh --jitconfig "$KASRA_JIT"' || status=$?
   log "runner $name finished (exit $status)"
