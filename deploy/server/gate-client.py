@@ -19,7 +19,7 @@ try:
 except OSError as error:
     sys.exit("kasra-gate is not reachable at %s (%s): is the runner installed on the server?" % (SOCKET, error))
 connection.sendall((json.dumps(request) + "\n").encode())
-status = 1
+status = None
 with connection.makefile("r", encoding="utf-8", errors="replace") as replies:
     for line in replies:
         if line.startswith(MARK):
@@ -27,4 +27,6 @@ with connection.makefile("r", encoding="utf-8", errors="replace") as replies:
             break
         sys.stdout.write(line)
         sys.stdout.flush()
+if status is None:
+    sys.exit("kasra-gate ended without a result; on the server: journalctl -u 'kasra-gate@*' -n 50")
 sys.exit(status)

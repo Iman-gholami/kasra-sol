@@ -79,6 +79,9 @@ def stage(checkout):
 
 def run(command, env=None):
     """Runs a command, streaming its output to the client; returns its exit status."""
+    if shutil.which(command[0]) is None:
+        say("kasra-gate: %s is missing: the server is not provisioned yet (Production operations > provision)" % command[0])
+        return 2
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                stdin=subprocess.DEVNULL, env={**os.environ, **(env or {})})
     for line in iter(process.stdout.readline, b""):

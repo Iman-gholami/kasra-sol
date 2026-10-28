@@ -93,6 +93,7 @@ timeout 5 bash -c "exec 3<>/dev/tcp/$REDIS_IP/6379" 2>/dev/null && bad "reaches 
 touch /usr/local/bin/kasra-probe 2>/dev/null && bad "writes to the system"
 # The runner runs from its copy in the job folder, which newer systemd mounts noexec unless ExecPaths= says otherwise.
 cp /usr/bin/true "$HOME/kasra-exec-probe" && "$HOME/kasra-exec-probe" || bad "cannot run programs from its job folder (the runner must)"
+ls "$(dirname "$HOME")" >/dev/null || bad "cannot list the folder above its job folder (the runner refuses to start)"
 # The runner unpacks actions with the system tar (on Ubuntu 26.04 it needs openat2, which DynamicUser= breaks).
 mkdir -p "$HOME/t/a/b" && echo x > "$HOME/t/a/b/f" && tar -czf "$HOME/t.tgz" -C "$HOME/t" a && mkdir "$HOME/u" \
   && tar -xzf "$HOME/t.tgz" -C "$HOME/u" && [ -f "$HOME/u/a/b/f" ] || bad "cannot unpack an archive in its job folder (the runner must)"
