@@ -143,7 +143,8 @@
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3);
   padding-block: var(--space-4) var(--space-6);
 }
-.footer-enamad { display: block; flex-shrink: 0; }
+.footer-enamad { flex-shrink: 0; }
+.footer-enamad a { display: block; }
 .footer-enamad img { display: block; block-size: 88px; inline-size: auto; }
 .footer-bottom p { margin: 0; color: var(--color-text-subtle); font-size: var(--text-xs); }
 
