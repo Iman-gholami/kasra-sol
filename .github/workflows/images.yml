@@ -23,7 +23,8 @@ permissions:
   contents: read
 jobs:
   images:
-    runs-on: ubuntu-24.04
+    # The production server runs Ubuntu 26.04: provision and deploy are tested on the same release.
+    runs-on: ubuntu-26.04
     timeout-minutes: 40
     env:
       RELEASE: ${{ github.sha }}

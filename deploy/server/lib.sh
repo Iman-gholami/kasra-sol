@@ -84,6 +84,16 @@ verify_release() {
     smoke_test
 }
 
+# The Nginx templates use the `http2 on;` directive (Nginx 1.25.1+, e.g. Ubuntu 26.04). Older Nginx (Ubuntu
+# 22.04/24.04, Debian 12) only knows `listen ... ssl http2`, so the rendered site is converted for it.
+nginx_http2_compat() {
+  local version
+  version=$(nginx -v 2>&1 | sed -nE 's#.*nginx/([0-9.]+).*#\1#p')
+  if [ -n "$version" ] && dpkg --compare-versions "$version" lt 1.25.1; then
+    sed -i -e '/^[[:space:]]*http2 on;$/d' -e 's/\(listen .*443 ssl\)/\1 http2/' "$1"
+  fi
+}
+
 record() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $*" >> "$KASRA_DIR/deploy-history.log"; }
 
 # HTTP checks through every layer a visitor uses: API, Next.js, and Nginx with TLS.

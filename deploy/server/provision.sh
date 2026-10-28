@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepares an Ubuntu (22.04/24.04) or Debian 12 server for Kasra. Idempotent: safe to run again, and it
+# Prepares an Ubuntu (22.04/24.04/26.04) or Debian 12 server for Kasra. Idempotent: safe to run again, and it
 # never deletes data, overwrites an existing .env, or replaces a domain (Let's Encrypt) Nginx site.
 # Run as root by .github/workflows/ops.yml (task "provision") from an unpacked copy of deploy/.
 #
@@ -19,8 +19,8 @@ export DEBIAN_FRONTEND=noninteractive
 # --- Preflight: stop before changing anything if the server is not what this script expects -------------
 . /etc/os-release
 case "${ID}:${VERSION_ID}" in
-  ubuntu:22.04|ubuntu:24.04|debian:12) log "OS: $PRETTY_NAME" ;;
-  *) die "unsupported OS $PRETTY_NAME (supported: Ubuntu 22.04/24.04, Debian 12); nothing was changed" ;;
+  ubuntu:22.04|ubuntu:24.04|ubuntu:26.04|debian:12) log "OS: $PRETTY_NAME" ;;
+  *) die "unsupported OS $PRETTY_NAME (supported: Ubuntu 22.04/24.04/26.04, Debian 12); nothing was changed" ;;
 esac
 for port in 80 443; do
   owner=$(ss -tlnpH "sport = :$port" 2>/dev/null | sed -nE 's/.*users:\(\("([^"]+)".*/\1/p' | sort -u | tr '\n' ' ')
@@ -138,6 +138,7 @@ if [ -n "$(env_get KASRA_DOMAIN)" ]; then
 else
   sed "s/__SERVER_IP__/$SERVER_IP/g" "$SOURCE/nginx/kasra-ip.conf" > "$site.new"
   [ -f /proc/net/if_inet6 ] || sed -i '/listen \[::\]/d' "$site.new"
+  nginx_http2_compat "$site.new"
   mv "$site.new" "$site"
 fi
 ln -sfn "$site" /etc/nginx/sites-enabled/kasra

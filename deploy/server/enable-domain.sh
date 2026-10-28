@@ -41,6 +41,7 @@ text = open(template).read().replace("__WWW_BLOCK__", www_block)
 open(target, "w").write(text.replace("__DOMAIN__", domain).replace("__CERT_NAME__", "kasra"))
 PY
 [ -f /proc/net/if_inet6 ] || sed -i '/listen \[::\]/d' "$site"
+nginx_http2_compat "$site"
 if ! nginx -t; then
   mv "$site.before-domain" "$site"
   die "the new Nginx configuration was rejected; the IP site was restored"

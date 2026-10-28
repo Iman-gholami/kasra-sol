@@ -124,7 +124,7 @@ server's `/root/.ssh/authorized_keys` and repeat steps 2–3 with a new key.
 - `harden`: enables the UFW firewall (only the SSH port, 80 and 443 stay open) and fail2ban for SSH.
 
 `provision.sh` first prints the read-only `inspect.sh` report and stops without changing anything if the OS is
-not Ubuntu 22.04/24.04 or Debian 12, if ports 80/443 belong to another web server, or if less than 10 GB is free.
+not Ubuntu 22.04/24.04/26.04 or Debian 12, if ports 80/443 belong to another web server, or if less than 10 GB is free.
 Then it installs Docker (from Ubuntu's own repository when possible, so it works where `download.docker.com` is
 refused), Nginx, unattended security upgrades, log rotation and the nightly backup timer, creates
 `/opt/kasra/.env` with new random secrets, a self-signed certificate for the IP address, and the Nginx site.
