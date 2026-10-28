@@ -109,16 +109,33 @@ if [ "$test_mode" = false ]; then
       " Then run: clear     (Lost it? Run this script again with --rotate-token.)" \
       "================================================================================"
   fi
+  # A runner from before (e.g. an older supervisor) that is only waiting for a job is replaced right away;
+  # one that has taken a job ("Running job:" in its log) is left to finish, and the new runner follows it.
+  busy=false
+  for unit in $(systemctl list-units --plain --no-legend --state=active 'kasra-job-*' | awk '{print $1}'); do
+    if journalctl -u "$unit" --no-pager -q | grep -q 'Running job:'; then
+      busy=true
+    else
+      systemctl stop "$unit" || true
+    fi
+  done
+  started=$(date '+%Y-%m-%d %H:%M:%S')
   systemctl enable kasra-runner.service >/dev/null
   systemctl restart kasra-runner.service
-  for _ in $(seq 1 12); do
-    journalctl -u kasra-runner.service --since -3min --no-pager | grep -q 'is waiting for a job' && break
+  if [ "$busy" = true ]; then
+    log "A production job is running; the new runner starts when it ends (check Settings > Actions > Runners)."
+    exit 0
+  fi
+  # Success only once the runner in its sandbox has connected to GitHub, not merely been registered.
+  for _ in $(seq 1 24); do
+    journalctl -u 'kasra-job-*' --since "$started" --no-pager -q | grep -q 'Listening for Jobs' && break
     sleep 5
   done
-  if journalctl -u kasra-runner.service --since -3min --no-pager | grep -q 'is waiting for a job'; then
-    log "GitHub lists a runner named kasra-prod-… (Idle) under Settings > Actions > Runners."
+  if journalctl -u 'kasra-job-*' --since "$started" --no-pager -q | grep -q 'Listening for Jobs'; then
+    log "The runner is connected: Settings > Actions > Runners > Self-hosted runners lists kasra-prod-… (Idle)."
   else
-    journalctl -u kasra-runner.service --since -3min --no-pager | tail -n 20
-    die "the runner did not start; see the log above"
+    journalctl -u kasra-runner.service --since "$started" --no-pager | tail -n 15
+    journalctl -u 'kasra-job-*' --since "$started" --no-pager | tail -n 30
+    die "the runner did not connect to GitHub; see the logs above"
   fi
 fi
