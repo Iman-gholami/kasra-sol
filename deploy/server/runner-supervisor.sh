@@ -100,7 +100,11 @@ while true; do
     last_update=$SECONDS
   fi
   name=kasra-prod-$(date +%s)
-  body=$(jq -nc --arg n "$name" '{name: $n, runner_group_id: 1, labels: ["kasra-prod"], work_folder: "_work"}')
+  # A just-in-time runner gets exactly these labels (no automatic self-hosted/Linux/X64), and the
+  # production jobs ask for [self-hosted, kasra-prod].
+  arch=X64; [ "$(uname -m)" = aarch64 ] && arch=ARM64
+  body=$(jq -nc --arg n "$name" --arg a "$arch" \
+    '{name: $n, runner_group_id: 1, labels: ["self-hosted", "Linux", $a, "kasra-prod"], work_folder: "_work"}')
   if ! jit=$(api POST "/repos/$REPO/actions/runners/generate-jitconfig" "$body" | jq -er .encoded_jit_config); then
     log "cannot register a runner: is the token in $TOKEN_FILE expired or missing the Administration permission?"
     sleep 120

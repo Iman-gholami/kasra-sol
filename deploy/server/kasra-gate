@@ -32,9 +32,21 @@ os.umask(0o077)
 out = sys.stdout
 
 
+def write(text):
+    """Streams to the job; if the job went away (cancelled, timed out), the task still finishes and the
+    rest of its output goes to the journal: a deployment must not stop halfway."""
+    global out
+    try:
+        out.write(text)
+        out.flush()
+    except (OSError, ValueError):
+        out = sys.stderr
+        out.write("kasra-gate: the job disconnected; continuing, output follows here\n" + text)
+        out.flush()
+
+
 def say(text):
-    out.write(text + "\n")
-    out.flush()
+    write(text + "\n")
 
 
 def finish(status, message=None):
@@ -70,8 +82,7 @@ def run(command, env=None):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                stdin=subprocess.DEVNULL, env={**os.environ, **(env or {})})
     for line in iter(process.stdout.readline, b""):
-        out.write(line.decode("utf-8", "replace"))
-        out.flush()
+        write(line.decode("utf-8", "replace"))
     return process.wait()
 
 

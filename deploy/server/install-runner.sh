@@ -109,16 +109,26 @@ if [ "$test_mode" = false ]; then
       " Then run: clear     (Lost it? Run this script again with --rotate-token.)" \
       "================================================================================"
   fi
+  # A runner from before (e.g. an older supervisor) that is only waiting for a job is replaced right away;
+  # one whose job is talking to the gate is left to finish.
+  if systemctl list-units --plain --no-legend --state=active 'kasra-gate@*' | grep -q .; then
+    log "A production task is running; the new runner starts after it"
+  else
+    systemctl stop 'kasra-job-*' 2>/dev/null || true
+  fi
+  started=$(date '+%Y-%m-%d %H:%M:%S')
   systemctl enable kasra-runner.service >/dev/null
   systemctl restart kasra-runner.service
-  for _ in $(seq 1 12); do
-    journalctl -u kasra-runner.service --since -3min --no-pager | grep -q 'is waiting for a job' && break
+  # Success only once the runner in its sandbox has connected to GitHub, not merely been registered.
+  for _ in $(seq 1 24); do
+    journalctl -u 'kasra-job-*' --since "$started" --no-pager -q | grep -q 'Listening for Jobs' && break
     sleep 5
   done
-  if journalctl -u kasra-runner.service --since -3min --no-pager | grep -q 'is waiting for a job'; then
-    log "GitHub lists a runner named kasra-prod-… (Idle) under Settings > Actions > Runners."
+  if journalctl -u 'kasra-job-*' --since "$started" --no-pager -q | grep -q 'Listening for Jobs'; then
+    log "The runner is connected: Settings > Actions > Runners > Self-hosted runners lists kasra-prod-… (Idle)."
   else
-    journalctl -u kasra-runner.service --since -3min --no-pager | tail -n 20
-    die "the runner did not start; see the log above"
+    journalctl -u kasra-runner.service --since "$started" --no-pager | tail -n 15
+    journalctl -u 'kasra-job-*' --since "$started" --no-pager | tail -n 30
+    die "the runner did not connect to GitHub; see the logs above"
   fi
 fi
