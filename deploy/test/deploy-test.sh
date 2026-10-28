@@ -50,7 +50,7 @@ offline=(); [ "${SKIP_PROVISION:-no}" = yes ] && offline=(--offline)
 KASRA_TEST_TOKEN=$token bash "$DEPLOY/server/install-runner.sh" --test --rotate-token "${offline[@]}"
 if [ -d /run/systemd/system ]; then
   systemctl is-active --quiet kasra-gate.socket || fail "kasra-gate.socket is not listening"
-  # Exactly how a production job runs: a throwaway dynamic user in the runner sandbox.
+  # Exactly how a production job runs: user kasra-job in a throwaway runner sandbox.
   in_job() { KASRA_SANDBOX_PASS="DEPLOY_TOKEN REDIS_IP" /usr/local/sbin/kasra-runner-supervisor --sandbox "$@"; }
 else
   python3 "$DEPLOY/test/fake-gate-socket.py" /run/kasra-gate.sock /usr/local/sbin/kasra-gate &
@@ -93,6 +93,9 @@ timeout 5 bash -c "exec 3<>/dev/tcp/$REDIS_IP/6379" 2>/dev/null && bad "reaches 
 touch /usr/local/bin/kasra-probe 2>/dev/null && bad "writes to the system"
 # The runner runs from its copy in the job folder, which newer systemd mounts noexec unless ExecPaths= says otherwise.
 cp /usr/bin/true "$HOME/kasra-exec-probe" && "$HOME/kasra-exec-probe" || bad "cannot run programs from its job folder (the runner must)"
+# The runner unpacks actions with the system tar (on Ubuntu 26.04 it needs openat2, which DynamicUser= breaks).
+mkdir -p "$HOME/t/a/b" && echo x > "$HOME/t/a/b/f" && tar -czf "$HOME/t.tgz" -C "$HOME/t" a && mkdir "$HOME/u" \
+  && tar -xzf "$HOME/t.tgz" -C "$HOME/u" && [ -f "$HOME/u/a/b/f" ] || bad "cannot unpack an archive in its job folder (the runner must)"
 curl -fsS -m 15 -o /dev/null https://github.com || bad "cannot reach GitHub (the runner needs it)"
 DEPLOY_TOKEN='' python3 "$(dirname "$0")/deploy/server/gate-client.py" status 5m >/dev/null || bad "status through the gate failed"
 echo "sandbox isolation holds"
