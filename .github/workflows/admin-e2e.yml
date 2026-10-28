@@ -1,8 +1,8 @@
 name: Admin panel E2E
 # Owner / manager / staff browser tests against the real Fastify API, PostgreSQL and Redis.
+# Pull requests touching the admin, and every push to main through release.yml.
 on:
-  push:
-    branches: [main]
+  workflow_call:
   pull_request:
     paths: ["src/**", "backend/**", "tests-admin/**", "playwright.admin.config.ts", "package.json", ".github/workflows/admin-e2e.yml"]
 concurrency:
@@ -41,12 +41,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
       - name: Install storefront dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Build API, migrate and seed demo catalog
         working-directory: backend
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
           npm run db:migrate
           npm run db:seed

@@ -1,0 +1,110 @@
+name: Release
+# Every change merged into main: all test suites, then the production images are built and proven on a
+# disposable runner, then the deployment WAITS for the owner's approval in the protected "production"
+# environment (Actions > this run > Review deployments). Nothing reaches the server before that approval.
+# Run it by hand (Actions > Release > Run workflow, branch main) to rebuild main, e.g. after changing
+# PRODUCTION_SITE_URL for the domain.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md", ".claude/**"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  storefront:
+    name: Storefront checks
+    uses: ./.github/workflows/ci.yml
+  api:
+    name: API checks
+    uses: ./.github/workflows/backend-ci.yml
+  admin:
+    name: Admin checks
+    uses: ./.github/workflows/admin-e2e.yml
+  images:
+    name: Images
+    needs: [storefront, api, admin]
+    uses: ./.github/workflows/images.yml
+    with:
+      site-url: ${{ vars.PRODUCTION_SITE_URL }}
+      publish: true
+
+  deploy:
+    name: Deploy to production
+    needs: images
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_SITE_URL }}
+    # One deployment at a time; a newer release waiting for approval replaces an older waiting one.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RELEASE: ${{ github.sha }}
+      SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/production-gate
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: bundle
+      - uses: ./.github/actions/production-ssh
+        id: ssh
+        with:
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+      - name: Upload the release to the server
+        run: |
+          ssh kasra-prod test -f /opt/kasra/.env || {
+            echo "::error::The server is not provisioned yet: run Actions > Production operations > provision first."
+            exit 1
+          }
+          ssh kasra-prod "install -d -m 0700 /opt/kasra/incoming && rm -rf /opt/kasra/incoming/deploy-$RELEASE"
+          scp -q "bundle/kasra-images-$RELEASE.tar.gz" "kasra-prod:/opt/kasra/incoming/"
+          tar -czf - deploy | ssh kasra-prod "mkdir /opt/kasra/incoming/deploy-$RELEASE && tar -xzf - -C /opt/kasra/incoming/deploy-$RELEASE"
+      - name: Ship the database and cache images the server does not have yet
+        run: |
+          images=$(KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x NEXT_PUBLIC_SITE_URL=x \
+            docker compose -f deploy/compose.production.yaml config --images | grep -v '^kasra-')
+          for image in $images; do
+            if ssh kasra-prod docker image inspect "$image" >/dev/null 2>&1; then
+              echo "$image already on the server"
+            else
+              docker pull -q "$image"
+              docker save "$image" | gzip -1 | ssh kasra-prod 'gunzip | docker load -q'
+            fi
+          done
+      - name: Deploy (backup, switch, verify, automatic rollback on failure)
+        run: ssh kasra-prod "bash /opt/kasra/incoming/deploy-$RELEASE/deploy/server/deploy.sh $RELEASE"
+      - name: Check the site from the internet
+        run: |
+          # The temporary IP address uses a self-signed certificate; a real domain must verify properly.
+          insecure=""
+          [[ $SITE_URL =~ ^https://[0-9.]+$ ]] && insecure=-k
+          for attempt in 1 2 3; do
+            curl -fsS $insecure --max-time 20 -o /dev/null "$SITE_URL/api/health" && curl -fsS $insecure --max-time 20 -o /dev/null "$SITE_URL/" && exit 0
+            sleep 5
+          done
+          echo "::warning::The server is healthy locally but $SITE_URL did not answer from GitHub's network (firewall, DNS or international routing)."
+      - name: Production status (personal data removed)
+        if: always() && steps.ssh.outcome == 'success'
+        run: ssh kasra-prod 'test -x /opt/kasra/bin/status.sh && /opt/kasra/bin/status.sh 15m' || true
+      - name: Clean up the upload
+        if: always() && steps.ssh.outcome == 'success'
+        run: ssh kasra-prod "rm -rf /opt/kasra/incoming/deploy-$RELEASE /opt/kasra/incoming/kasra-images-$RELEASE.tar.gz" || true
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Production deployment: ${{ job.status }}"
+            echo "Commit \`$RELEASE\` — $SITE_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

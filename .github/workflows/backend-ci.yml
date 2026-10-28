@@ -1,8 +1,7 @@
 name: Fastify Backend CI
+# Pull requests touching the API, and every push to main through release.yml.
 on:
-  push:
-    branches: [main]
-    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**", "src/lib/format.ts"]
+  workflow_call:
   pull_request:
     paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**", "src/lib/format.ts"]
 jobs:
@@ -32,9 +31,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
       - name: Install API dependencies
         working-directory: backend
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Typecheck
         working-directory: backend
         run: npm run typecheck

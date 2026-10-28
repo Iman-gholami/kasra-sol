@@ -1,0 +1,89 @@
+name: Production images
+# Builds the production Docker images and proves the whole server toolchain on a disposable runner:
+# provision.sh, a first deployment, a second release, rollback, a broken release that must roll itself
+# back, backup/restore and owner creation (deploy/test/deploy-test.sh). Called by release.yml, which also
+# publishes the tested images as the release bundle; runs on pull requests so problems surface before merge.
+on:
+  pull_request:
+    paths-ignore: ["docs/**", "**/*.md", ".claude/**"]
+  workflow_call:
+    inputs:
+      site-url:
+        description: Public address baked into the storefront build (repository variable PRODUCTION_SITE_URL)
+        type: string
+        default: ""
+      publish:
+        description: Upload the tested images as the release bundle
+        type: boolean
+        default: false
+concurrency:
+  group: images-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      RELEASE: ${{ github.sha }}
+      SITE_URL: ${{ inputs.site-url }}
+      PUBLISH: ${{ inputs.publish && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the production address
+        run: |
+          if [ "$PUBLISH" = true ] && ! [[ $SITE_URL =~ ^https://[a-z0-9.-]+$ ]]; then
+            echo "::error::Set the repository variable PRODUCTION_SITE_URL (Settings > Secrets and variables > Actions > Variables), e.g. https://203.0.113.10 now and https://your-domain later."
+            exit 1
+          fi
+          echo "SITE_URL=${SITE_URL:-https://127.0.0.1}" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          tags: kasra-backend:${{ env.RELEASE }}
+          load: true
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: Build storefront image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          tags: kasra-frontend:${{ env.RELEASE }}
+          load: true
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ env.SITE_URL }}
+            NEXT_PUBLIC_BACKEND_ENABLED=true
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+      - name: Provision, deploy, roll back and restore on this runner
+        run: sudo env "PATH=$PATH" KASRA_TEST_MACHINE=yes bash deploy/test/deploy-test.sh "$RELEASE"
+      - name: Package the tested images
+        if: env.PUBLISH == 'true'
+        run: |
+          mkdir -p bundle
+          docker save "kasra-frontend:$RELEASE" "kasra-backend:$RELEASE" | gzip -1 > "bundle/kasra-images-$RELEASE.tar.gz"
+          ls -lh bundle
+          {
+            echo "### Release bundle"
+            echo "Commit \`$RELEASE\`, storefront built for \`$SITE_URL\`, images $(du -h "bundle/kasra-images-$RELEASE.tar.gz" | cut -f1) compressed."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: env.PUBLISH == 'true'
+        with:
+          name: release-${{ github.sha }}
+          path: bundle/
+          retention-days: 30
+          compression-level: 0
+      - name: Server logs on failure
+        if: failure()
+        run: |
+          sudo docker compose --project-directory /opt/kasra -f /opt/kasra/compose.yaml ps -a || true
+          sudo docker compose --project-directory /opt/kasra -f /opt/kasra/compose.yaml logs --no-color --tail 80 || true
