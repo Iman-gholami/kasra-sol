@@ -91,6 +91,8 @@ docker ps >/dev/null 2>&1 && bad "uses Docker"
 curl -s -m 5 -o /dev/null http://127.0.0.1:4000/health/ready && bad "reaches the API on localhost"
 timeout 5 bash -c "exec 3<>/dev/tcp/$REDIS_IP/6379" 2>/dev/null && bad "reaches Redis on the Docker network"
 touch /usr/local/bin/kasra-probe 2>/dev/null && bad "writes to the system"
+# The runner runs from its copy in the job folder, which newer systemd mounts noexec unless ExecPaths= says otherwise.
+cp /usr/bin/true "$HOME/kasra-exec-probe" && "$HOME/kasra-exec-probe" || bad "cannot run programs from its job folder (the runner must)"
 curl -fsS -m 15 -o /dev/null https://github.com || bad "cannot reach GitHub (the runner needs it)"
 DEPLOY_TOKEN='' python3 "$(dirname "$0")/deploy/server/gate-client.py" status 5m >/dev/null || bad "status through the gate failed"
 echo "sandbox isolation holds"

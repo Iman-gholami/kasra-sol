@@ -63,6 +63,7 @@ sandbox() {
   systemd-run --wait --collect --quiet --unit="kasra-job-$name" --service-type=exec \
     -p DynamicUser=yes -p SupplementaryGroups=kasra-gate \
     -p StateDirectory="kasra-jobs/$name" -p WorkingDirectory="/var/lib/kasra-jobs/$name" \
+    -p ExecPaths="/var/lib/private/kasra-jobs/$name" \
     -p Environment="HOME=/var/lib/kasra-jobs/$name" \
     -p ProtectSystem=strict -p ProtectHome=yes -p PrivateTmp=yes -p PrivateDevices=yes \
     -p NoNewPrivileges=yes -p RestrictSUIDSGID=yes -p LockPersonality=yes \
@@ -91,6 +92,7 @@ case "${1:-}" in
 esac
 
 last_update=0
+failures=0
 while true; do
   if [ ! -s "$TOKEN_FILE" ]; then log "no GitHub token in $TOKEN_FILE (run install-runner.sh)"; sleep 300; continue; fi
   # One runner at a time: wait while a job sandbox (e.g. from before a restart) is still running.
@@ -105,16 +107,31 @@ while true; do
   arch=X64; [ "$(uname -m)" = aarch64 ] && arch=ARM64
   body=$(jq -nc --arg n "$name" --arg a "$arch" \
     '{name: $n, runner_group_id: 1, labels: ["self-hosted", "Linux", $a, "kasra-prod"], work_folder: "_work"}')
-  if ! jit=$(api POST "/repos/$REPO/actions/runners/generate-jitconfig" "$body" | jq -er .encoded_jit_config); then
+  if ! registration=$(api POST "/repos/$REPO/actions/runners/generate-jitconfig" "$body") \
+      || ! jit=$(jq -er .encoded_jit_config <<<"$registration"); then
     log "cannot register a runner: is the token in $TOKEN_FILE expired or missing the Administration permission?"
     sleep 120
     continue
   fi
-  log "runner $name is waiting for a job"
+  runner_id=$(jq -r '.runner.id // empty' <<<"$registration")
+  log "runner $name starts (journalctl -u kasra-job-$name shows it)"
   SANDBOX_ARGS=(--setenv="KASRA_JIT=$jit")
   status=0
+  started=$SECONDS
   sandbox "$name" /bin/sh -c 'cp -a /opt/actions-runner/. "$HOME"/ && cd "$HOME" && exec ./run.sh --jitconfig "$KASRA_JIT"' || status=$?
   log "runner $name finished (exit $status)"
   rm -rf "/var/lib/private/kasra-jobs/$name"
-  sleep 2
+  # A runner that took a job is removed by GitHub; one that never connected would stay listed as offline.
+  [ -n "$runner_id" ] && api DELETE "/repos/$REPO/actions/runners/$runner_id" >/dev/null 2>&1 || true
+  if [ "$status" != 0 ] && [ $((SECONDS - started)) -lt 60 ]; then
+    # Failing right away is not going to fix itself in seconds: back off up to 15 minutes.
+    failures=$((failures + 1))
+    delay=$((30 * (1 << (failures < 5 ? failures : 5))))
+    [ "$delay" -gt 900 ] && delay=900
+    log "runner $name failed at start ($failures in a row); next attempt in $((delay / 60)) min $((delay % 60)) s"
+    sleep "$delay"
+  else
+    failures=0
+    sleep 2
+  fi
 done
