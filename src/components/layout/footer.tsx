@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { categories } from '@/data/facets';
+import { EnamadSeal, enamadEnabled } from '@/components/layout/enamad-seal';
 
 export function Footer() {
   return <footer className="footer">
@@ -37,6 +38,7 @@ export function Footer() {
     </div>
     <div className="container footer-bottom">
       <p>© کسری بوتیک · نسخه نمایشی برای ارزیابی تجربه خرید</p>
+      {enamadEnabled() && <EnamadSeal/>}
     </div>
   </footer>;
 }

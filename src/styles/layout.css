@@ -139,7 +139,12 @@
   transition: color var(--duration-fast) var(--ease-standard);
 }
 .footer nav a:hover { color: var(--color-inverse); text-decoration: underline; text-underline-offset: 4px; }
-.footer-bottom { padding-block: var(--space-4) var(--space-6); }
+.footer-bottom {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding-block: var(--space-4) var(--space-6);
+}
+.footer-enamad { display: block; flex-shrink: 0; }
+.footer-enamad img { display: block; block-size: 88px; inline-size: auto; }
 .footer-bottom p { margin: 0; color: var(--color-text-subtle); font-size: var(--text-xs); }
 
 /* ---------- Bottom navigation (phones, browsing pages) ---------- */
