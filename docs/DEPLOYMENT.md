@@ -17,9 +17,10 @@ Visitor ──HTTPS──▶ Nginx on the VPS (TLS, maintenance page)
 Only Nginx listens publicly (80/443). The API listens on `127.0.0.1:4000` for health checks; PostgreSQL and
 Redis are reachable only on the private Docker network and both require passwords.
 
-The server is in an Iranian data center that **accepts no connections from abroad** (verified: GitHub's
-runners time out on port 22 although no firewall exists on the server or in the ParsPack panel), while its
-outgoing connections to GitHub work. Deployment therefore runs the other way round: the server fetches
+GitHub's runners cannot reach the server, which is in an Iranian data center: they time out on SSH (port 22)
+although no firewall existed on the server or in the ParsPack panel. Its outgoing connections to GitHub work,
+and its web ports are reachable from abroad (check-host.net, 28 October 2026: port 80 answered from every
+country tested but one). Deployment therefore runs the other way round: the server fetches
 production jobs from GitHub and runs each in a throwaway sandbox. The owner approves every production job
 with GitHub's **Review deployments** button; only an approved job receives the token the server demands.
 
@@ -41,7 +42,7 @@ merge to main ──▶ Release: the same checks ─▶ images built and proven 
 
 | Decision | Why |
 | --- | --- |
-| **Docker Compose on the single VPS** | The repository already ships hardened Dockerfiles and Compose; one 8 vCPU / 16 GB server fits the expected load. No paid services, no orchestrator. |
+| **Docker Compose on the single VPS** | The repository already ships hardened Dockerfiles and Compose; one VPS (about 6 GB RAM, 96 GB disk at first deployment) fits the expected load. No paid services, no orchestrator. |
 | **Images are built in GitHub Actions, never on the server** | The server needs no access to Docker Hub or npm (refused or filtered from Iran). The exact images that passed the tests are what gets deployed, and server CPU is not spent on builds. The images (~90 MB per release) and, when the server lacks them, the pinned PostgreSQL/Redis images travel as workflow artifacts. |
 | **Approval = GitHub environment, owner only** | Every job that can change the server uses the protected `production` environment: it waits until the owner clicks **Approve and deploy**, only then receives the `DEPLOY_TOKEN` secret, and the `production-gate` action stops it if the environment ever lists another reviewer, accepts other branches than `main`, or lost its protection. Required reviewers are free for public repositories (not for private ones below GitHub Enterprise). |
 | **One-job runners in a sandbox** | GitHub cannot connect in, so `kasra-runner` (root, [`runner-supervisor.sh`](../deploy/server/runner-supervisor.sh)) registers a just-in-time runner for one job at a time and runs it as a throwaway `systemd-run` unit: unprivileged user `kasra-job`, its own copy of the root-owned runner in a job folder deleted afterwards, read-only system, private `/tmp`, no access to `/root`, `/home`, `/opt/kasra`, `/etc/kasra`, backups or Docker, and no connections to localhost, private or Docker networks. Nothing survives a job, so a job that was not approved can neither change the server nor prepare a trap that steals the token from a later approved job. This needs a fine-grained GitHub token on the server (step 3). |
@@ -172,7 +173,7 @@ Until the domain is ready the site is served at **`https://SERVER_IP`**; `http:/
 ## Connecting the domain and enabling HTTPS
 
 1. At your DNS provider create an `A` record for the domain (and `www` if wanted) pointing to the server's IP.
-   Wait until `nslookup your-domain` shows that address.
+   Wait until `getent hosts your-domain` on the server shows that address.
 2. **Production operations** → task **enable-domain**, `target` = the domain, optional `extra` = an e-mail for
    Let's Encrypt expiry notices, tick `www` if you created that record. Approve the run. It checks DNS, obtains a
    Let's Encrypt certificate (renewed automatically by certbot's timer), switches Nginx to the domain, redirects
@@ -187,16 +188,15 @@ and make sure the CDN forwards `/.well-known/acme-challenge/` on port 80 to the 
 certificate with SSL mode "Full". With a CDN in front, configure Nginx `set_real_ip_from` with the CDN's published
 address ranges so rate limits and analytics see visitors, not the CDN.
 
-**Important for this server:** Let's Encrypt checks the domain by connecting to it *from abroad*, which this
-data center does not allow today (see [Architecture](#architecture)). Unless international access has been
-restored by then, use one of these instead of a direct Let's Encrypt check:
-- **ParsPack CDN** (or another Iranian CDN) in front of the domain, with the CDN's certificate and SSL mode
-  "Full" towards the server; run enable-domain with `skip_dns_check` after putting a certificate the CDN accepts
-  in place, or keep the self-signed one if the CDN allows it;
-- a certificate obtained through a **DNS check** (DNS-01) at your DNS provider, or bought from a provider, placed in
-  `/etc/letsencrypt/live/kasra/{fullchain,privkey}.pem` before running enable-domain.
+**This server: `kasraboutique.ir`.** The domain is registered at ParsPack. ParsPack's domain service has no DNS
+hosting, so DNS is served by the free **ParsPack CDN** plan:
+- the domain's nameservers are `lightning.parspack.net` and `steppe.parspack.net`;
+- `A` records `@` and `www` point to the server with the CDN **proxy off** ("DNS only"), so visitors reach the
+  server directly and Let's Encrypt's HTTP check works (the server reaches `acme-v02.api.letsencrypt.org`, and
+  port 80 is reachable from abroad);
+- no wildcard record.
 
-Decide this when the domain is ready; it may involve a paid CDN plan.
+Turning the CDN proxy on later needs the `set_real_ip_from` change above and `skip_dns_check` on enable-domain.
 
 ## Releases, approval and rollback
 
@@ -298,4 +298,4 @@ removes accounts, settings and the audit log.
 `compose.yaml` in the repository root remains the local/staging stack (`docker compose up --build`); see the
 [README](../README.md). It builds images locally, while production uses `deploy/compose.production.yaml` with
 pre-built images. Keep the two in step when adding services or environment variables. Before campaigns, load-test a
-separate staging copy (k6/Locust/Artillery); 8 vCPU / 16 GB is a budget, not a measured capacity.
+separate staging copy (k6/Locust/Artillery); the server's size is a budget, not a measured capacity.

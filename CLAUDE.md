@@ -10,7 +10,7 @@ before changing anything that ships, and `docs/DEPLOYMENT.md` for the server.
 - Never deploy, roll back, restore or change the server without the owner's explicit approval in the chat. Before
   asking, post the approval summary from `docs/RELEASING.md`. The owner then approves the waiting job in GitHub
   (**Review deployments**, `production` environment, owner is the only reviewer). Never approve it yourself.
-- The server (Iran) accepts no connections from abroad: production jobs run on sandboxed one-job runners on the
+- GitHub's runners cannot reach the server (Iran) over SSH: production jobs run on sandboxed one-job runners on the
   server (`kasra-prod`) and reach root only through `kasra-gate`, which demands `DEPLOY_TOKEN` (a secret of the
   `production` environment). Never weaken that.
 - Actions logs are public: never print secrets, `/opt/kasra/.env`, raw app logs or customer data.
