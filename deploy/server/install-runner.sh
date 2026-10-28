@@ -119,6 +119,11 @@ if [ "$test_mode" = false ]; then
       systemctl stop "$unit" || true
     fi
   done
+  # Job folders of the earlier DynamicUser= sandbox (state lived in /var/lib/private) are no longer used.
+  if [ "$busy" = false ]; then
+    rm -rf /var/lib/private/kasra-jobs
+    find /var/lib/kasra-jobs -mindepth 1 -maxdepth 1 -type l -delete 2>/dev/null || true
+  fi
   started=$(date '+%Y-%m-%d %H:%M:%S')
   systemctl enable kasra-runner.service >/dev/null
   systemctl restart kasra-runner.service

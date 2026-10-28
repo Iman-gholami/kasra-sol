@@ -2,7 +2,8 @@
 # Keeps one GitHub Actions runner waiting for production jobs and runs every job in a fresh, throwaway
 # sandbox, so no job (approved or not) can leave anything behind for the next one:
 #   - a just-in-time runner, registered for a single job and gone afterwards;
-#   - a transient systemd unit with a dynamic user and its own copy of the root-owned runner;
+#   - a transient systemd unit as the unprivileged user kasra-job, with its own copy of the root-owned
+#     runner in a job folder that is deleted afterwards;
 #   - no access to /home, /root, /opt/kasra, /etc/kasra, backups or Docker, a read-only system, and no
 #     connections to localhost, private or Docker networks (only the internet and the gate socket);
 #   - the only way to root is /run/kasra-gate.sock, where kasra-gate demands DEPLOY_TOKEN, which only jobs
@@ -17,7 +18,17 @@ REPO=Iman-gholami/kasra-sol
 RUNNER_DIR=/opt/actions-runner
 TOKEN_FILE=/etc/kasra/github-token
 STATE=/run/kasra-runner
+JOBS=/var/lib/kasra-jobs
 log() { printf '%s\n' "$*"; }
+
+# The job user. Not DynamicUser=: that forces RestrictSUIDSGID=, whose seccomp filter fails openat2 with
+# ENOSYS, and Ubuntu 26.04's tar (which the runner uses to unpack actions) does not fall back.
+ensure_job_user() {
+  getent group kasra-gate >/dev/null || groupadd --system kasra-gate
+  id -u kasra-job >/dev/null 2>&1 || useradd --system --user-group --no-create-home \
+    --home-dir /nonexistent --shell /usr/sbin/nologin kasra-job
+  install -d -m 0711 -o root -g root "$JOBS"
+}
 
 api() { # api METHOD PATH [JSON] — GitHub REST call with the token, which never appears in a process list
   local method=$1 path=$2 body=${3:-}
@@ -57,16 +68,19 @@ update_runner() {
   log "GitHub Actions runner $version installed"
 }
 
-# Runs a command as a throwaway dynamic user in the job sandbox; returns its exit status.
+# Runs a command in the job sandbox as kasra-job, in a fresh job folder; returns its exit status.
+# Nothing outlives it: the system is read-only, /tmp and /dev are private, the user's IPC objects are
+# removed and its processes killed when the unit ends, and the caller deletes the job folder.
 sandbox() {
   local name=$1; shift
+  rm -rf "${JOBS:?}/$name"
   systemd-run --wait --collect --quiet --unit="kasra-job-$name" --service-type=exec \
-    -p DynamicUser=yes -p SupplementaryGroups=kasra-gate \
-    -p StateDirectory="kasra-jobs/$name" -p WorkingDirectory="/var/lib/kasra-jobs/$name" \
-    -p ExecPaths="/var/lib/private/kasra-jobs/$name" \
-    -p Environment="HOME=/var/lib/kasra-jobs/$name" \
-    -p ProtectSystem=strict -p ProtectHome=yes -p PrivateTmp=yes -p PrivateDevices=yes \
-    -p NoNewPrivileges=yes -p RestrictSUIDSGID=yes -p LockPersonality=yes \
+    -p User=kasra-job -p Group=kasra-job -p SupplementaryGroups=kasra-gate \
+    -p StateDirectory="kasra-jobs/$name" -p StateDirectoryMode=0700 \
+    -p WorkingDirectory="$JOBS/$name" -p ExecPaths="$JOBS/$name" \
+    -p Environment="HOME=$JOBS/$name" \
+    -p ProtectSystem=strict -p ProtectHome=yes -p PrivateTmp=yes -p PrivateDevices=yes -p RemoveIPC=yes \
+    -p NoNewPrivileges=yes -p LockPersonality=yes -p RestrictRealtime=yes \
     -p ProtectKernelTunables=yes -p ProtectKernelModules=yes -p ProtectControlGroups=yes -p ProtectClock=yes \
     -p InaccessiblePaths="-/opt/kasra -/etc/kasra -/var/backups/kasra -/var/lib/docker -/run/docker.sock -/var/run/docker.sock -/root -/home" \
     -p IPAddressDeny="127.0.0.0/8 ::1/128 169.254.0.0/16 fe80::/10 224.0.0.0/4 ff00::/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7" \
@@ -80,23 +94,28 @@ case "${1:-}" in
   --update-runner) update_runner; exit ;;
   --sandbox)
     shift
+    ensure_job_user
     name=test-$$
     # --pipe: the command's output and exit status come back to the caller (the runner's go to the journal).
     SANDBOX_ARGS=(--pipe)
     for var in ${KASRA_SANDBOX_PASS:-}; do SANDBOX_ARGS+=(--setenv="$var=${!var:-}"); done
     status=0; sandbox "$name" "$@" || status=$?
-    rm -rf "/var/lib/private/kasra-jobs/$name"
+    rm -rf "${JOBS:?}/$name"
     exit "$status" ;;
   "") ;;
   *) log "unknown option $1"; exit 2 ;;
 esac
 
+ensure_job_user
 last_update=0
 failures=0
 while true; do
   if [ ! -s "$TOKEN_FILE" ]; then log "no GitHub token in $TOKEN_FILE (run install-runner.sh)"; sleep 300; continue; fi
   # One runner at a time: wait while a job sandbox (e.g. from before a restart) is still running.
   while systemctl list-units --plain --no-legend --state=active 'kasra-job-*' | grep -q .; do sleep 15; done
+  # No job runs now: remove every job folder, including one a restarted supervisor never cleaned up, so
+  # the next job (the same user) cannot read what an earlier one left.
+  find "$JOBS" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
   if [ $((SECONDS - last_update)) -ge 86400 ] || [ $last_update = 0 ]; then
     update_runner || log "runner update failed; keeping the installed version"
     last_update=$SECONDS
@@ -120,7 +139,7 @@ while true; do
   started=$SECONDS
   sandbox "$name" /bin/sh -c 'cp -a /opt/actions-runner/. "$HOME"/ && cd "$HOME" && exec ./run.sh --jitconfig "$KASRA_JIT"' || status=$?
   log "runner $name finished (exit $status)"
-  rm -rf "/var/lib/private/kasra-jobs/$name"
+  rm -rf "${JOBS:?}/$name"
   # A runner that took a job is removed by GitHub; one that never connected would stay listed as offline.
   [ -n "$runner_id" ] && api DELETE "/repos/$REPO/actions/runners/$runner_id" >/dev/null 2>&1 || true
   if [ "$status" != 0 ] && [ $((SECONDS - started)) -lt 60 ]; then
