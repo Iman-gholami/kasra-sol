@@ -2,25 +2,23 @@
 """The only way a deployment job reaches root on the Kasra server.
 
 systemd starts one instance per connection on /run/kasra-gate.sock (kasra-gate.socket, Accept=yes), with
-the connection as stdin/stdout. A request is one JSON line: {"code": "123456", "task": "...", "args": [...]}.
+the connection as stdin/stdout. A request is one JSON line: {"token": "...", "task": "...", "args": [...]}.
 Output streams back; the last line is "__KASRA_GATE_EXIT__ <status>".
 
-Every task that changes the server needs the owner's one-time approval code: the current 6-digit code
-of the authenticator app scanned during install-runner.sh (TOTP, RFC 6238). A code is accepted once, for at
-most ten minutes, so neither someone with access to the GitHub repository nor a job on the runner can
-change the server without the owner's phone. Only "status" (installed scripts, read-only) needs no code.
+Every task that changes the server needs DEPLOY_TOKEN, a secret of the protected "production" GitHub
+environment: only a job the owner approved there receives it (install-runner.sh keeps just its SHA-256).
+Jobs run in throwaway sandboxes (runner-supervisor.sh), so a job that was not approved can neither call
+the gate with the token nor leave anything behind to steal it from a later approved job. "status" and
+"infra-missing" are read-only and need no token.
 
 Tasks that run repository code copy the job's checkout of deploy/ into a root-only directory first.
 """
-import base64
-import fcntl
 import hashlib
 import hmac
 import json
 import os
 import re
 import shutil
-import struct
 import subprocess
 import sys
 import tempfile
@@ -28,10 +26,6 @@ import time
 
 ETC = os.environ.get("KASRA_GATE_ETC", "/etc/kasra")
 BIN = "/opt/kasra/bin"
-STEP = 30
-WINDOW = 20          # accept codes up to 10 minutes old (artifact downloads from Iran can be slow)
-MAX_FAILURES = 5     # then refuse every code for 15 minutes
-LOCKOUT = 900
 os.environ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 os.umask(0o077)
 
@@ -50,43 +44,15 @@ def finish(status, message=None):
     sys.exit(0)
 
 
-def totp(secret, counter):
-    digest = hmac.new(secret, struct.pack(">Q", counter), hashlib.sha1).digest()
-    offset = digest[-1] & 0x0F
-    value = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
-    return "%06d" % (value % 1000000)
-
-
-def approve(code):
-    """True once per valid code; records the code's time step so it can never be used again."""
-    with open(os.path.join(ETC, "totp.lock"), "a+") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        failures_file = os.path.join(ETC, "totp.failures")
-        now = time.time()
-        try:
-            failures = [float(x) for x in open(failures_file).read().split()]
-        except (OSError, ValueError):
-            failures = []
-        failures = [t for t in failures if now - t < LOCKOUT]
-        if len(failures) >= MAX_FAILURES:
-            return False, "too many wrong codes; try again in 15 minutes"
-        secret = base64.b32decode(open(os.path.join(ETC, "totp.secret")).read().strip())
-        try:
-            last = int(open(os.path.join(ETC, "totp.last")).read().strip() or 0)
-        except (FileNotFoundError, ValueError):
-            last = 0
-        current = int(now // STEP)
-        if re.fullmatch(r"\d{6}", code or ""):
-            for counter in range(current + 1, current - WINDOW - 1, -1):
-                if counter > last and hmac.compare_digest(totp(secret, counter), code):
-                    with open(os.path.join(ETC, "totp.last"), "w") as f:
-                        f.write(str(counter))
-                    open(failures_file, "w").close()
-                    return True, None
-        failures.append(now)
-        with open(failures_file, "w") as f:
-            f.write(" ".join("%.0f" % t for t in failures))
-        return False, "approval code is wrong, expired or already used"
+def approved(token):
+    """True when the request carries DEPLOY_TOKEN (compared as SHA-256, in constant time)."""
+    try:
+        expected = open(os.path.join(ETC, "deploy-token.sha256")).read().strip()
+    except OSError:
+        return False  # install-runner.sh has not issued a token yet
+    if not isinstance(token, str) or not token or not expected:
+        return False
+    return hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(), expected)
 
 
 def stage(checkout):
@@ -119,7 +85,7 @@ def infra_missing(compose_file):
 def main():
     try:
         request = json.loads(sys.stdin.readline())
-        task, args, code = request["task"], [str(a) for a in request.get("args", [])], request.get("code")
+        task, args, token = request["task"], [str(a) for a in request.get("args", [])], request.get("token")
     except (ValueError, KeyError, TypeError):
         finish(2, "malformed request")
     sha = re.compile(r"^[0-9a-f]{40}$")
@@ -138,11 +104,9 @@ def main():
                 say(image)
             finish(0)
 
-        ok, why = approve(code)
-        if not ok:
+        if not approved(token):
             time.sleep(3)
-            finish(77, "refused: " + why)
-        say("kasra-gate: approved by the owner's one-time code")
+            finish(77, "refused: missing or wrong DEPLOY_TOKEN (only jobs approved in the production environment have it)")
 
         if task == "inspect":
             staged = stage(args[0])

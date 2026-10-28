@@ -14,15 +14,18 @@ The process for every change, bug fix or feature. Server setup and operations ar
    Admin panel E2E (when relevant) and Production images (builds the images and runs the whole deployment test).
 4. **Merge** when every check is green. The merge starts **Actions → Release**, which runs the checks again on
    `main`, builds the production images, proves them with the deployment test and stores them as the release.
-   Nothing has touched the server yet.
-5. **Approval.** Claude posts a summary in the chat (below) and asks. The owner approves by sending the current
-   6-digit code of the authenticator app. Without that code the server refuses every change: GitHub's own approval
-   button is not available for private repositories on this plan, and the code also stops anyone who only has
-   GitHub access (including Claude).
-6. **Deployment and verification.** Claude starts **Actions → Deploy** with the release and the code right away
-   (a code works once, for ten minutes). The job backs up the database, switches the containers, checks health and
-   rolls back automatically on failure. Claude reads the job log, runs **Production operations → status** (no code
-   needed) for more detail, and reports the result. The owner can also start Deploy in GitHub with the code.
+   Its last job, **Deploy to production**, then waits in the protected `production` environment. Nothing has
+   touched the server yet.
+5. **Approval.** Claude posts a summary in the chat (below) with the link to the waiting run and asks. Only the
+   owner approves, in GitHub: the run → **Review deployments** → tick `production` → **Approve and deploy** (or
+   **Reject**). The owner is the environment's only reviewer, and the job stops itself if that ever changes; only an
+   approved job receives the `DEPLOY_TOKEN` without which the server refuses every change.
+6. **Deployment and verification.** The approved job backs up the database, switches the containers, checks health
+   and rolls back automatically on failure. Claude follows the run, reads its log, runs **Production operations →
+   status** (no approval needed) for more detail, and reports the result.
+
+If a newer release starts while an older one waits for approval, GitHub cancels the older waiting deployment; the
+newer one contains its changes.
 
 Documentation-only changes (`docs/`, `*.md`, `.claude/`) do not start a release.
 
@@ -42,13 +45,17 @@ Documentation-only changes (`docs/`, `*.md`, `.claude/`) do not start a release.
 ## Rules for Claude sessions
 
 - Never deploy, roll back, restore or change the server without the owner's explicit approval **in the chat** for
-  that specific action. The owner's approval is the 6-digit code they send; use each code only for the action it
-  was given for, right away, and never ask for codes in advance or store them.
-- Running **Production operations → status** needs no code and is fine at any time; tell the owner when you start
-  anything else.
-- Never weaken the gate or the sandbox: every server-changing task in `kasra-gate` must require the approval code;
-  jobs on `kasra-prod` must keep running in the runner supervisor's sandbox (no Docker, no local network, nothing
-  persistent); never add another way to reach root from a job.
+  that specific action, after posting the summary above. Start a **Production operations** task other than `status`
+  only when the owner asked for it or agreed to it in the chat.
+- Never approve a deployment yourself. The session may act with the owner's GitHub access, and GitHub cannot tell
+  that apart from the owner: never call the pending-deployments review API, click **Approve and deploy**, or add
+  reviewers. The approval is always the owner's own click in GitHub.
+- Running **Production operations → status** needs no approval and is fine at any time.
+- Never weaken the gate, the environment or the sandbox: the `production` environment keeps the owner as its only
+  required reviewer and `main` as its only branch; every server-changing task in `kasra-gate` requires
+  `DEPLOY_TOKEN`, which lives only in that environment; jobs on `kasra-prod` keep running in the runner
+  supervisor's sandbox (no Docker, no local network, nothing persistent); never add another way to reach root from
+  a job, and never print or move `DEPLOY_TOKEN`.
 - Actions logs are public. Never print secrets, `.env` contents, raw application logs or customer data; use
   `status.sh`/`logfilter.py` output only.
 - Migrations must stay backward compatible with the previous release (see DEPLOYMENT.md).

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Sends one request to kasra-gate from a deployment job and streams its output.
 
-Usage: APPROVAL_CODE=123456 python3 gate-client.py <task> [args...]
-The exit status is the gate task's (77 when the approval code is refused).
+Usage: DEPLOY_TOKEN=... python3 gate-client.py <task> [args...]   (the token only in approved jobs)
+The exit status is the gate task's (77 when the token is missing or wrong).
 """
 import json
 import os
@@ -12,7 +12,7 @@ import sys
 SOCKET = os.environ.get("KASRA_GATE_SOCKET", "/run/kasra-gate.sock")
 MARK = "__KASRA_GATE_EXIT__ "
 
-request = {"task": sys.argv[1], "args": sys.argv[2:], "code": os.environ.get("APPROVAL_CODE", "").strip()}
+request = {"task": sys.argv[1], "args": sys.argv[2:], "token": os.environ.get("DEPLOY_TOKEN", "").strip()}
 connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 try:
     connection.connect(SOCKET)

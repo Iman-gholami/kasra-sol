@@ -1,8 +1,9 @@
 name: Release
-# Every change merged into main: all test suites, then the production images are built, proven on a
-# disposable runner and stored as the release's artifacts. Nothing reaches the server here: deploy.yml
-# installs a release only with the owner's one-time approval code. Run it by hand (Actions > Release > Run
-# workflow, branch main) to rebuild main, e.g. after changing PRODUCTION_SITE_URL for the domain.
+# Every change merged into main: all test suites, then the production images are built and proven on a
+# disposable runner, then the deployment WAITS for the owner's approval in the protected "production"
+# environment (Actions > this run > Review deployments). Nothing reaches the server before that approval.
+# Run it by hand (Actions > Release > Run workflow, branch main) to rebuild main, e.g. after changing
+# PRODUCTION_SITE_URL for the domain.
 on:
   push:
     branches: [main]
@@ -28,15 +29,62 @@ jobs:
       site-url: ${{ vars.PRODUCTION_SITE_URL }}
       publish: true
 
-  ready:
-    name: Ready to deploy
+  deploy:
+    name: Deploy to production
     needs: images
-    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/main'
+    # Waits for the owner's approval in the protected "production" environment, which alone holds
+    # DEPLOY_TOKEN. Runs on the server in a throwaway sandbox (deploy/server/runner-supervisor.sh) and
+    # reaches root only through kasra-gate, which demands that token.
+    runs-on: [self-hosted, kasra-prod]
+    timeout-minutes: 40
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_SITE_URL }}
+    # One deployment at a time; a newer release waiting for approval replaces an older waiting one.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RELEASE: ${{ github.sha }}
+      SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
     steps:
-      - name: How to deploy this release
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/production-gate
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: bundle
+      - name: Find the database and cache images the server does not have yet
+        id: infra
+        run: |
+          missing=$(python3 deploy/server/gate-client.py infra-missing "$GITHUB_WORKSPACE" | tr '\n' ' ')
+          echo "Missing on the server: ${missing:-none}"
+          echo "missing=$missing" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        if: steps.infra.outputs.missing != ''
+        with:
+          name: infra-${{ github.sha }}
+          path: infra
+      - name: Deploy (backup, switch, verify, automatic rollback on failure)
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::error::The production environment has no DEPLOY_TOKEN secret (printed by deploy/server/install-runner.sh)."
+            exit 1
+          fi
+          python3 deploy/server/gate-client.py deploy "$RELEASE" "$GITHUB_WORKSPACE"
+      - name: Production status (personal data removed)
+        if: always() && steps.infra.outcome == 'success'
+        run: python3 deploy/server/gate-client.py status 15m || true
+      - name: Summary
+        if: always()
         run: |
           {
-            echo "### Release \`$GITHUB_SHA\` is built and tested"
-            echo "Production changes only with the owner's one-time approval code: Actions > Deploy > Run workflow,"
-            echo "release \`$GITHUB_SHA\`, approval code from the authenticator app (or send the code to Claude)."
+            echo "### Production deployment: ${{ job.status }}"
+            echo "Commit \`$RELEASE\` — $SITE_URL"
           } >> "$GITHUB_STEP_SUMMARY"

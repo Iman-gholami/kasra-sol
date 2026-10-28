@@ -2,17 +2,17 @@
 # One-time setup of how GitHub deploys to this server. The server (an Iranian data center) accepts no
 # connections from abroad, so a supervisor on the server fetches production jobs from GitHub instead and
 # runs each one in a throwaway sandbox (runner-supervisor.sh); the only way from a job to root is
-# kasra-gate, which demands the owner's one-time approval code from an authenticator app.
+# kasra-gate, which demands DEPLOY_TOKEN, a secret only jobs approved in the "production" environment get.
 #
-# Run as root on the server, from a copy of the repository (docs/DEPLOYMENT.md, step 3):
+# Run as root on the server (docs/DEPLOYMENT.md, step 3):
 #   bash /root/kasra-sol/deploy/server/install-runner.sh
 # It asks for (or reads KASRA_GITHUB_TOKEN) a fine-grained GitHub token for this repository with
-# "Administration: Read and write" (to register a runner for each job) and "Contents: Read", and shows a
-# QR code for the authenticator app. Re-running is safe. Options:
+# "Administration: Read and write" (to register a runner for each job) and prints DEPLOY_TOKEN once, for
+# the production environment's secrets. Re-running is safe. Options:
 #   --token          replace the stored GitHub token (e.g. when it expires)
-#   --rotate-totp    new authenticator secret (scan the new QR code)
-#   --test [--offline]  for deploy/test/deploy-test.sh on a disposable machine: no token, no service start,
-#                       secret from KASRA_TEST_TOTP_SECRET; --offline also skips packages and downloads
+#   --rotate-token   issue a new DEPLOY_TOKEN (then update the GitHub secret)
+#   --test [--offline]  for deploy/test/deploy-test.sh on a disposable machine: no GitHub token, no service
+#                       start, DEPLOY_TOKEN from KASRA_TEST_TOKEN; --offline also skips packages and downloads
 set -euo pipefail
 umask 077
 REPO=Iman-gholami/kasra-sol
@@ -20,13 +20,13 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 die() { log "ERROR: $*" >&2; exit 1; }
 
-test_mode=false; offline=false; new_token=false; rotate_totp=false
+test_mode=false; offline=false; new_token=false; rotate=false
 for arg in "$@"; do
   case "$arg" in
     --test) test_mode=true ;;
     --offline) offline=true ;;
     --token) new_token=true ;;
-    --rotate-totp) rotate_totp=true ;;
+    --rotate-token) rotate=true ;;
     *) die "unknown option $arg" ;;
   esac
 done
@@ -52,7 +52,7 @@ if [ "$offline" = false ]; then
   log "Installing packages"
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -q
-  apt-get install -y -q --no-install-recommends ca-certificates curl jq git tar python3 qrencode libkrb5-3 zlib1g
+  apt-get install -y -q --no-install-recommends ca-certificates curl jq git tar python3 libkrb5-3 zlib1g
   icu=$(apt-cache search --names-only '^libicu[0-9]+$' | cut -d' ' -f1 | sort -V | tail -n 1)
   [ -n "$icu" ] && apt-get install -y -q --no-install-recommends "$icu"
   apt-get install -y -q liblttng-ust1t64 2>/dev/null || apt-get install -y -q liblttng-ust1 2>/dev/null || true
@@ -74,43 +74,17 @@ if [ "$has_systemd" = true ]; then
 fi
 [ "$offline" = true ] || /usr/local/sbin/kasra-runner-supervisor --update-runner
 
-# Approval codes: a TOTP secret shared only with the owner's authenticator app.
-if [ ! -s /etc/kasra/totp.secret ] || [ "$rotate_totp" = true ]; then
+# DEPLOY_TOKEN: shown once here, kept on the server only as its SHA-256.
+deploy_token=""
+if [ ! -s /etc/kasra/deploy-token.sha256 ] || [ "$rotate" = true ]; then
   if [ "$test_mode" = true ]; then
-    secret=${KASRA_TEST_TOTP_SECRET:?KASRA_TEST_TOTP_SECRET is required with --test}
+    deploy_token=${KASRA_TEST_TOKEN:?KASRA_TEST_TOKEN is required with --test}
   else
-    secret=$(python3 -c 'import base64,os; print(base64.b32encode(os.urandom(20)).decode())')
+    deploy_token=$(openssl rand -hex 32)
   fi
-  printf '%s\n' "$secret" > /etc/kasra/totp.secret
-  rm -f /etc/kasra/totp.last /etc/kasra/totp.failures
-  if [ "$test_mode" = false ]; then
-    uri="otpauth://totp/Kasra:production?secret=$secret&issuer=Kasra&digits=6&period=30"
-    echo
-    echo "Scan this QR code with an authenticator app (Google Authenticator, Microsoft Authenticator, ...):"
-    command -v qrencode >/dev/null 2>&1 && qrencode -t ansiutf8 "$uri"
-    echo "Or add it by hand: account 'Kasra production', key $secret (time-based)."
-    echo
-    for attempt in 1 2 3; do
-      read -rp "Type the 6-digit code the app shows now: " typed </dev/tty
-      if python3 - "$secret" "$typed" <<'PY'
-import base64, hashlib, hmac, struct, sys, time
-secret, typed = base64.b32decode(sys.argv[1]), sys.argv[2].strip()
-def code(counter):
-    digest = hmac.new(secret, struct.pack(">Q", counter), hashlib.sha1).digest()
-    offset = digest[-1] & 15
-    return "%06d" % ((struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF) % 1000000)
-now = int(time.time() // 30)
-sys.exit(0 if any(code(c) == typed for c in range(now - 2, now + 3)) else 1)
-PY
-      then log "Authenticator app set up correctly"; break; fi
-      [ "$attempt" = 3 ] && die "the codes did not match; check the phone's clock and run again with --rotate-totp"
-      echo "That code does not match; wait for the next one and try again."
-    done
-    clear 2>/dev/null || true
-    log "Approval codes are ready (the QR code was cleared from the screen)"
-  fi
+  printf '%s' "$deploy_token" | sha256sum | cut -d' ' -f1 > /etc/kasra/deploy-token.sha256
+  chmod 600 /etc/kasra/deploy-token.sha256
 fi
-chmod 600 /etc/kasra/totp.secret
 
 if [ "$test_mode" = false ]; then
   if [ ! -s /etc/kasra/github-token ] || [ "$new_token" = true ]; then
@@ -128,6 +102,13 @@ if [ "$test_mode" = false ]; then
     sed -i '/kasra-github-deploy/d' /root/.ssh/authorized_keys
     log "Removed the unused kasra-github-deploy SSH key from /root/.ssh/authorized_keys"
   fi
+  if [ -n "$deploy_token" ]; then
+    printf '%s\n' "" "================================================================================" \
+      " DEPLOY_TOKEN (shown only now). In GitHub: Settings > Environments > production >" \
+      " Environment secrets > Add environment secret, name DEPLOY_TOKEN, value:" "" "   $deploy_token" "" \
+      " Then run: clear     (Lost it? Run this script again with --rotate-token.)" \
+      "================================================================================"
+  fi
   systemctl enable kasra-runner.service >/dev/null
   systemctl restart kasra-runner.service
   for _ in $(seq 1 12); do
@@ -135,7 +116,7 @@ if [ "$test_mode" = false ]; then
     sleep 5
   done
   if journalctl -u kasra-runner.service --since -3min --no-pager | grep -q 'is waiting for a job'; then
-    log "Done: GitHub lists a runner named kasra-prod-… (Idle) under Settings > Actions > Runners."
+    log "GitHub lists a runner named kasra-prod-… (Idle) under Settings > Actions > Runners."
   else
     journalctl -u kasra-runner.service --since -3min --no-pager | tail -n 20
     die "the runner did not start; see the log above"

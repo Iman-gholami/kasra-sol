@@ -5,7 +5,8 @@
 #   - a transient systemd unit with a dynamic user and its own copy of the root-owned runner;
 #   - no access to /home, /root, /opt/kasra, /etc/kasra, backups or Docker, a read-only system, and no
 #     connections to localhost, private or Docker networks (only the internet and the gate socket);
-#   - the only way to root is /run/kasra-gate.sock, where kasra-gate demands the owner's approval code.
+#   - the only way to root is /run/kasra-gate.sock, where kasra-gate demands DEPLOY_TOKEN, which only jobs
+#     approved in the protected "production" GitHub environment receive.
 # Installed as /usr/local/sbin/kasra-runner-supervisor and run by kasra-runner.service (root).
 #   kasra-runner-supervisor                    the service loop
 #   kasra-runner-supervisor --update-runner    install or update the runner in /opt/actions-runner
@@ -79,7 +80,7 @@ case "${1:-}" in
   --sandbox)
     shift
     name=test-$$
-    for var in ${KASRA_SANDBOX_PASS:-}; do SANDBOX_ENV+=(--setenv="$var=${!var}"); done
+    for var in ${KASRA_SANDBOX_PASS:-}; do SANDBOX_ENV+=(--setenv="$var=${!var:-}"); done
     status=0; sandbox "$name" "$@" || status=$?
     rm -rf "/var/lib/private/kasra-jobs/$name"
     exit "$status" ;;

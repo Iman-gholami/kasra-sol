@@ -1,0 +1,38 @@
+name: Production gate
+description: >-
+  Refuses to touch production unless this job runs from main inside the "production" environment and that
+  environment requires the repository owner's approval (and nobody else's) and only accepts main. A missing or
+  weakened protection rule therefore stops the job instead of deploying without the owner's approval.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPOSITORY: ${{ github.repository }}
+        OWNER: ${{ github.repository_owner }}
+      run: |
+        set -euo pipefail
+        if [ "$GITHUB_REF" != refs/heads/main ]; then
+          echo "::error::Production is changed only from main (this run is on $GITHUB_REF)."
+          exit 1
+        fi
+        environment=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/$REPOSITORY/environments/production")
+        reviewers=$(jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' <<<"$environment")
+        others=$(jq -r --arg owner "$OWNER" '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?
+          | select(.type != "User" or .reviewer.login != $owner) | (.reviewer.login // .reviewer.name // "?")] | join(", ")' <<<"$environment")
+        branches=$(jq -c '.deployment_branch_policy' <<<"$environment")
+        if [ "$reviewers" -lt 1 ]; then
+          echo "::error::The production environment has no required reviewer, so this job could run without approval. Add one under Settings > Environments > production (docs/DEPLOYMENT.md)."
+          exit 1
+        fi
+        if [ -n "$others" ]; then
+          echo "::error::Only the repository owner may approve production deployments, but the production environment also lists: $others."
+          exit 1
+        fi
+        if [ "$branches" = null ]; then
+          echo "::error::The production environment accepts every branch. Limit it to main under Settings > Environments > production > Deployment branches and tags."
+          exit 1
+        fi
+        echo "Approved by the owner ($OWNER), the only required reviewer; environment limited to $branches."
