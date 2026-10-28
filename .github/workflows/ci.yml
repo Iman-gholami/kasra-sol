@@ -37,6 +37,11 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests
         run: npm run test:e2e
+      # iPhone Safari is WebKit; flows that broke only on iOS are checked there too.
+      - name: Install WebKit
+        run: npx playwright install --with-deps webkit
+      - name: iPhone (WebKit) tests
+        run: npx playwright test -c playwright.webkit.config.ts
       - name: Capture synthetic browser metrics
         run: |
           mkdir -p .next/standalone/.next

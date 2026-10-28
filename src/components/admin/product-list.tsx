@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import Image from 'next/image';
-import { Archive, ChevronDown, ChevronUp, Copy, ImageIcon, PackageSearch, Pencil, Plus, Search, Send } from 'lucide-react';
+import { Archive, ChevronDown, ChevronUp, Copy, ImageIcon, PackageSearch, Pencil, Plus, Search, Send, Tag } from 'lucide-react';
 import { adminApi, AdminApiError, errorMessage } from '@/components/admin/admin-api';
 import { CATEGORY, digitsOnly, formatNumber, formatToman, PRODUCT_STATUS } from '@/components/admin/labels';
 import { Badge, Loading, Notice, Pager } from '@/components/admin/ui';
@@ -116,6 +116,9 @@ function Row({ product, permissions, changed, edit, duplicate }: {
             className="admin-btn admin-btn-outline admin-btn-small" onClick={toggleVariants}>
             {expanded ? <ChevronUp size={14} aria-hidden="true"/> : <ChevronDown size={14} aria-hidden="true"/>}
             موجودی</button>}
+          {can('inventory:read') && <a className="admin-btn admin-btn-outline admin-btn-small" target="_blank" rel="noopener"
+            href={'/admin/labels?product=' + product.id} aria-label={'چاپ برچسب بارکد ' + product.name + ' (در زبانه جدید)'}>
+            <Tag size={13} aria-hidden="true"/> برچسب</a>}
           {can('products:write') && <button type="button" disabled={busy}
             className={'admin-btn admin-btn-small ' + (product.active ? 'admin-btn-danger' : 'admin-btn-outline')}
             aria-label={(product.active ? 'آرشیو ' : 'انتشار ') + product.name} onClick={toggleVisibility}>
@@ -172,7 +175,7 @@ export function ProductList({ permissions, edit, create, duplicate, initialQuery
   const canCreate = ['products:write', 'products:price'].every(p => permissions.includes(p));
   function submit(event: FormEvent) {
     event.preventDefault();
-    setLoading(true); setPage(1); setSearch(query.trim());
+    setLoading(true); setPage(1); setSearch(query.trim()); setVersion(v => v + 1);
   }
   const filtered = Boolean(search) || status !== 'all' || stock !== 'all';
   return <div className="admin-stack">

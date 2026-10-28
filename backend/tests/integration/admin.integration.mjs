@@ -135,9 +135,53 @@ describe('authentication and sessions', () => {
     assert.equal((await api('/v1/admin/orders', { token: user.token })).status, 401);
     assert.equal((await login(user.username, user.password)).status, 401);
   });
+
+  it('renames an employee without interrupting their session', async () => {
+    const user = await account('staff');
+    assert.equal((await api('/v1/admin/staff/' + user.id, { method: 'PATCH', token: owner.token,
+      body: { displayName: 'نام اصلاح‌شده' } })).status, 200);
+    const me = await api('/v1/admin/auth/me', { token: user.token });
+    assert.equal(me.status, 200);
+    assert.equal(me.data.user.displayName, 'نام اصلاح‌شده');
+  });
 });
 
 describe('role-based access and escalation attempts', () => {
+  it('manages custom roles without escalating privileges or deleting assigned roles', async () => {
+    const roleBody = { name: 'مسئول سفارش ' + run, permissions: ['orders:read'] };
+    assert.equal((await api('/v1/admin/roles', { method: 'POST', token: manager.token, body: roleBody })).status, 403);
+    assert.equal((await api('/v1/admin/roles', { method: 'POST', token: owner.token,
+      body: { ...roleBody, permissions: ['staff:manage'] } })).status, 400);
+    const made = await api('/v1/admin/roles', { method: 'POST', token: owner.token, body: roleBody });
+    assert.equal(made.status, 201);
+    const roleId = made.data.role.id;
+    assert.equal((await api('/v1/admin/roles', { method: 'POST', token: owner.token, body: roleBody })).status, 409);
+    const newUsername = 'role_' + run + '_' + clients;
+    const newPassword = secret();
+    const created = await api('/v1/admin/staff', { method: 'POST', token: owner.token, body: {
+      username: newUsername, displayName: 'کارمند سفارش', password: newPassword, role: 'staff', customRoleId: roleId
+    } });
+    assert.equal(created.status, 201);
+    assert.deepEqual(created.data.user.permissions, ['orders:read']);
+    assert.equal(created.data.user.customRoleName, roleBody.name);
+    const accountId = created.data.user.id;
+    let token = (await login(newUsername, newPassword)).data.token;
+    assert.equal((await api('/v1/admin/orders', { token })).status, 200);
+    assert.equal((await api('/v1/admin/products', { token })).status, 403);
+    assert.equal((await api('/v1/admin/roles/' + roleId, { method: 'DELETE', token: owner.token })).status, 409);
+    assert.equal((await api('/v1/admin/roles/' + roleId, { method: 'PUT', token: owner.token,
+      body: { ...roleBody, permissions: ['products:read'] } })).status, 200);
+    assert.equal((await api('/v1/admin/auth/me', { token })).status, 401, 'role edits end assigned sessions');
+    token = (await login(newUsername, newPassword)).data.token;
+    assert.equal((await api('/v1/admin/products', { token })).status, 200);
+    assert.equal((await api('/v1/admin/orders', { token })).status, 403);
+    assert.equal((await api('/v1/admin/staff/' + accountId, { method: 'PATCH', token: owner.token,
+      body: { role: 'staff', customRoleId: null } })).status, 200);
+    assert.equal((await api('/v1/admin/roles/' + roleId, { method: 'DELETE', token: owner.token })).status, 200);
+    assert.equal((await api('/v1/admin/roles/' + roleId, { method: 'DELETE', token: owner.token })).status, 404);
+    const audit = await pool.query("SELECT action FROM admin_audit_log WHERE target=$1 ORDER BY id", [roleId]);
+    assert.deepEqual(audit.rows.map(row => row.action), ['staff.role_created', 'staff.role_updated', 'staff.role_deleted']);
+  });
   it('denies employees every staff-management and owner-only action', async () => {
     for (const actor of [staff, manager]) {
       assert.equal((await api('/v1/admin/staff', { token: actor.token })).status, 403);

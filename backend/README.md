@@ -87,12 +87,16 @@ DATABASE_URL=... node --test --test-concurrency=1 tests/integration/*.mjs
 
 ## Multi-user admin (development branch)
 
-The RBAC backend implements individual staff accounts with roles `owner`, `manager`, and `staff`.
+The RBAC backend implements individual staff accounts with built-in roles `owner`, `manager`, and `staff`,
+plus owner-defined custom roles (migration `010_admin_custom_roles`).
 Only the owner may create, disable, or change staff access. Manager and staff permission overrides
 are explicit; `staff:manage` and `payments:configure` cannot be delegated. Default staff **cannot change prices**.
 All privileged mutations of price, stock, and staff roles have audit records; role edits revoke all affected sessions.
+Custom roles contain an explicit set of delegatable permissions; individual grants and revokes still apply on top.
+Assigning a different role clears the account's previous individual overrides. A custom role in use cannot be
+deleted until every account (including inactive accounts) is reassigned. The built-in roles are never deleted.
 
-Run additive migration `002_admin`; it does not erase existing products or orders.
+Run the migrations with `npm run db:migrate`; they do not erase existing products or orders.
 Create the first owner with a password saved in a PRIVATE file outside the repository:
 
 ```sh
@@ -115,9 +119,13 @@ Admin endpoints (prefix `/v1/admin`): `/auth/login`, `/auth/me`, `/auth/logout`,
 `/products` (`?q&status&stock&page&limit`), `/products/:id`, `/products/:id/price`, `/products/:id/variants`,
 `/products/:id/visibility`, `/variants/:id/stock`, `/orders` (`?status&q&period&page&limit`), `/orders/export`
 (`?status&q&period`, CSV), `/orders/:id`, `/orders/:id/status`, `/staff`, `/staff/:id`, `/staff/:id/password`, `/media`,
-`/reports/overview`, `/audit` (`?before&group&actor`), `/home-slider` (GET, PUT).
+`/reports/overview`, `/audit` (`?before&group&actor`), `/home-slider` (GET, PUT), `/products/:id/barcodes` (POST),
+`/barcodes/:code`, `/stock-receipts` (`?page`; GET, POST), `/stock-receipts/:id`, `/store-sales` (`?date`; GET, POST),
+`/store-sales/:id/void` (POST), `/store-holds` (GET, POST), `/store-holds/:id/resume` (POST), `/store-holds/:id` (DELETE),
+`/roles` (GET, POST),
+`/roles/:id` (PUT, DELETE; `409 role_in_use` if assigned).
 
-`/audit` filters by event group (`auth`, `staff`, `products`, `inventory`, `orders`, `media`: the part of the action
+`/audit` filters by event group (`auth`, `staff`, `products`, `inventory`, `orders`, `sales`, `media`: the part of the action
 before the dot) and by acting account id, and adds `targetName` (the account or product an entry is about).
 
 Accounts and sessions:
@@ -128,6 +136,16 @@ Accounts and sessions:
   sessions, clears a lock). Any role/permission/activation change ends the employee's sessions at once.
 - Logins (also failed and locked attempts), logouts, password events, uploads and every change of
   price, stock, product, order status and staff access are written to `admin_audit_log`.
+
+## Shop counter, goods receipts and barcodes (migration 008)
+
+The shop and the website share `product_variants.stock`. `POST /stock-receipts` (`inventory:write`) adds received units and gives
+each product/color/size a shop-internal EAN-13 code (prefix `20`, stored in `variant_barcodes`). `POST /store-sales` (`sales:pos`,
+a new permission that staff and managers have by default) sells scanned codes at the current catalog price, locking like COD
+checkout and refusing the whole sale with `409 insufficient_stock` when a unit is gone; a discount needs `products:price`.
+`POST /store-sales/:id/void` (`inventory:write`) returns a sale's units once. Receipts and sales take a client `clientRef` UUID and
+are applied once per reference. Held counter carts (`/store-holds`, migration 009) reserve no stock and are taken back by
+one cashier only (the row is deleted on resume). Details, labels and the counter flow: [docs/STORE-INVENTORY.md](../docs/STORE-INVENTORY.md).
 
 ## Product catalog editing and media (PR #7)
 

@@ -14,6 +14,11 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: join(SCREENSHOTS, 'admin-' + name + '.png'), fullPage: true });
 }
 
+async function accessibilityViolations(page: Page, scope: string) {
+  const scan = await new AxeBuilder({ page }).include(scope).withTags(['wcag2a', 'wcag2aa']).analyze();
+  return scan.violations.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', '));
+}
+
 async function openTab(page: Page, label: string) {
   await page.getByRole('navigation', { name: 'بخش‌های مدیریت' }).getByRole('button', { name: label }).click();
 }
@@ -89,6 +94,9 @@ test('owner creates a draft with photos, publishes it, and it reaches the storef
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
   const row = page.getByRole('row', { name: new RegExp(PRODUCT_NAME) });
   await expect(row.getByText('پیش‌نویس')).toBeVisible();
+  const repeatedSearch = page.waitForResponse(response => response.url().includes('/api/admin/products?') && response.request().method() === 'GET');
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  expect((await repeatedSearch).status()).toBe(200);
   await row.getByRole('button', { name: 'انتشار ' + PRODUCT_NAME }).click();
   await expect(page.getByRole('row', { name: new RegExp(PRODUCT_NAME) }).getByText('منتشرشده')).toBeVisible();
   await shot(page, 'products-desktop');
@@ -158,7 +166,11 @@ test('an online order stays unpaid: it can be cancelled but never prepared or sh
 test('staff: least privilege in the menu and on every API call', async ({ page }) => {
   await signIn(page, accounts().staff);
   const nav = page.getByRole('navigation', { name: 'بخش‌های مدیریت' });
-  await expect(nav.getByRole('button')).toHaveText(['محصولات و موجودی', 'سفارش‌ها', 'حساب من']);
+  await expect(nav.getByRole('button')).toHaveText(['صندوق فروش', 'محصولات و موجودی', 'سفارش‌ها', 'حساب من']);
+  // Shop staff open the panel on the counter; receiving goods and discounts need an owner's grant.
+  await expect(page.getByRole('heading', { level: 1, name: 'صندوق فروش حضوری' })).toBeVisible();
+  await expect(page.getByLabel('تخفیف (تومان)')).toHaveCount(0);
+  await openTab(page, 'محصولات و موجودی');
   await expect(page.getByRole('heading', { name: /فهرست محصولات/ })).toBeVisible();
   await expect(page.getByRole('textbox', { name: /قیمت فروش/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^ویرایش / })).toHaveCount(0);
@@ -174,15 +186,17 @@ test('staff: least privilege in the menu and on every API call', async ({ page }
       await call('products/manto-01/price', 'PATCH', { price: 1 }),
       await call('products/manto-01/visibility', 'PATCH', { active: false }),
       await call('staff', 'POST', { username: 'sneaky_e2e', displayName: 'نفوذی', password: 'p'.repeat(16), role: 'manager' }),
-      await call('orders/export')
+      await call('orders/export'),
+      await call('stock-receipts', 'POST', { clientRef: crypto.randomUUID(),
+        lines: [{ productId: 'manto-01', colorId: 'black', size: 'M', quantity: 50 }] })
     ];
   });
-  expect(statuses).toEqual([403, 403, 403, 403, 403, 403, 403]);
+  expect(statuses).toEqual([403, 403, 403, 403, 403, 403, 403, 403]);
   await openTab(page, 'سفارش‌ها');
   await expect(page.getByRole('heading', { name: 'فهرست سفارش‌ها' })).toBeVisible();
   await expect(page.getByRole('button', { name: /خروجی Excel/ })).toHaveCount(0);
   await page.goto('/admin?tab=staff');
-  await expect(page.getByRole('heading', { level: 1, name: 'محصولات و موجودی' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'صندوق فروش حضوری' })).toBeVisible();
 });
 
 test('manager: runs the store but cannot administer staff', async ({ page }) => {
@@ -323,6 +337,180 @@ test('the storefront cover rotates the picked products, pauses, and follows its 
   }
 });
 
+const COUNTER_PRODUCT = 'e2e-counter-tee';
+const COUNTER_NAME = 'تیشرت صندوق آزمایشی';
+const persianDigits = (value: string) => value.replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+test('goods arrive with barcode labels, the counter sells them by scan, and the website stock follows', async ({ page, browser, request }) => {
+  test.setTimeout(120_000);
+  const problems = watchConsole(page);
+  const headers = { 'X-Forwarded-For': visitorAddress() };
+  const owner = await (await request.post(API + '/v1/admin/auth/login', { data: accounts().owner, headers })).json() as { token: string };
+  const auth = { ...headers, Authorization: 'Bearer ' + owner.token };
+  const image = await (await request.post(API + '/v1/admin/media', { headers: { ...auth, 'Content-Type': 'image/png' }, data: PNG }))
+    .json() as { url: string };
+  expect((await request.post(API + '/v1/admin/products', { headers: auth, data: {
+    id: COUNTER_PRODUCT, slug: COUNTER_PRODUCT, name: COUNTER_NAME, category: 'tshirt', description: 'تیشرت پنبه‌ای برای آزمون صندوق',
+    price: 640_000, compareAt: null, images: [image.url], colors: [{ id: 'white', name: 'سفید', hex: '#ffffff' }], sizes: ['S', 'M'],
+    variants: [{ colorId: 'white', size: 'S', stock: 0 }, { colorId: 'white', size: 'M', stock: 0 }],
+    material: 'پنبه', fit: 'آزاد', care: 'شست‌وشو با آب سرد', featured: false } })).status()).toBe(201);
+  expect((await request.patch(API + '/v1/admin/products/' + COUNTER_PRODUCT + '/visibility', { headers: auth,
+    data: { active: true } })).status()).toBe(200);
+  const websiteStock = async (size: string) => ((await (await request.get(API + '/v1/products/' + COUNTER_PRODUCT)).json()) as
+    { variants: { size: string; stock: number }[] }).variants.find(variant => variant.size === size)!.stock;
+
+  // The manager receives three medium shirts and prints one label per unit.
+  page.on('dialog', dialog => void dialog.accept());
+  await signIn(page, accounts().manager);
+  await openTab(page, 'ورود کالا و برچسب');
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول برای رسید' }).fill(COUNTER_PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'انتخاب ' + COUNTER_NAME }).click();
+  await page.getByLabel('تعداد رسیده سفید سایز M').fill('۳');
+  await page.getByRole('button', { name: 'افزودن به رسید' }).click();
+  await page.getByRole('button', { name: 'ثبت رسید و افزودن به موجودی' }).click();
+  await expect(page.getByText(/ثبت شد و ۳ عدد به موجودی اضافه شد/)).toBeVisible();
+  expect(await websiteStock('M')).toBe(3);
+  expect(await accessibilityViolations(page, '.admin-app')).toEqual([]);
+  await shot(page, 'receiving-desktop');
+  const [labels] = await Promise.all([page.context().waitForEvent('page'),
+    page.getByRole('link', { name: /چاپ ۳ برچسب این رسید/ }).click()]);
+  await expect(labels.locator('.label')).toHaveCount(3);
+  const code = (await labels.locator('.label-code').first().textContent())!.trim();
+  expect(code).toMatch(/^20\d{11}$/);
+  await expect(labels.locator('.label').first()).toContainText('۶۴۰٬۰۰۰ تومان');
+  expect(await accessibilityViolations(labels, '.label-tools')).toEqual([]);
+  await shot(labels, 'labels-desktop');
+  // The print holds labels only, one 50 × 25 mm page each (the size of the shop's current stickers).
+  await labels.emulateMedia({ media: 'print' });
+  await expect(labels.locator('.label-tools')).toBeHidden();
+  const pdf = (await labels.pdf({ preferCSSPageSize: true })).toString('latin1');
+  expect(pdf.match(/\/Type\s*\/Page(?!s)/g)).toHaveLength(3);
+  // Points; Chromium rounds the page to whole CSS pixels.
+  const [width, height] = pdf.match(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)\s*\]/)!.slice(1).map(Number);
+  expect(Math.abs(width - 50 / 25.4 * 72)).toBeLessThan(1);
+  expect(Math.abs(height - 25 / 25.4 * 72)).toBeLessThan(1);
+  await labels.close();
+
+  // Staff sell two at the counter; the scanner types Persian digits on a Persian keyboard layout.
+  const counterContext = await browser.newContext();
+  const counter = await counterContext.newPage();
+  const counterProblems = watchConsole(counter);
+  await signIn(counter, accounts().staff);
+  await expect(counter.getByRole('heading', { level: 1, name: 'صندوق فروش حضوری' })).toBeVisible();
+  const scan = counter.getByLabel('اسکن بارکد کالا');
+  await scan.fill(persianDigits(code));
+  await scan.press('Enter');
+  await scan.fill(code);
+  await scan.press('Enter');
+  await expect(counter.getByRole('status').filter({ hasText: 'یک عدد دیگر اضافه شد' })).toBeVisible();
+  await expect(counter.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۲');
+  await scan.fill(code.slice(0, 12) + String((Number(code[12]) + 1) % 10));
+  await scan.press('Enter');
+  await expect(counter.getByRole('alert').filter({ hasText: 'رقم کنترل' })).toBeVisible();
+  // The customer goes back to the fitting room: the cart is held and the counter serves the next customer meanwhile.
+  await counter.getByLabel('یادداشت (اختیاری)').fill('خانم تیشرت سفید، اتاق پرو');
+  await counter.getByRole('button', { name: 'تعلیق فاکتور (مشتری بعدی)' }).click();
+  await expect(counter.getByText('سبد خالی است؛ اولین کالا را اسکن کنید.')).toBeVisible();
+  const heldCarts = counter.getByRole('list', { name: 'فاکتورهای معلق' });
+  await expect(heldCarts.getByRole('listitem')).toHaveCount(1);
+  await expect(heldCarts).toContainText('خانم تیشرت سفید، اتاق پرو');
+  await expect(heldCarts).toContainText('۱٬۲۸۰٬۰۰۰ تومان');
+  expect(await websiteStock('M')).toBe(3);
+  await shot(counter, 'counter-held-desktop');
+  await heldCarts.getByRole('button', { name: /^ادامه فاکتور معلق/ }).click();
+  await expect(counter.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۲');
+  await expect(counter.getByLabel('یادداشت (اختیاری)')).toHaveValue('خانم تیشرت سفید، اتاق پرو');
+  await expect(counter.getByRole('list', { name: 'فاکتورهای معلق' })).toHaveCount(0);
+  await counter.getByRole('radio', { name: 'نقدی' }).check();
+  await counter.getByRole('button', { name: 'ثبت فروش و کم کردن از موجودی' }).click();
+  await expect(counter.getByText(/فروش شماره .* به مبلغ ۱٬۲۸۰٬۰۰۰ تومان ثبت شد/)).toBeVisible();
+  expect(await websiteStock('M')).toBe(1);
+  const sale = counter.getByRole('row', { name: new RegExp(COUNTER_NAME) }).first();
+  await expect(sale).toContainText('نقدی');
+  await expect(sale.getByRole('button', { name: /ابطال/ })).toHaveCount(0);
+  expect(await accessibilityViolations(counter, '.admin-app')).toEqual([]);
+  await shot(counter, 'counter-desktop');
+  // A label of a size with no stock is refused at the scan, with the likely reason.
+  const small = await (await request.post(API + '/v1/admin/products/' + COUNTER_PRODUCT + '/barcodes', { headers: auth })).json() as
+    { items: { size: string; code: string }[] };
+  await scan.fill(small.items.find(item => item.size === 'S')!.code);
+  await scan.press('Enter');
+  await expect(counter.getByRole('status').filter({ hasText: 'در سیستم موجودی ندارد' })).toBeVisible();
+  await counterContext.close();
+
+  // The manager voids it (a returned purchase): both units go back to the website stock.
+  await openTab(page, 'صندوق فروش');
+  const row = page.getByRole('row', { name: new RegExp(COUNTER_NAME) }).first();
+  await row.getByRole('button', { name: /ابطال فروش شماره/ }).click();
+  await expect(page.getByText(/باطل شد و ۲ عدد به موجودی برگشت/)).toBeVisible();
+  await expect(row).toContainText('باطل‌شده');
+  expect(await websiteStock('M')).toBe(3);
+  // Labels can be printed again for a whole product, one per unit in stock.
+  await openTab(page, 'محصولات و موجودی');
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(COUNTER_PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  const [reprint] = await Promise.all([page.context().waitForEvent('page'),
+    page.getByRole('link', { name: 'چاپ برچسب بارکد ' + COUNTER_NAME + ' (در زبانه جدید)' }).click()]);
+  await expect(reprint.getByRole('cell', { name: code })).toBeVisible();
+  await expect(reprint.locator('.label')).toHaveCount(2);
+  await reprint.getByRole('button', { name: 'هر کدام به تعداد موجودی' }).click();
+  await expect(reprint.locator('.label')).toHaveCount(3);
+  // A label printer with other stickers: any size in millimetres.
+  await reprint.getByLabel('نوع برچسب').selectOption('roll-custom');
+  await reprint.getByLabel('عرض').fill('۴۰');
+  await reprint.getByLabel('ارتفاع').fill('20');
+  const custom = (await reprint.locator('.label').first().boundingBox())!;
+  expect([Math.round(custom.width / 96 * 25.4), Math.round(custom.height / 96 * 25.4)]).toEqual([40, 20]);
+  await reprint.getByLabel('نوع برچسب').selectOption('a4-65');
+  await reprint.getByLabel('چند خانه اول برگه خالی بماند؟').fill('۴');
+  await expect(reprint.locator('.label-blank')).toHaveCount(4);
+  await reprint.close();
+  expect([...problems, ...counterProblems]).toEqual([]);
+});
+
+test('a label scanned while a sale is being recorded stays on the counter instead of vanishing', async ({ page, request }) => {
+  const problems = watchConsole(page);
+  const headers = { 'X-Forwarded-For': visitorAddress() };
+  const owner = await (await request.post(API + '/v1/admin/auth/login', { data: accounts().owner, headers })).json() as { token: string };
+  const auth = { ...headers, Authorization: 'Bearer ' + owner.token };
+  const codes = await (await request.post(API + '/v1/admin/products/' + COUNTER_PRODUCT + '/barcodes', { headers: auth })).json() as
+    { items: { size: string; code: string }[] };
+  const medium = codes.items.find(item => item.size === 'M')!.code;
+  const websiteStock = async () => ((await (await request.get(API + '/v1/products/' + COUNTER_PRODUCT)).json()) as
+    { variants: { size: string; stock: number }[] }).variants.find(variant => variant.size === 'M')!.stock;
+  const before = await websiteStock();
+  expect(before).toBeGreaterThanOrEqual(2);
+
+  await signIn(page, accounts().staff);
+  const scan = page.getByLabel('اسکن بارکد کالا');
+  await scan.fill(medium);
+  await scan.press('Enter');
+  await expect(page.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۱');
+  // Hold the sale's answer until the cashier has scanned one more label.
+  let release!: () => void;
+  const answered = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/admin/store-sales', async route => {
+    if (route.request().method() === 'POST') await answered;
+    await route.continue();
+  });
+  await page.getByRole('radio', { name: 'نقدی' }).check();
+  await page.getByRole('button', { name: 'ثبت فروش و کم کردن از موجودی' }).click();
+  await expect(page.getByRole('button', { name: 'در حال ثبت…' })).toBeVisible();
+  await scan.fill(medium);
+  await scan.press('Enter');
+  await expect(page.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۲');
+  release();
+  await expect(page.getByText(/فروش شماره .* به مبلغ ۶۴۰٬۰۰۰ تومان ثبت شد/)).toContainText('در سبد مانده است');
+  // One unit was sold; the one scanned meanwhile waits on the counter for the next sale.
+  await expect(page.getByLabel('تعداد ' + COUNTER_NAME)).toHaveText('۱');
+  expect(await websiteStock()).toBe(before - 1);
+  await page.unroute('**/api/admin/store-sales');
+  page.on('dialog', dialog => void dialog.accept());
+  await page.getByRole('button', { name: 'خالی کردن سبد' }).click();
+  await expect(page.getByText('سبد خالی است؛ اولین کالا را اسکن کنید.')).toBeVisible();
+  expect(problems).toEqual([]);
+});
+
 test('product editor: unsaved changes are guarded, Back moves between screens, a copy starts as an empty draft', async ({ page }) => {
   const problems = watchConsole(page);
   await signIn(page, accounts().owner);
@@ -337,7 +525,7 @@ test('product editor: unsaved changes are guarded, Back moves between screens, a
   await openTab(page, 'محصولات و موجودی');
   await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
-  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
   await expect(page.getByRole('heading', { name: /ویرایش محصول/ })).toBeFocused();
   await expect(page).toHaveURL(/edit=e2e-linen-manto/);
   await page.getByLabel('نام محصول').fill('نام ذخیره‌نشده');
@@ -382,6 +570,9 @@ test('orders: period filter, Excel export of the filtered list, and a printable 
   await page.getByLabel('فیلتر وضعیت سفارش').selectOption('all');
   await page.getByLabel('بازه زمانی ثبت سفارش').selectOption('today');
   await expect(page.getByRole('row').filter({ hasText: 'مهمان نمایشی' }).first()).toBeVisible();
+  const repeatedSearch = page.waitForResponse(response => response.url().includes('/api/admin/orders?') && response.request().method() === 'GET');
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  expect((await repeatedSearch).status()).toBe(200);
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /خروجی Excel/ }).click()]);
   expect(download.suggestedFilename()).toMatch(/^kasra-orders-\d{4}-\d{2}-\d{2}\.csv$/);
   const file = readFileSync(await download.path());
@@ -472,6 +663,7 @@ test('owner manages an employee: new account, own password change, permission gr
   await expect(employee.getByText('رمز عبور تغییر کرد', { exact: false })).toBeVisible();
 
   const card = page.locator('.admin-member', { hasText: 'همکار موقت' });
+  await card.getByText('نمایش و ویرایش مجوزها').click();
   await card.getByRole('checkbox', { name: /تغییر قیمت/ }).check();
   await expect(page.locator('.admin-member', { hasText: 'همکار موقت' }).getByRole('checkbox', { name: /تغییر قیمت/ })).toBeChecked();
   await employee.reload();
@@ -501,6 +693,12 @@ test('login: generic error, password reveal, logout and private routes', async (
   await page.getByLabel('نام کاربری').fill(accounts().owner.username);
   const password = page.getByLabel('رمز عبور', { exact: true });
   await password.fill('definitely-not-the-password');
+  // The eye sits at the right end of the field, clear of the password, which is typed from the left.
+  const field = (await password.boundingBox())!;
+  const eye = (await page.getByRole('button', { name: 'نمایش رمز' }).boundingBox())!;
+  expect(eye.x + eye.width).toBeLessThanOrEqual(field.x + field.width);
+  expect(eye.x).toBeGreaterThan(field.x + field.width - 48);
+  expect(await password.evaluate(input => parseFloat(getComputedStyle(input).paddingRight))).toBeGreaterThanOrEqual(eye.width);
   await page.getByRole('button', { name: 'نمایش رمز' }).click();
   await expect(password).toHaveAttribute('type', 'text');
   await page.getByRole('button', { name: /ورود به پنل مدیریت/ }).click();
@@ -560,7 +758,8 @@ test.describe('phone layout', () => {
     expect(await overflowing(page)).toEqual([]);
     await shot(page, 'login-mobile');
     await signIn(page, accounts().owner);
-    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'], ['محصولات و موجودی', 'products'], ['اسلایدر صفحه اول', 'home-slider'],
+    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'], ['صندوق فروش', 'counter'],
+      ['ورود کالا و برچسب', 'receiving'], ['محصولات و موجودی', 'products'], ['اسلایدر صفحه اول', 'home-slider'],
       ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff'], ['تاریخچه فعالیت‌ها', 'audit'], ['حساب من', 'account']] as const) {
       await openTab(page, label);
       await expect(page.locator('.admin-loading')).toHaveCount(0);
@@ -578,12 +777,60 @@ test('audit viewport matrix keeps admin sections within the viewport', async ({ 
   await signIn(page, accounts().owner);
   for (const width of [360, 390, 430, 768, 1280, 1440, 1920]) {
     await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
-    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'],
-      ['محصولات و موجودی', 'products'], ['اسلایدر صفحه اول', 'home-slider'], ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff']] as const) {
+    for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'], ['صندوق فروش', 'counter'],
+      ['ورود کالا و برچسب', 'receiving'], ['محصولات و موجودی', 'products'], ['اسلایدر صفحه اول', 'home-slider'],
+      ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff']] as const) {
       await openTab(page, label);
       await expect(page.locator('.admin-loading')).toHaveCount(0);
       expect(await overflowing(page), label + ' at ' + width).toEqual([]);
       if (width === 390 || width === 768 || width === 1440) await shot(page, name + '-audit-' + width);
     }
   }
+});
+
+test('owner manages a custom role and cannot remove it while assigned', async ({ page }) => {
+  page.on('dialog', dialog => void dialog.accept());
+  await signIn(page, accounts().owner);
+  await openTab(page, 'کارکنان و مجوزها');
+  const roles = page.getByRole('region', { name: 'نقش‌های دلخواه' });
+  await roles.getByLabel('نام نقش').fill('مسئول سفارش تست');
+  await roles.getByRole('checkbox', { name: /مشاهده سفارش‌ها/ }).check();
+  await roles.getByRole('button', { name: 'ایجاد نقش' }).click();
+  await expect(roles.getByText('نقش جدید ساخته شد.')).toBeVisible();
+  const form = page.getByRole('form', { name: 'ایجاد حساب کارمند' });
+  await form.getByLabel('نام کاربری (لاتین)').fill('roles_e2e');
+  await form.getByLabel('نام نمایشی').fill('همکار نقش تست');
+  await form.getByLabel('رمز عبور اولیه (حداقل ۱۲ نویسه)').fill('test-roles-password-1');
+  await expect(form.getByLabel('نقش').getByText('مسئول سفارش تست')).toHaveCount(1);
+  await form.getByLabel('نقش').selectOption({ label: 'مسئول سفارش تست' });
+  await form.getByRole('button', { name: 'ساخت حساب مستقل' }).click();
+  await expect(page.getByText('حساب «همکار نقش تست» ساخته شد', { exact: false })).toBeVisible();
+  const member = page.locator('.admin-member').filter({ hasText: 'همکار نقش تست' });
+  await expect(member).toBeVisible();
+  await roles.getByRole('button', { name: 'حذف نقش مسئول سفارش تست' }).click();
+  await expect(roles.getByRole('alert')).toContainText('ابتدا نقش آن حساب‌ها را تغییر دهید');
+  await member.getByLabel('نقش').selectOption('staff');
+  await expect(roles.locator('.admin-member').filter({ hasText: 'مسئول سفارش تست' })).toContainText('۰ حساب');
+  await roles.getByRole('button', { name: 'حذف نقش مسئول سفارش تست' }).click();
+  await expect(roles.getByText('نقش «مسئول سفارش تست» حذف شد.')).toBeVisible();
+});
+
+test('product photo removal can be undone before saving and persists after saving', async ({ page }) => {
+  await signIn(page, accounts().owner);
+  await openTab(page, 'محصولات و موجودی');
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(2);
+  await page.getByRole('button', { name: 'حذف تصویر ۲ از محصول' }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
+  await page.getByRole('button', { name: 'بازگرداندن تصویر' }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(2);
+  await page.getByRole('button', { name: 'حذف تصویر ۲ از محصول' }).click();
+  await page.getByRole('button', { name: 'ذخیره تغییرات محصول' }).click();
+  await expect(page.getByText('محصول ذخیره شد.')).toBeVisible();
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
+  await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
 });

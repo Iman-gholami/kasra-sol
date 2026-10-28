@@ -17,6 +17,8 @@ export const TRANSITION_ACTIONS: Record<string, string> = {
 };
 export const PAYMENT_METHOD: Record<string, string> = { cod: 'پرداخت در محل', online: 'پرداخت اینترنتی' };
 export const SHIPPING_METHOD: Record<string, string> = { post: 'پست پیشتاز', express: 'ارسال سریع', courier: 'پیک تهران' };
+/** How a customer paid at the shop counter. */
+export const STORE_PAYMENT: Record<string, string> = { card: 'کارت‌خوان', cash: 'نقدی', transfer: 'کارت‌به‌کارت' };
 
 /** No payment is ever verified yet: an online order is unpaid, and a COD collection is not recorded. */
 export function paymentState(payment: string, status: string): { label: string; tone: Tone } {
@@ -42,21 +44,24 @@ export const PERMISSION: Record<string, { label: string; hint: string }> = {
   'orders:read': { label: 'مشاهده سفارش‌ها', hint: 'شامل نام، تلفن و نشانی مشتری' },
   'orders:fulfill': { label: 'رسیدگی به سفارش', hint: 'آماده‌سازی، ارسال، تحویل و لغو' },
   'orders:export': { label: 'خروجی فهرست سفارش‌ها', hint: 'دانلود فایل CSV با نام، تلفن و نشانی مشتریان' },
-  'reports:read': { label: 'مشاهده گزارش‌ها', hint: 'داشبورد آمار فروشگاه' }
+  'reports:read': { label: 'مشاهده گزارش‌ها', hint: 'داشبورد آمار فروشگاه' },
+  'sales:pos': { label: 'صندوق فروش حضوری', hint: 'اسکن بارکد و ثبت فروش در مغازه؛ از همان موجودی سایت کم می‌شود' }
 };
 
 export const AUDIT_ACTION: Record<string, string> = {
   'auth.login': 'ورود به پنل', 'auth.login_failed': 'تلاش ناموفق ورود', 'auth.login_locked': 'ورود به حساب قفل‌شده',
   'auth.logout': 'خروج از پنل', 'auth.password_changed': 'تغییر رمز عبور', 'auth.password_change_failed': 'تلاش ناموفق تغییر رمز',
   'staff.created': 'ایجاد حساب کارمند', 'staff.updated': 'تغییر نقش یا دسترسی کارمند', 'staff.password_reset': 'تعیین رمز جدید برای کارمند',
+  'staff.role_created': 'ایجاد نقش', 'staff.role_updated': 'ویرایش نقش', 'staff.role_deleted': 'حذف نقش',
   'products.created': 'ایجاد محصول', 'products.updated': 'ویرایش محصول', 'products.price': 'تغییر قیمت',
   'products.visibility': 'انتشار یا آرشیو محصول', 'inventory.stock': 'تغییر موجودی', 'orders.status': 'تغییر وضعیت سفارش',
-  'media.uploaded': 'آپلود تصویر', 'orders.exported': 'دریافت خروجی سفارش‌ها', 'products.home_slider': 'تغییر اسلایدر صفحه اول'
+  'media.uploaded': 'آپلود تصویر', 'orders.exported': 'دریافت خروجی سفارش‌ها', 'products.home_slider': 'تغییر اسلایدر صفحه اول',
+  'inventory.received': 'ورود کالا به انبار', 'sales.recorded': 'فروش حضوری', 'sales.voided': 'ابطال فروش حضوری'
 };
 /** Groups of audit events, for filtering the history; the API matches on the part before the dot. */
 export const AUDIT_GROUP: Record<string, string> = {
   auth: 'ورود، خروج و رمز', staff: 'کارکنان و مجوزها', products: 'محصولات و قیمت', inventory: 'موجودی',
-  orders: 'سفارش‌ها', media: 'تصاویر'
+  orders: 'سفارش‌ها', sales: 'فروش حضوری', media: 'تصاویر'
 };
 /** Persian names of the product fields reported in `products.updated` audit entries. */
 export const PRODUCT_FIELD: Record<string, string> = {
