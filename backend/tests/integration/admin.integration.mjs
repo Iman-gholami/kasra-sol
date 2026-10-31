@@ -147,6 +147,46 @@ describe('authentication and sessions', () => {
   });
 });
 
+describe('Shopino tracking', () => {
+  it('lets only authorized staff store a code and returns it to the authenticated partner in request order', async () => {
+    const id = randomUUID();
+    const shopinoId = Number.parseInt(randomBytes(6).toString('hex'), 16) + 1;
+    let reference;
+    try {
+      await pool.query(
+        "INSERT INTO orders(id,idempotency_key,request_hash,address,shipping,payment,status,subtotal,discount,shipping_cost,total) " +
+        "VALUES($1,$2,$3,$4::jsonb,'post','online','pending_payment',0,0,0,0)",
+        [id, 'it-shopino-' + randomUUID(), 'a'.repeat(64), JSON.stringify(fields)]);
+      reference = Number((await pool.query(
+        'INSERT INTO shopino_order_links(shopino_order_id,order_id) VALUES($1,$2) RETURNING id', [shopinoId, id])).rows[0].id);
+      const detail = await api('/v1/admin/orders/' + id, { token: owner.token });
+      assert.equal(detail.status, 200);
+      assert.deepEqual(detail.data.item.shopino, { reference, trackingCode: null });
+      assert.equal((await api('/v1/admin/orders/' + id + '/tracking', { method: 'PATCH', token: staff.token,
+        body: { trackingCode: 'POST123' } })).status, 403);
+      assert.equal((await api('/v1/admin/orders/' + id + '/tracking', { method: 'PATCH', token: manager.token,
+        body: { trackingCode: 'POST123' } })).status, 200);
+      const unauthorized = await api('/v1/shopino/tracking', { method: 'POST', body: { order_ids: [reference] } });
+      assert.equal(unauthorized.status, 401);
+      const tracked = await api('/v1/shopino/tracking', { method: 'POST', token: process.env.SHOPINO_API_TOKEN,
+        body: { order_ids: [reference + 100000, reference, reference] } });
+      assert.deepEqual(tracked.data, { codes: [null, 'POST123', 'POST123'] });
+      assert.equal((await api('/v1/admin/orders/' + id + '/tracking', { method: 'PATCH', token: manager.token,
+        body: { trackingCode: null } })).status, 200);
+      const cleared = await api('/v1/shopino/tracking', { method: 'POST', token: process.env.SHOPINO_API_TOKEN,
+        body: { order_ids: [reference] } });
+      assert.deepEqual(cleared.data, { codes: [null] });
+      const state = await pool.query('SELECT payment_status,status FROM orders WHERE id=$1', [id]);
+      assert.deepEqual(state.rows[0], { payment_status: 'unpaid', status: 'pending_payment' });
+      const audit = await pool.query("SELECT COUNT(*)::int AS n FROM admin_audit_log WHERE action='orders.tracking' AND target=$1", [id]);
+      assert.equal(audit.rows[0].n, 2);
+    } finally {
+      await pool.query('DELETE FROM shopino_order_links WHERE order_id=$1', [id]);
+      await pool.query('DELETE FROM orders WHERE id=$1', [id]);
+    }
+  });
+});
+
 describe('role-based access and escalation attempts', () => {
   it('manages custom roles without escalating privileges or deleting assigned roles', async () => {
     const roleBody = { name: 'مسئول سفارش ' + run, permissions: ['orders:read'] };

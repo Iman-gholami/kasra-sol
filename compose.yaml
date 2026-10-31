@@ -88,6 +88,8 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: "4000"
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      SHOPINO_API_TOKEN: ${SHOPINO_API_TOKEN:-}
       DATABASE_URL: postgres://${POSTGRES_USER:-kasra}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-kasra}
       REDIS_URL: redis://redis:6379
       ORDER_TOKEN_SECRET: ${ORDER_TOKEN_SECRET:?Set ORDER_TOKEN_SECRET}

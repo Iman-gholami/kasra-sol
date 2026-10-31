@@ -14,7 +14,7 @@ const ROUTES: Record<string, RegExp> = {
   POST: new RegExp('^(auth/logout|auth/password|staff|roles|products|products/' + PRODUCT + '/barcodes|stock-receipts|store-sales|' +
     'store-sales/' + SERIAL + '/void|store-holds|store-holds/' + SERIAL + '/resume)$'),
   PATCH: new RegExp('^(staff/' + UUID + '|products/' + PRODUCT + '/(price|visibility)|variants/' + UUID + '/stock|' +
-    'orders/' + UUID + '/status)$'),
+    'orders/' + UUID + '/(status|tracking))$'),
   PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password|roles/' + UUID + '|home-slider)$'),
   DELETE: new RegExp('^(roles/' + UUID + '|store-holds/' + SERIAL + ')$')
 };

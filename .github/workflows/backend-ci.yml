@@ -23,6 +23,8 @@ jobs:
     env:
       DATABASE_URL: postgres://kasra:ci_test_password@localhost:5432/kasra
       ORDER_TOKEN_SECRET: ci_test_only_secret_that_is_long_enough_to_verify
+      NEXT_PUBLIC_SITE_URL: https://kasra.example
+      SHOPINO_API_TOKEN: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       ADMIN_API_KEY: ci_test_only_admin_key_that_is_long_enough_to_verify
       # The integration tests impersonate distinct visitors through X-Forwarded-For, as the Next.js proxy does.
       TRUST_PROXY: "true"

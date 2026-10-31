@@ -239,6 +239,7 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 .admin-app .admin-variant-card input { width: 80px; min-height: 36px; }
 
 /* Order detail */
+.admin-order-detail { grid-template-columns: minmax(0, 1fr); }
 .admin-dl { display: grid; gap: 6px; margin: 0; }
 .admin-dl div { display: grid; grid-template-columns: 130px 1fr; gap: 10px; font-size: 13px; }
 .admin-dl dt { color: var(--admin-muted); }
@@ -318,7 +319,8 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
 }
 @media (max-width: 1080px) {
   .admin-app { grid-template-columns: 212px minmax(0, 1fr); }
-  .admin-two-col, .admin-detail-grid { grid-template-columns: 1fr; }
+  .admin-two-col { grid-template-columns: 1fr; }
+  .admin-detail-grid { grid-template-columns: minmax(0, 1fr); }
   .admin-color-row { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 760px) {

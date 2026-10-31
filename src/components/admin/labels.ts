@@ -55,6 +55,7 @@ export const AUDIT_ACTION: Record<string, string> = {
   'staff.role_created': 'ایجاد نقش', 'staff.role_updated': 'ویرایش نقش', 'staff.role_deleted': 'حذف نقش',
   'products.created': 'ایجاد محصول', 'products.updated': 'ویرایش محصول', 'products.price': 'تغییر قیمت',
   'products.visibility': 'انتشار یا آرشیو محصول', 'inventory.stock': 'تغییر موجودی', 'orders.status': 'تغییر وضعیت سفارش',
+  'orders.tracking': 'تغییر کد رهگیری سفارش شاپینو',
   'media.uploaded': 'آپلود تصویر', 'orders.exported': 'دریافت خروجی سفارش‌ها', 'products.home_slider': 'تغییر اسلایدر صفحه اول',
   'inventory.received': 'ورود کالا به انبار', 'sales.recorded': 'فروش حضوری', 'sales.voided': 'ابطال فروش حضوری'
 };
