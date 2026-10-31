@@ -167,7 +167,7 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
         </div>
         <section aria-labelledby="items-title">
           <h3 id="items-title" className="admin-section-title">اقلام سفارش</h3>
-          <div className="admin-table-scroll">
+          <div className="admin-table-scroll" role="region" aria-labelledby="items-title" tabIndex={0}>
             <table className="admin-table">
               <thead><tr><th scope="col">کالا</th><th scope="col">رنگ</th><th scope="col">سایز</th>
                 <th scope="col">تعداد</th><th scope="col">قیمت واحد</th><th scope="col">جمع</th></tr></thead>

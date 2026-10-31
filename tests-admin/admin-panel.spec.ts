@@ -188,6 +188,9 @@ test('a Shopino order shows and saves its tracking code on a narrow screen', asy
   await expect(detail.getByRole('status').filter({ hasText: 'کد رهگیری ذخیره شد' })).toBeVisible();
   await expect(detail.getByLabel('کد رهگیری مرسوله')).toHaveValue('12345');
   expect(sent).toBe('12345');
+  const items = detail.getByRole('region', { name: 'اقلام سفارش' });
+  await items.focus();
+  await expect(items).toBeFocused();
   expect(await overflowing(page)).toEqual([]);
   expect(await accessibilityViolations(page, '[data-testid="order-detail"]')).toEqual([]);
 });
