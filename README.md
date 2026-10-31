@@ -114,6 +114,13 @@ Production runs on a ParsPack VPS: Nginx in front of the Compose stack in [`depl
 
 For a local or staging copy of the full stack, `compose.yaml` still builds everything on the machine (see [PostgreSQL + Fastify backend](#postgresql--fastify-backend)). Load testing must only be treated as complete when actually executed; current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
 
+## One phone layout
+
+The storefront has a single design, the phone's; tablets and computers show it as a centred 480 px column on the studio
+backdrop, like digikalajet.com. Layout breakpoints are container queries on `<body>` (the column), so a wide screen gets
+exactly the phone page; the back office keeps the full width. See [One phone layout](docs/MOBILE-ONLY.md) for how it
+works, the rules for new styles and the tests.
+
 ## Shop and website stock: barcodes, receiving and the counter
 
 The physical shop and the website sell from one stock. Goods that arrive are received in the back office («ورود کالا و برچسب»),

@@ -47,7 +47,8 @@ for (const [name, use] of [
       await audit(page, name + ' search');
       await page.keyboard.press('Escape');
       await page.keyboard.press('Escape');
-      if (name === 'phone') {
+      // One phone layout at every width, so both sizes audit the same overlays.
+      {
         await page.getByRole('button', { name: 'باز کردن منو' }).click();
         await expect(page.getByRole('navigation', { name: 'منوی موبایل' })).toBeVisible();
         await audit(page, name + ' menu');
@@ -60,11 +61,6 @@ for (const [name, use] of [
         await page.getByRole('button', { name: /^مرتب‌سازی:/ }).click();
         await expect(page.getByRole('dialog', { name: 'مرتب‌سازی' })).toBeVisible();
         await audit(page, name + ' sort');
-        await page.keyboard.press('Escape');
-      } else {
-        await page.getByRole('button', { name: 'نمایش راهنمای فروشگاه' }).click();
-        await expect(page.locator('.nav-panel a').first()).toBeVisible();
-        await audit(page, name + ' shop panel');
         await page.keyboard.press('Escape');
       }
       await page.goto('/product/shomiz-01');

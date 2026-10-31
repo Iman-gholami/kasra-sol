@@ -64,7 +64,7 @@ test.describe('desktop', () => {
     await expect.poll(() => cta.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(152, 26, 36)');
   });
 
-  test('cart line keeps quantity and actions beside the photo', async ({ page }) => {
+  test('cart line keeps quantity and actions inside the line, under its photo and details', async ({ page }) => {
     await seed(page);
     await page.goto('/cart');
     // A real line, not the loading skeleton that shares the class until the browser cart hydrates.
@@ -72,9 +72,11 @@ test.describe('desktop', () => {
     await expect(line).toBeVisible();
     const photo = await box(line.locator('.cart-img'));
     const controls = await box(line.locator('.cart-item-controls'));
-    // The controls start beside the photo; a taller info column (e.g. a stock note) may push them past its edge.
-    expect(controls.y).toBeLessThan(photo.y + photo.height);
-    expect((await box(line)).height).toBeLessThan(photo.height + controls.height + 32);
+    const card = await box(line);
+    // The phone layout (shown in the centred column on wide screens) puts the controls below the photo row.
+    expect(controls.y).toBeGreaterThanOrEqual(photo.y);
+    expect(controls.y + controls.height).toBeLessThanOrEqual(card.y + card.height + 1);
+    expect(card.height).toBeLessThan(photo.height + controls.height + 72);
   });
 });
 

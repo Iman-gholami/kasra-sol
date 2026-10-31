@@ -2,7 +2,7 @@
    Show a small, on-brand transition only when navigation truly has to wait. */
 .catalog-loading {
   display: grid; place-items: start center; min-block-size: 180px;
-  padding-block: clamp(40px, 5vw, 72px) var(--space-6);
+  padding-block: clamp(40px, 5cqi, 72px) var(--space-6);
 }
 .catalog-loading-inner { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center;
   gap: 8px 12px; inline-size: min(100%, 260px); color: var(--color-text-muted); }
@@ -255,15 +255,12 @@
 .search-all-link { margin-block-start: var(--space-3); color: var(--color-accent); }
 .search-disclaimer { margin: 0; padding: var(--space-3) var(--space-4) calc(var(--space-3) + var(--safe-bottom)); border-block-start: 1px solid var(--color-border); color: var(--color-text-subtle); font-size: var(--text-xs); }
 
-@media (min-width: 1440px) {
-  .catalog-results .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-@media (max-width: 1080px) {
+@container kasra (max-width: 1080px) {
   .catalog-body { grid-template-columns: 224px minmax(0, 1fr); gap: var(--space-5); }
   .catalog-sort-form select { min-inline-size: 140px; }
   .product-grid { gap: var(--space-5) var(--space-3); }
 }
-@media (max-width: 820px) {
+@container kasra (max-width: 820px) {
   .product-grid, .catalog-results .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-3); }
   .catalog-body { display: block; }
   .filters-panel, .catalog-toolbar { display: none; }
@@ -304,7 +301,7 @@
   .filter-sheet .sheet-title small { font-size: var(--text-sm); font-weight: var(--font-weight-regular); color: var(--color-text-muted); }
   .filter-sheet .filter-color-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
-@media (max-width: 600px) {
+@container kasra (max-width: 600px) {
   .product-grid, .catalog-results .product-grid { gap: var(--space-5) var(--space-2); }
   .product-info { padding-block-start: var(--space-2); }
   .product-title { font-size: var(--text-sm); line-height: 1.65; }
@@ -327,13 +324,13 @@
   .search-top-compact { margin-block-start: var(--space-3); }
   .search-experience-list { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 360px) {
+@container kasra (max-width: 360px) {
   .filter-open-button, .catalog-sort-open { padding-inline: 10px; }
 }
 
-@media (max-width: 600px) {
+@container kasra (max-width: 600px) {
   .sheet-search.sheet-dropdown {
-    inset: 0; margin: 0; inline-size: 100vw; block-size: 100dvh; max-block-size: 100dvh; border: 0; border-radius: 0; box-shadow: none;
+    inset: 0; margin: 0 auto; inline-size: 100cqi; block-size: 100dvh; max-block-size: 100dvh; border: 0; border-radius: 0; box-shadow: none;
   }
   .sheet-search .search-panel-top { padding: calc(var(--space-3) + var(--safe-top)) var(--space-3) var(--space-3); }
   .sheet-search .search-submit { padding-inline: 14px; }

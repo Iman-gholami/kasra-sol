@@ -1,7 +1,9 @@
 import { expect, test, type Locator } from '@playwright/test';
 
-// V9 desktop critical paths at 1440×900 (and 1280×720 where the fold matters).
+// Critical paths on wide screens at 1440×900 (and 1280×720 where the fold matters). The storefront has one phone
+// layout, shown on wide screens as a centred column (tests/single-layout.spec.ts); keyboard and mouse use is checked here.
 test.use({ viewport: { width: 1440, height: 900 } });
+const COLUMN = { left: (1440 - 15 - 480) / 2, width: 480 }; // the column between the page's scrollbar gutter
 
 /** Overlays scale or slide in; measure their geometry only once the enter transition has finished. */
 const settled = (overlay: Locator) => overlay.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
@@ -16,36 +18,6 @@ test('skip link is the first stop and moves focus to the main content', async ({
   await expect(page.locator('#main-content')).toBeFocused();
 });
 
-test('shop disclosure panel works with keyboard and hover, and marks the current section', async ({ page }) => {
-  await page.goto('/category/manto');
-  const nav = page.getByRole('navigation', { name: 'دسته‌بندی‌های اصلی' });
-  await expect(nav.getByRole('link', { name: 'مانتو' })).toHaveAttribute('aria-current', 'page');
-  const toggle = nav.getByRole('button', { name: 'نمایش راهنمای فروشگاه' });
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await toggle.focus();
-  await page.keyboard.press('Enter');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  const panelLinks = nav.locator('.nav-panel a');
-  await expect(panelLinks.first()).toBeVisible();
-  await page.keyboard.press('ArrowDown');
-  await expect(panelLinks.first()).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(panelLinks.nth(1)).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(toggle).toBeFocused();
-  // Colors in the panel are the six real catalog color families and keep the URL contract.
-  await toggle.click();
-  await nav.getByRole('link', { name: 'مشکی' }).click();
-  await expect(page).toHaveURL(/\/shop\?color=black/);
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  // Hover intent: opens after a short delay, closes after the pointer leaves.
-  await nav.getByRole('link', { name: 'همه محصولات' }).hover();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await page.mouse.move(700, 700);
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-});
-
 test('search: "/" shortcut, arrow-key suggestions with aria-activedescendant, Escape and recent searches', async ({ page }) => {
   await page.goto('/');
   const dialog = page.getByRole('dialog', { name: 'جستجو در محصولات کسری' });
@@ -57,12 +29,11 @@ test('search: "/" shortcut, arrow-key suggestions with aria-activedescendant, Es
   }).toPass();
   const input = dialog.getByRole('combobox', { name: 'عبارت جستجو' });
   await expect(input).toBeFocused();
-  // Anchored under the header rather than floating mid-page.
+  // The phone's full-screen search, filling the column.
   await settled(dialog);
-  const header = (await page.locator('.site-header').boundingBox())!;
   const panel = (await dialog.boundingBox())!;
-  expect(panel.y).toBeGreaterThanOrEqual(header.y + header.height);
-  expect(panel.y).toBeLessThan(header.y + header.height + 24);
+  expect(Math.round(panel.x)).toBe(Math.round(COLUMN.left));
+  expect(Math.round(panel.width)).toBe(COLUMN.width);
   await input.fill('مانتو');
   await expect(dialog.getByRole('option').first()).toBeVisible();
   const options = dialog.getByRole('option');
@@ -89,68 +60,78 @@ test('search: "/" shortcut, arrow-key suggestions with aria-activedescendant, Es
   await expect(dialog.getByRole('link', { name: 'لینن' })).toBeVisible();
 });
 
-test('desktop filters apply instantly, Back undoes a filter and clear-all resets', async ({ page }) => {
+test('filters apply instantly from the filter sheet, Back leaves the filtered list and clear-all resets', async ({ page }) => {
   await page.goto('/shop');
-  const sidebar = page.getByRole('complementary', { name: 'فیلتر محصولات' });
-  await sidebar.getByRole('radio', { name: 'مشکی' }).check();
+  const open = page.getByRole('button', { name: 'فیلتر محصولات' });
+  const sheet = page.getByRole('dialog', { name: 'فیلترهای محصولات' });
+  await open.click();
+  await sheet.getByRole('radio', { name: 'مشکی' }).check();
   await expect(page).toHaveURL(/color=black/);
-  await expect(page.locator('.active-filter-chip', { hasText: 'مشکی' })).toBeVisible();
-  await sidebar.getByRole('radio', { name: 'M', exact: true }).check();
+  await sheet.getByRole('radio', { name: 'M', exact: true }).check();
   await expect(page).toHaveURL(/size=M/);
   await expect(page).toHaveURL(/color=black/);
+  await sheet.getByRole('button', { name: /اعمال فیلترها/ }).click();
+  await expect(sheet).toBeHidden();
+  await expect(page.locator('.active-filter-chip', { hasText: 'مشکی' })).toBeVisible();
   await expect(page.locator('.catalog-count')).not.toContainText('۳۶');
+  // The sheet replaces the address while it is open, so its changes are one step of history.
   await page.goBack();
-  await expect(page).not.toHaveURL(/size=M/);
+  await expect(page).toHaveURL(/\/shop$/);
+  await page.goForward();
   await expect(page).toHaveURL(/color=black/);
-  await expect(sidebar.getByRole('radio', { name: 'مشکی' })).toBeChecked();
   await page.getByRole('link', { name: 'پاک کردن همه' }).first().click();
   await expect(page).toHaveURL(/\/shop$/);
-  await expect(sidebar.getByRole('radio', { name: 'همه' }).last()).toBeChecked();
+  await expect(page.locator('.active-filter-chip')).toHaveCount(0);
   await expect(page.locator('.product-card')).toHaveCount(12);
 });
 
-test('catalog grid is four balanced columns at 1440 and three at 1280', async ({ page }) => {
+test('catalog grid is the two balanced columns of the phone layout at 1440 and at 1280', async ({ page }) => {
   await page.goto('/shop');
   // The streamed document briefly holds the loading skeleton's grid too; measure the grid of real cards.
   await expect(page.locator('.catalog-results .product-card').first()).toBeVisible();
   const grid = page.locator('.catalog-results .product-grid').filter({ has: page.locator('.product-card') });
   const columns = () => grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-  await expect.poll(columns).toBe(4);
+  await expect.poll(columns).toBe(2);
   await page.setViewportSize({ width: 1280, height: 800 });
-  await expect.poll(columns).toBe(3);
+  await expect.poll(columns).toBe(2);
   const titles = await page.locator('.product-title').evaluateAll(els => els.slice(0, 3).map(el => Math.round(el.getBoundingClientRect().height)));
   expect(new Set(titles).size).toBe(1);
 });
 
-test('product page: CTA above the fold at 1280×720, sticky buy column at 1440×900, variant + add to cart', async ({ page }) => {
+test('product page: purchase bar in the column at 1280×720, variant + add to cart, confirmation sheet in the column', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/product/shomiz-01');
-  const cta = page.getByRole('button', { name: 'رنگ و سایز رو انتخاب کن' });
-  const box = (await cta.boundingBox())!;
-  expect(box.y + box.height).toBeLessThanOrEqual(720);
-  await expect(page.getByRole('group', { name: 'تصاویر محصول' })).toBeInViewport();
+  await expect(page.locator('.pdp-gallery')).toBeInViewport();
+  // The phone's purchase bar stays at the bottom of the window, as wide as the column.
+  const bar = page.locator('.pdp-sticky-bar');
+  await expect(bar).toHaveClass(/is-visible/);
+  const barBox = (await bar.boundingBox())!;
+  expect(Math.round(barBox.y + barBox.height)).toBe(720);
+  expect(Math.round(barBox.width)).toBe(480);
+  expect(Math.round(barBox.x)).toBe(Math.round((1280 - 15 - 480) / 2));
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(page.locator('.pdp-buy')).toHaveCSS('position', 'sticky');
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await page.getByRole('button', { name: 'سایز M' }).click();
   await page.getByRole('button', { name: 'افزایش تعداد' }).click();
   const add = page.getByRole('button', { name: 'افزودن به سبد خرید', exact: true });
   await add.click();
   await expect(page.locator('.purchase-feedback')).toContainText('به سبد خرید اضافه شد');
-  await expect(page.getByRole('link', { name: /سبد خرید، ۲ کالا/ })).toBeVisible();
   await expect(page.locator('.header-actions [role="status"]')).toHaveText('سبد خرید: ۲ کالا');
-  // The confirmation opens under the header cart icon (inline end = left in RTL), not over the product.
+  // The confirmation is the phone's bottom sheet, held to the column.
   const added = page.getByRole('dialog', { name: 'به سبد خرید اضافه شد' });
   await expect(added).toContainText('تعداد ۲');
-  await expect.poll(async () => (await added.boundingBox())!.x).toBeLessThan(120);
-  expect((await added.boundingBox())!.y).toBeGreaterThan(60);
+  await settled(added);
+  const sheet = (await added.boundingBox())!;
+  expect(Math.round(sheet.x)).toBe(Math.round(COLUMN.left));
+  expect(Math.round(sheet.width)).toBe(COLUMN.width);
+  expect(Math.round(sheet.y + sheet.height)).toBe(900);
   await page.keyboard.press('Escape');
   await expect(added).toBeHidden();
   await expect(add).toBeFocused();
-  // Thumbnail keyboard control.
-  await page.getByRole('button', { name: 'نمایش تصویر ۲' }).click();
-  await expect(page.getByRole('button', { name: 'نمایش تصویر ۲' })).toHaveAttribute('aria-pressed', 'true');
+  // The gallery's arrows work with the mouse (wide screens have no swipe).
+  await page.locator('.pdp-gallery').getByRole('button', { name: 'تصویر بعدی' }).click();
+  await expect(page.locator('.pdp-gallery .pdp-gallery-counter')).toContainText('۲ / ۲');
 });
 
 test('zoom magnifies with click and pans with the keyboard', async ({ page }) => {

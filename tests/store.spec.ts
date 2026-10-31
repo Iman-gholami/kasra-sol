@@ -6,12 +6,11 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
   await page.getByRole('link', { name: 'همه محصولات' }).first().click();
   await expect(page).toHaveURL(/\/shop/);
   await expect(page.locator('.product-card')).toHaveCount(12);
-  await page.locator('select[name="category"]').selectOption('manto');
-  await page.getByRole('button', { name: 'اعمال فیلترها' }).click();
-  await expect(page).toHaveURL(/category=manto/);
+  await page.getByRole('link', { name: 'مانتو', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/category\/manto/);
   await expect(page.locator('.product-category').first()).toContainText('مانتو');
-  await page.locator('.catalog-sort-form select[name="sort"]').selectOption('price-asc');
-  await page.getByRole('button', { name: 'اعمال', exact: true }).click();
+  await page.getByRole('button', { name: /^مرتب‌سازی:/ }).click();
+  await page.getByRole('dialog', { name: 'مرتب‌سازی' }).getByRole('link', { name: 'قیمت: کم به زیاد' }).click();
   await expect(page).toHaveURL(/sort=price-asc/);
   await page.goto('/search?q=لینن');
   await expect(page.locator('.product-card').first()).toBeVisible();
@@ -39,7 +38,7 @@ test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await expect(page.locator('.cart-item').getByText('شومیز لینن آوید')).toBeVisible();
   await page.getByRole('button', { name: 'افزایش تعداد شومیز لینن آوید' }).click();
   await expect(page.locator('.qty-stepper span').first()).toContainText('۲');
-  await page.getByRole('link', { name: 'ادامه فرایند خرید' }).click();
+  await page.locator('.summary-cta').click();
   await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
   await expect(page.locator('.status-message.error')).toContainText('۶ مورد');
   await page.getByLabel('نام و نام خانوادگی تحویل‌گیرنده').fill('نام نمایشی کاربر');
@@ -186,17 +185,19 @@ test('added-to-cart confirmation focuses the safe choice, returns focus and link
   await expect(page.getByRole('complementary', { name: 'خلاصه سفارش' })).toBeVisible();
 });
 
-test('desktop 1800 layout uses space and catalog sort preserves selected filters', async ({page}) => {
+test('a 1800 screen shows the phone layout in the centred column, and sorting keeps the selected filters', async ({page}) => {
   await page.setViewportSize({width:1800,height:1000});
   await page.goto('/');
   await expect(page.locator('.hero')).toBeVisible();
+  const column = await page.locator('body').evaluate(el => el.getBoundingClientRect().width);
+  expect(column).toBe(480);
   await expect.poll(async () =>
     page.locator('.hero').evaluate(el => Math.round(el.getBoundingClientRect().width))
-  ).toBeGreaterThan(1400);
+  ).toBeLessThanOrEqual(480);
   await page.goto('/shop?category=manto&color=black&sort=newest');
   await expect(page.locator('.active-filter-chip')).toHaveCount(3);
-  await page.locator('.catalog-sort-form select[name="sort"]').selectOption('price-desc');
-  await page.getByRole('button', {name:'اعمال',exact:true}).click();
+  await page.getByRole('button', {name:/^مرتب‌سازی:/}).click();
+  await page.getByRole('dialog', {name:'مرتب‌سازی'}).getByRole('link', {name:'قیمت: زیاد به کم'}).click();
   await expect(page).toHaveURL(/category=manto/);
   await expect(page).toHaveURL(/color=black/);
   await expect(page).toHaveURL(/sort=price-desc/);
@@ -215,14 +216,14 @@ test('mobile purchase information is grouped and demo imagery disclosure remains
   await expect(buyPanel.getByRole('button', {name:'افزودن به سبد خرید'})).toBeEnabled();
 });
 
-test('full catalog pagination uses balanced product rows on wide desktop', async ({page}) => {
+test('full catalog pagination keeps the phone grid of two columns on a wide screen', async ({page}) => {
   await page.setViewportSize({width:1800,height:960});
   await page.goto('/shop');
   await expect(page.locator('.product-card')).toHaveCount(12);
   // Product cards can mount before the stylesheet finishes, so wait for the rendered grid.
   await expect.poll(async () => page.locator('.product-grid').first().evaluate(
     el => getComputedStyle(el).gridTemplateColumns.split(' ').length
-  )).toBe(4);
+  )).toBe(2);
   await page.getByRole('link', {name:'صفحه بعد'}).click();
   await expect(page).toHaveURL(/page=2/);
   await expect(page.locator('.product-card')).toHaveCount(12);

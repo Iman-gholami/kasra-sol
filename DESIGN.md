@@ -8,6 +8,10 @@ step away.
 The direction combines the layout of pitch A («مجله کسری») with the typography and the box language of pitch B
 («استودیو»), as chosen by the owner.
 
+**One layout.** The storefront is designed for the phone only; tablets and computers show the same page as a centred
+480 px column ([docs/MOBILE-ONLY.md](docs/MOBILE-ONLY.md)). Sections below that describe desktop-only parts (the
+desktop toolbar, filter sidebar and navigation panel) are no longer shown and are kept only until that code is removed.
+
 ## Why this direction
 
 - **It survives any photography.** The identity lives in layout, type weight and shape, so it works with today's six
