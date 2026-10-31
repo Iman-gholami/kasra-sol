@@ -9,7 +9,14 @@ const config: NextConfig = {
   // of being resized on every request by /_next/image, which is slow and CPU-hungry on a single VPS. Every photo is
   // already compressed: committed ones are checked by tests-unit/images.test.ts, uploads are re-encoded by the API
   // (backend/src/admin/image-compress.ts).
-  images: { unoptimized: true }
+  images: { unoptimized: true },
+  // Written into the code at build time, also where pages are rendered per request (Next.js leaves NEXT_PUBLIC_*
+  // variables to the runtime environment on the server): the address and the search-engine switch are the build's,
+  // so robots.txt and every page agree (src/lib/seo.ts).
+  env: {
+    KASRA_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? '',
+    KASRA_SITE_INDEXABLE: process.env.NEXT_PUBLIC_SITE_INDEXABLE === 'true' ? 'true' : 'false'
+  }
 };
 
 export default config;

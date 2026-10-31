@@ -80,10 +80,15 @@ test('has no broken internal links two clicks from the home page', async ({ requ
 test('lists only working pages in the sitemap, and keeps the demo out of search engines', async ({ request }) => {
   const sitemap = await (await request.get('/sitemap.xml')).text();
   const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => new URL(match[1]));
-  expect(urls.length).toBe(2 + categories.length + products.length);
+  // Home, shop, the categories, every product of the catalog and the five information pages.
+  expect(urls.length).toBe(2 + categories.length + products.length + 5);
   for (const url of urls) expect((await request.get(url.pathname)).status(), url.pathname).toBe(200);
   const robots = await (await request.get('/robots.txt')).text();
   expect(robots).toMatch(/Disallow: \/\s*$/m);
+  expect(robots).not.toContain('Sitemap:');
+  // The same switch closes every page, prerendered or rendered per request.
+  for (const path of ['/', '/about', '/shop', '/product/' + products[0].slug])
+    expect((await (await request.get(path)).text()).match(/<meta name="robots" content="([^"]+)"/)?.[1], path).toBe('noindex, nofollow');
 });
 
 test('serves the storefront APIs the browser calls', async ({ request }) => {

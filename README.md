@@ -67,7 +67,7 @@ Dependencies are pinned by `package-lock.json` and `backend/package-lock.json`; 
 ```text
 src/
   fonts/                Official Estedad 8.5 variable WOFF2, OFL license/provenance
-  app/                  App Router pages, metadata, sitemap, robots, /api/health
+  app/                  App Router pages, metadata, sitemap (live catalog), robots, /api/health
   components/layout/    Navigation, footer
   components/catalog/   Filter and result UI
   components/products/  Cards, detail/gallery, variant selection
@@ -163,6 +163,8 @@ See [Visual Refinement Audit](docs/DESIGN-REFINEMENT.md). CI now uploads 390px a
 5. Legally reviewed policies, seller identity, genuine contact details and customer support.
 6. Audit logs, security monitoring, analytics with appropriate consent, backups and incident response.
 7. CDN cache correctness, real-user Core Web Vitals, realistic campaign-load tests and origin protection.
+8. Opening the store to search engines and registering it in Google Search Console: one switch, `SITE_INDEXABLE`,
+   for robots.txt, the robots meta tags and the sitemap together ([SEO.md](docs/SEO.md)).
 
 This repository intentionally avoids fictional production features.
 

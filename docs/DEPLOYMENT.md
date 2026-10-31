@@ -168,8 +168,8 @@ Until the domain is ready the site is served at **`https://SERVER_IP`**; `http:/
   browser with the one printed at the end of the provision log.
 - HTTPS is required anyway: the admin login refuses to set its session cookie over plain HTTP.
 - Anyone who finds the address can open the storefront. Search engines are told not to index it (`robots.txt`
-  disallows everything and pages carry `noindex`). Do not share the address with customers; real customers need the
-  domain with a trusted certificate.
+  disallows everything and pages carry `noindex`; a build for an IP address can never be opened, see
+  [SEO.md](SEO.md)). Do not share the address with customers; real customers need the domain with a trusted certificate.
 - The admin is protected by its accounts, lockout after failed logins and rate limits. Use a long unique password.
 
 ## Connecting the domain and enabling HTTPS

@@ -16,6 +16,10 @@ on:
         description: Upload the tested images as the release bundle
         type: boolean
         default: false
+      indexable:
+        description: Let search engines index the store (repository variable SITE_INDEXABLE; see docs/SEO.md)
+        type: boolean
+        default: false
 concurrency:
   group: images-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,6 +34,7 @@ jobs:
       RELEASE: ${{ github.sha }}
       SITE_URL: ${{ inputs.site-url }}
       PUBLISH: ${{ inputs.publish && 'true' || 'false' }}
+      INDEXABLE: ${{ inputs.indexable && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - name: Check the production address
@@ -62,6 +67,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SITE_URL=${{ env.SITE_URL }}
             NEXT_PUBLIC_BACKEND_ENABLED=true
+            NEXT_PUBLIC_SITE_INDEXABLE=${{ env.INDEXABLE }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
       - name: Provision, deploy, roll back and restore on this runner
@@ -76,7 +82,7 @@ jobs:
           ls -lh bundle
           {
             echo "### Release bundle"
-            echo "Commit \`$RELEASE\`, storefront built for \`$SITE_URL\`, images $(du -h "bundle/kasra-images-$RELEASE.tar.gz" | cut -f1) compressed."
+            echo "Commit \`$RELEASE\`, storefront built for \`$SITE_URL\`, search engines $([ "$INDEXABLE" = true ] && echo allowed || echo kept out), images $(du -h "bundle/kasra-images-$RELEASE.tar.gz" | cut -f1) compressed."
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: env.PUBLISH == 'true'
