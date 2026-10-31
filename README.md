@@ -107,7 +107,7 @@ The upstream is [Amin Abedi's official Estedad repository](https://github.com/am
 
 ## Deployment
 
-Production runs on a ParsPack VPS: Nginx in front of the Compose stack in [`deploy/compose.production.yaml`](deploy/compose.production.yaml), with images built and tested by GitHub Actions. Every merge to `main` runs the **Release** workflow (tests and images), whose deployment waits for the owner's approval in GitHub (the protected `production` environment), then installs the release on the server, verifies the site and rolls back automatically on failure.
+Production runs on a ParsPack VPS: Nginx in front of the Compose stack in [`deploy/compose.production.yaml`](deploy/compose.production.yaml), with images built and tested by GitHub Actions. Uploaded product photos are kept in an S3-compatible object storage (Garage) in the same stack, for now on the same VPS; see [Object storage](docs/DEPLOYMENT.md#object-storage-product-photos) for how it works and how to move the bucket to an external provider with its own backups. Every merge to `main` runs the **Release** workflow (tests and images), whose deployment waits for the owner's approval in GitHub (the protected `production` environment), then installs the release on the server, verifies the site and rolls back automatically on failure.
 
 - [Production deployment](docs/DEPLOYMENT.md): architecture, one-time setup, temporary IP access, connecting the domain and HTTPS, backups, restore, rollback, operations.
 - [Releasing a change](docs/RELEASING.md): the change → pull request → approval → deployment process.
@@ -169,13 +169,15 @@ This repository intentionally avoids fictional production features.
 ## PostgreSQL + Fastify backend
 
 The same TypeScript monorepo now contains a [Fastify API](backend/README.md) backed by PostgreSQL,
-Drizzle ORM and optional Redis caching. Docker Compose starts PostgreSQL, Redis, Fastify and Next.js.
+Drizzle ORM and optional Redis caching. Docker Compose starts PostgreSQL, Redis, the Garage object storage for product
+photos (prepared by the one-shot `storage-init` service), Fastify and Next.js.
 Catalog, product pages, search suggestions and checkout use the API in Compose. Plain
 `npm run dev` keeps the existing demo storefront without a configured backend.
 
 ```sh
 cp .env.example .env
-# Replace every placeholder secret (e.g. `openssl rand -hex 32`); the API refuses the examples.
+# Replace every placeholder secret (e.g. `openssl rand -hex 32`); the API refuses the examples. The object storage
+# needs its four values in the formats .env.example describes.
 docker compose up --build -d
 curl -f http://127.0.0.1:4000/health/ready
 curl -f 'http://127.0.0.1:4000/v1/products?limit=12'

@@ -85,13 +85,14 @@ jobs:
           path: bundle/
           retention-days: 30
           compression-level: 0
-      # Docker Hub is not reachable from the server, so the pinned PostgreSQL/Redis images travel as an
+      # Docker Hub is not reachable from the server, so the pinned PostgreSQL/Redis/Garage images travel as an
       # artifact too; the deployment downloads it only when the server lacks one of them.
-      - name: Package the database and cache images
+      - name: Package the database, cache and object storage images
         if: env.PUBLISH == 'true'
         run: |
           mkdir -p infra
           images=$(KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x REDIS_PASSWORD=x NEXT_PUBLIC_SITE_URL=x \
+            GARAGE_RPC_SECRET=x GARAGE_ADMIN_TOKEN=x S3_ACCESS_KEY_ID=x S3_SECRET_ACCESS_KEY=x \
             docker compose -f deploy/compose.production.yaml config --images | grep -v '^kasra-')
           # shellcheck disable=SC2086  # one argument per image
           docker save $images | gzip -1 > infra/infra-images.tar.gz

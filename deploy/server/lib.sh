@@ -28,6 +28,14 @@ env_set() {
 
 valid_release() { [[ $1 =~ ^[0-9a-f]{40}$ ]]; }
 
+# The object storage's secrets, in the formats Garage accepts; added to the .env of servers provisioned before it.
+ensure_storage_secrets() {
+  [ -n "$(env_get GARAGE_RPC_SECRET)" ] || env_set GARAGE_RPC_SECRET "$(openssl rand -hex 32)"
+  [ -n "$(env_get GARAGE_ADMIN_TOKEN)" ] || env_set GARAGE_ADMIN_TOKEN "$(openssl rand -hex 32)"
+  [ -n "$(env_get S3_ACCESS_KEY_ID)" ] || env_set S3_ACCESS_KEY_ID "GK$(openssl rand -hex 12)"
+  [ -n "$(env_get S3_SECRET_ACCESS_KEY)" ] || env_set S3_SECRET_ACCESS_KEY "$(openssl rand -hex 32)"
+}
+
 container_id() { compose ps -q "$1" 2>/dev/null | head -n 1 || true; }
 
 # Health of a service's current container: healthy, starting, unhealthy, restarting, exited, missing...
@@ -72,6 +80,9 @@ switch_release() {
   local target=$1
   [ -f "$KASRA_DIR/releases/$target/compose.yaml" ] || { log "release $target is not on this server"; return 1; }
   install -m 0600 "$KASRA_DIR/releases/$target/compose.yaml" "$KASRA_DIR/compose.yaml" &&
+    # The object storage's configuration (releases from before it have none).
+    { [ ! -f "$KASRA_DIR/releases/$target/garage.toml" ] ||
+      install -m 0644 "$KASRA_DIR/releases/$target/garage.toml" "$KASRA_DIR/garage.toml"; } &&
     env_set KASRA_RELEASE "$target" &&
     compose up -d --remove-orphans
 }

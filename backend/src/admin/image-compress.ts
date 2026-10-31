@@ -10,7 +10,8 @@ export const MAX_STORED_BYTES = 350 * 1024;
 const MAX_INPUT_PIXELS = 40_000_000;
 const QUALITIES = [80, 72, 64, 56, 48];
 
-const open = (input: Buffer) => sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error' })
+// Images with small defects (a bad checksum) are decoded the way browsers show them; bytes that are no image still fail.
+const open = (input: Buffer) => sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'none' })
   // Turned upright from the EXIF orientation; the output carries no metadata (camera, GPS position…).
   .rotate()
   .resize({ width: MAX_WIDTH, height: MAX_HEIGHT, fit: 'inside', withoutEnlargement: true });

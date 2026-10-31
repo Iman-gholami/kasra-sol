@@ -1,3 +1,15 @@
+# The bucket the API and storage-init use: the storage service below, unless .env names another S3 provider.
+x-bucket: &bucket
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://storage:3900}
+  S3_REGION: ${S3_REGION:-garage}
+  S3_BUCKET: ${S3_BUCKET:-kasra-media}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID in .env}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY in .env}
+x-backend-build: &backend-build
+  context: .
+  dockerfile: backend/Dockerfile
+  args:
+    NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
 services:
   postgres:
     image: postgres:17-alpine
@@ -21,12 +33,48 @@ services:
     command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
     security_opt:
       - no-new-privileges:true
+  storage:
+    # S3-compatible object storage for uploaded product photos (Garage, one node); see deploy/compose.production.yaml.
+    image: dxflrs/garage:v2.4.1
+    restart: unless-stopped
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?Set GARAGE_RPC_SECRET in .env}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Set GARAGE_ADMIN_TOKEN in .env}
+    volumes:
+      - ./deploy/garage.toml:/etc/garage.toml:ro
+      - storage_data:/var/lib/garage
+    read_only: true
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+  storage-init:
+    # Runs at every start and exits: prepares the bucket and the API's key, then copies photos that exist only in the
+    # media volume into the bucket.
+    build: *backend-build
+    image: kasra-backend:local
+    restart: "no"
+    init: true
+    depends_on:
+      storage:
+        condition: service_healthy
+    command: ["node", "dist/admin/storage-setup.js"]
+    environment:
+      GARAGE_ADMIN_URL: ${GARAGE_ADMIN_URL-http://storage:3903}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Set GARAGE_ADMIN_TOKEN in .env}
+      <<: *bucket
+      MEDIA_DIR: /app/backend/uploads
+    volumes:
+      - media_data:/app/backend/uploads:ro
+    security_opt:
+      - no-new-privileges:true
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-      args:
-        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
+    build: *backend-build
     image: kasra-backend:local
     restart: unless-stopped
     init: true
@@ -47,6 +95,8 @@ services:
       TRUST_PROXY: "true"
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      # Photos go to the object storage bucket, with a copy in MEDIA_DIR.
+      <<: *bucket
       MEDIA_DIR: /app/backend/uploads
     volumes:
       - media_data:/app/backend/uploads
@@ -109,3 +159,4 @@ services:
 volumes:
   postgres_data:
   media_data:
+  storage_data:

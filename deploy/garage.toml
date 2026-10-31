@@ -1,0 +1,23 @@
+# Garage object storage (S3-compatible), the `storage` service of compose.yaml and deploy/compose.production.yaml.
+# One node on the VPS for now; installed as /opt/kasra/garage.toml by deploy/server/deploy.sh. No secrets here:
+# GARAGE_RPC_SECRET and GARAGE_ADMIN_TOKEN come from the environment (/opt/kasra/.env in production).
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+# SQLite survives an unclean shutdown (power loss, OOM kill) better than LMDB; the store is small.
+db_engine = "sqlite"
+metadata_fsync = true
+data_fsync = true
+metadata_auto_snapshot_interval = "24h"
+# Photos are already compressed (WebP/JPEG); compressing them again only costs CPU.
+compression_level = "none"
+replication_factor = 1
+# IPv4 addresses: Docker networks (and some kernels) have no IPv6, and Garage then fails to bind "[::]".
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "0.0.0.0:3900"
+
+[admin]
+api_bind_addr = "0.0.0.0:3903"

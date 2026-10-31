@@ -3,6 +3,13 @@
 # kasra-frontend/kasra-backend images, ships them with `docker save`, and sets KASRA_RELEASE in
 # /opt/kasra/.env to the deployed commit. Keep services in step with ../compose.yaml (local development).
 name: kasra
+# The bucket the API and storage-init use: the storage service below, unless .env names another S3 provider.
+x-bucket: &bucket
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://storage:3900}
+  S3_REGION: ${S3_REGION:-garage}
+  S3_BUCKET: ${S3_BUCKET:-kasra-media}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY}
 services:
   postgres:
     # Pinned so the server only changes database versions through a reviewed release.
@@ -37,6 +44,53 @@ services:
     security_opt:
       - no-new-privileges:true
     logging: *logging
+  storage:
+    # S3-compatible object storage for uploaded product photos: Garage, one node, on this server for now. Moving the
+    # bucket to an external provider only changes the S3_* settings (docs/DEPLOYMENT.md, "Object storage"). Pinned; the
+    # image travels with the PostgreSQL/Redis images. No published ports: only the API and storage-init reach it.
+    image: dxflrs/garage:v2.4.1
+    restart: unless-stopped
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?Set GARAGE_RPC_SECRET}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Set GARAGE_ADMIN_TOKEN}
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - storage_data:/var/lib/garage
+    read_only: true
+    cap_drop: [ALL]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+  storage-init:
+    # Runs at every start and exits: prepares the bucket and the API's key, then copies photos that exist only in the
+    # media volume into the bucket, compressed (all of them the first time; after a restore, the restored ones).
+    image: kasra-backend:${KASRA_RELEASE:?KASRA_RELEASE is set by deploy.sh}
+    restart: "no"
+    init: true
+    depends_on:
+      storage:
+        condition: service_healthy
+    command: ["node", "dist/admin/storage-setup.js"]
+    environment:
+      NODE_ENV: production
+      # Empty when the bucket is at an external provider: then only the copy runs.
+      GARAGE_ADMIN_URL: ${GARAGE_ADMIN_URL-http://storage:3903}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Set GARAGE_ADMIN_TOKEN}
+      <<: *bucket
+      MEDIA_DIR: /app/backend/uploads
+    volumes:
+      - media_data:/app/backend/uploads:ro
+    mem_limit: 512m
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
   backend:
     image: kasra-backend:${KASRA_RELEASE:?KASRA_RELEASE is set by deploy.sh}
     restart: unless-stopped
@@ -58,6 +112,8 @@ services:
       TRUST_PROXY: "true"
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      # Photos go to the object storage bucket, with a copy in MEDIA_DIR for the nightly backup and rollbacks.
+      <<: *bucket
       MEDIA_DIR: /app/backend/uploads
     volumes:
       - media_data:/app/backend/uploads
@@ -110,3 +166,4 @@ services:
 volumes:
   postgres_data:
   media_data:
+  storage_data:

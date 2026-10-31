@@ -13,6 +13,7 @@ process.env.ORDER_TOKEN_SECRET ??= 'unit-test-order-token-secret-0123456789abcde
 const { orderRoutes } = await import('../src/orders');
 const { analyticsRoutes } = await import('../src/analytics');
 const { mediaRoutes } = await import('../src/admin/media');
+const { MediaStore } = await import('../src/admin/media-store');
 
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -31,7 +32,8 @@ before(async () => {
   app = Fastify({ trustProxy: true });
   await app.register(orderRoutes, {});
   await app.register(analyticsRoutes);
-  await app.register(async scope => mediaRoutes(scope, async (_req, reply) => { await reply.code(401).send(); return null; }));
+  await app.register(async scope => mediaRoutes(scope, async (_req, reply) => { await reply.code(401).send(); return null; },
+    new MediaStore(null, mediaDir)));
   await app.ready();
 });
 
@@ -149,7 +151,7 @@ describe('uploaded images', () => {
     let staff: FastifyInstance;
     before(async () => {
       staff = Fastify();
-      await staff.register(async scope => mediaRoutes(scope, async () => ({ id: 'staff-1' })));
+      await staff.register(async scope => mediaRoutes(scope, async () => ({ id: 'staff-1' }), new MediaStore(null, mediaDir)));
       await staff.ready();
     });
     const upload = (payload: Buffer, type: string) =>

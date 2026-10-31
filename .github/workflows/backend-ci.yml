@@ -3,7 +3,7 @@ name: Fastify Backend CI
 on:
   workflow_call:
   pull_request:
-    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "src/data/**", "src/lib/format.ts"]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml", "compose.yaml", "deploy/garage.toml", "src/data/**", "src/lib/format.ts"]
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -52,9 +52,24 @@ jobs:
           npm run db:migrate
           npm run db:seed
           npm run db:seed
-      - name: Real PostgreSQL API smoke test
-        working-directory: backend
+      # The object storage as in Compose (deploy/garage.toml), prepared by storage-init's script, for the API below.
+      - name: Start the object storage (Garage)
         run: |
+          docker run -d --name storage -p 127.0.0.1:3900:3900 -p 127.0.0.1:3903:3903 \
+            -e GARAGE_RPC_SECRET="$(openssl rand -hex 32)" -e GARAGE_ADMIN_TOKEN=ci_test_only_garage_admin_token_0123456789 \
+            -v "$PWD/deploy/garage.toml:/etc/garage.toml:ro" dxflrs/garage:v2.4.1
+      - name: Real PostgreSQL and object storage API tests
+        working-directory: backend
+        env:
+          GARAGE_ADMIN_URL: http://127.0.0.1:3903
+          GARAGE_ADMIN_TOKEN: ci_test_only_garage_admin_token_0123456789
+          S3_ENDPOINT: http://127.0.0.1:3900
+          S3_BUCKET: kasra-media
+          S3_ACCESS_KEY_ID: GK0123456789abcdef01234567
+          S3_SECRET_ACCESS_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          MEDIA_DIR: /tmp/kasra-ci-media
+        run: |
+          node dist/admin/storage-setup.js
           node dist/index.js >/tmp/kasra-backend.log 2>&1 &
           for i in $(seq 1 40); do
             if curl -fsS http://127.0.0.1:4000/health/ready >/dev/null; then break; fi
@@ -65,4 +80,6 @@ jobs:
           node --test --test-concurrency=1 tests/integration/*.mjs
       - name: API log on failure
         if: failure()
-        run: tail -n 200 /tmp/kasra-backend.log
+        run: |
+          tail -n 200 /tmp/kasra-backend.log
+          docker logs --tail 50 storage || true

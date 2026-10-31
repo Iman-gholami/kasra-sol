@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Restores the database from a backup in /var/backups/kasra. DESTRUCTIVE: replaces the current data,
 # so it takes a safety backup first and only runs through the ops workflow with a typed confirmation.
-# Media is restored additively (files are added or replaced, none are deleted).
+# Media is restored additively (files are added or replaced, none are deleted) into the media volume, and storage-init
+# then copies the restored photos the object storage lacks into it.
 # Usage: restore.sh <db-TIMESTAMP-LABEL.dump> [media-TIMESTAMP-LABEL.tar.gz]
 source "$(dirname "$0")/lib.sh"
 require_root
@@ -32,6 +33,11 @@ if [ -n "$media" ]; then
   log "Media files from $media restored"
 fi
 compose up -d
+if [ -n "$media" ] && compose config --services | grep -qx storage-init; then
+  log "Copying restored photos into the object storage"
+  compose up -d --force-recreate storage-init
+  [ "$(docker wait "$(compose ps -aq storage-init)")" = 0 ] || log "WARNING: storage-init failed; photos are served from the media volume meanwhile"
+fi
 release=$(env_get KASRA_RELEASE)
 verify_release "$release" || die "services are unhealthy after the restore"
 record "restored database from $dump${media:+ and media from $media}"

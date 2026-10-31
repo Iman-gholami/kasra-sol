@@ -10,12 +10,13 @@ Visitor ──HTTPS──▶ Nginx on the VPS (TLS, maintenance page)
                      └─▶ 127.0.0.1:3000  Next.js storefront container (read-only, non-root)
                             └─▶ backend:4000  Fastify API container (non-root; runs migrations on start)
                                    ├─▶ postgres:5432  PostgreSQL 17   volume kasra_postgres_data
-                                   └─▶ redis:6379     Redis 7 cache   (no persistence)
-                                   uploads ─▶ volume kasra_media_data
+                                   ├─▶ redis:6379     Redis 7 cache   (no persistence)
+                                   └─▶ storage:3900   Garage S3 object storage, bucket kasra-media   volume kasra_storage_data
+                                   uploads (copy) ─▶ volume kasra_media_data
 ```
 
-Only Nginx listens publicly (80/443). The API listens on `127.0.0.1:4000` for health checks; PostgreSQL and
-Redis are reachable only on the private Docker network and both require passwords.
+Only Nginx listens publicly (80/443). The API listens on `127.0.0.1:4000` for health checks; PostgreSQL, Redis and
+the object storage are reachable only on the private Docker network and all require credentials.
 
 GitHub's runners cannot reach the server, which is in an Iranian data center: they time out on SSH (port 22)
 although no firewall existed on the server or in the ParsPack panel. Its outgoing connections to GitHub work,
@@ -60,6 +61,7 @@ account can approve. Protect the account with two-factor authentication.
 | --- | --- |
 | `/opt/kasra/.env` | Secrets and settings, plus `KASRA_RELEASE` (running commit) and `KASRA_PREVIOUS_RELEASE`. Keep a copy of this file in a password manager. |
 | `/opt/kasra/compose.yaml` | The running release's [`deploy/compose.production.yaml`](../deploy/compose.production.yaml). |
+| `/opt/kasra/garage.toml` | The running release's [`deploy/garage.toml`](../deploy/garage.toml) (object storage settings, no secrets). |
 | `/opt/kasra/releases/<commit>/` | Compose file of the last five releases (their images are kept too) for rollback. |
 | `/opt/kasra/bin/` | [`deploy/server/*.sh`](../deploy/server) from the latest release: `status.sh`, `backup.sh`, `rollback.sh`, `restore.sh`… |
 | `/opt/kasra/deploy-history.log` | One line per deployment, rollback, restore and owner creation. |
@@ -226,9 +228,41 @@ rollback does not undo migrations, every migration must keep the previous releas
 with defaults and indexes; rename or drop only in a later release, after the code no longer uses them. When a
 release must undo data changes, restore the pre-deploy backup (below) — that discards orders placed since.
 
+## Object storage (product photos)
+
+Uploaded product photos are kept in an S3-compatible bucket, `kasra-media`, served by the `storage` service: one
+[Garage](https://garagehq.deuxfleurs.fr) node (`dxflrs/garage`, pinned) on this server for now. Garage is a small
+self-hosted object store built for exactly this; MinIO's free edition is no longer published as Docker images.
+
+- **Writing.** The API compresses every upload (WebP, at most 1200×1600 px and 350 KB) and stores it in the bucket and,
+  as a copy, in the `kasra_media_data` volume. If the bucket refuses, the upload fails with a clear message in the admin.
+- **Reading.** Visitors load `/api/media/<file>`; the storefront asks the API, which reads the bucket, or the copy when
+  the bucket does not answer. Responses are immutable for a year, so browsers (and later a CDN) cache them.
+- **`storage-init`** runs at every deployment and exits: it gives the node its role, creates the bucket and the API's
+  key from `.env`, then copies photos that are only in the volume into the bucket, compressed in their own format (on
+  the first deployment: every photo uploaded before the object storage; after a restore: the restored ones). `status`
+  shows it as `Exited (0)`.
+- **Secrets** `GARAGE_RPC_SECRET`, `GARAGE_ADMIN_TOKEN`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` are generated on
+  the server (by `provision.sh`, or by `deploy.sh` on servers provisioned before the object storage).
+- **Rollback** to a release from before the object storage stops the two services (their volume stays) and serves
+  photos from the volume, which has all of them.
+
+**Moving the bucket off this server (recommended later).** A single VPS holds the site, its database and its photos;
+losing the disk loses all three. Before relying on the store, move the photos to an object storage service with its
+own redundancy and backups (for example ArvanCloud or ParsPack object storage, both S3-compatible, inside Iran) and,
+ideally, put its public address behind a CDN. Nothing in the code changes:
+
+1. Create a private bucket and an access key limited to it at the provider.
+2. In `/opt/kasra/.env` set `S3_ENDPOINT` (the provider's S3 address), `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`,
+   `S3_SECRET_ACCESS_KEY`, and `GARAGE_ADMIN_URL=` (empty: there is no Garage to prepare). This is a server change:
+   the owner's approval is needed.
+3. Deploy (or run the Release workflow again). `storage-init` copies every photo of the volume into the new bucket.
+4. After checking the site, the `storage` service and the `kasra_storage_data` volume can be removed in a later
+   release, and the local copy can be turned off once the provider's backups are confirmed.
+
 ## Backups and restore
 
-- **Nightly** at 03:30 Tehran time: database dump + media archive, 14 days kept.
+- **Nightly** at 03:30 Tehran time: database dump + media archive (the local copy of every photo), 14 days kept.
 - **Before every deployment**: database dump, 10 kept. **Manual**: **Production operations** → task **backup** (approve the run).
 - Files: `/var/backups/kasra/db-<UTC time>-<label>.dump` (pg_dump custom format) and `media-…tar.gz`.
 - **Off-server copies are not automated.** A server failure would lose these backups too. Periodically download
@@ -238,7 +272,7 @@ release must undo data changes, restore the pre-deploy backup (below) — that d
 **Restore (destructive):** **Production operations** → task **restore**, `target` = a `db-….dump` file name (listed
 by `status`), optional `extra` = a `media-….tar.gz`, `confirm` = `RESTORE <db file name>`; approve the run. It takes a safety backup
 first, stops the API and storefront, restores in a single transaction (on error nothing changes), and starts them
-again. Media files are added back; none are deleted.
+again. Media files are added back; none are deleted; `storage-init` then copies them into the bucket.
 
 ## Removing the demo catalog before launch
 

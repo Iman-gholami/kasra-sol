@@ -76,7 +76,8 @@ before(async () => {
   manager = await account('manager');
   staff = await account('staff');
   image = (await upload(owner.token)).data.url;
-  assert.match(image, /^\/api\/media\/[a-f0-9-]{36}\.png$/);
+  // Uploads are stored re-encoded as WebP, whatever their original format.
+  assert.match(image, /^\/api\/media\/[a-f0-9-]{36}\.webp$/);
   assert.equal((await api('/v1/admin/products', { method: 'POST', token: owner.token, body: productBody() })).status, 201);
   assert.equal((await api('/v1/admin/products/' + PRODUCT + '/visibility', { method: 'PATCH', token: owner.token,
     body: { active: true } })).status, 200);
@@ -577,7 +578,7 @@ describe('image uploads', () => {
     for (const path of ['/v1/media/..%2F..%2Fetc%2Fpasswd', '/v1/media/' + randomUUID() + '.png', '/v1/media/x.svg'])
       assert.equal((await fetch(base + path)).status, 404, path);
     const served = await fetch(base + '/v1/media/' + image.split('/').at(-1));
-    assert.equal(served.headers.get('content-type'), 'image/png');
+    assert.equal(served.headers.get('content-type'), 'image/webp');
     assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
     assert.match(served.headers.get('content-security-policy'), /sandbox/);
   });
