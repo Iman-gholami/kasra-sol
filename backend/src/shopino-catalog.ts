@@ -15,37 +15,27 @@ export type CatalogStore = {
   get(id: string): Promise<CatalogProduct | null>;
 };
 
-type ProductRow = Omit<CatalogProduct, 'variants'>;
-type VariantRow = CatalogVariant & { productId: string };
-const PRODUCT_COLUMNS = 'id,slug,name,category,description,price,compare_at AS "compareAt",' +
-  'images,colors,material,fit,care';
+// Keep product data and its SKUs in one statement so a concurrent edit cannot mix old color labels with
+// new variants. PostgreSQL returns each jsonb SKU's UUID as a string and its stock as a number.
+const PRODUCT_COLUMNS = 'p.id,p.slug,p.name,p.category,p.description,p.price,p.compare_at AS "compareAt",' +
+  'p.images,p.colors,p.material,p.fit,p.care,COALESCE((' +
+  "SELECT jsonb_agg(jsonb_build_object('id',v.id,'colorId',v.color_id,'size',v.size,'stock',v.stock) " +
+  'ORDER BY v.color_id,v.size,v.id) FROM product_variants v WHERE v.product_id=p.id), ' +
+  "'[]'::jsonb) AS variants";
 
 /** Read current stock directly; do not use the storefront's time-limited catalog cache. */
 export function postgresShopinoCatalog(pool: Pool): CatalogStore {
-  async function withVariants(products: ProductRow[]): Promise<CatalogProduct[]> {
-    if (!products.length) return [];
-    const found = await pool.query<VariantRow>(
-      'SELECT id,product_id AS "productId",color_id AS "colorId",size,stock FROM product_variants ' +
-      'WHERE product_id=ANY($1::varchar[]) ORDER BY product_id,color_id,size,id', [products.map(p => p.id)]);
-    const grouped = new Map<string, CatalogVariant[]>();
-    for (const { productId, ...variant } of found.rows) {
-      const bucket = grouped.get(productId) ?? [];
-      bucket.push(variant);
-      grouped.set(productId, bucket);
-    }
-    return products.map(product => ({ ...product, variants: grouped.get(product.id) ?? [] }));
-  }
   return {
     async list(page, perPage) {
-      const result = await pool.query<ProductRow>(
-        'SELECT ' + PRODUCT_COLUMNS + ' FROM products WHERE active=true ORDER BY id LIMIT $1 OFFSET $2',
+      const result = await pool.query<CatalogProduct>(
+        'SELECT ' + PRODUCT_COLUMNS + ' FROM products p WHERE p.active=true ORDER BY p.id LIMIT $1 OFFSET $2',
         [perPage, (page - 1) * perPage]);
-      return withVariants(result.rows);
+      return result.rows;
     },
     async get(id) {
-      const result = await pool.query<ProductRow>(
-        'SELECT ' + PRODUCT_COLUMNS + ' FROM products WHERE active=true AND id=$1 LIMIT 1', [id]);
-      return (await withVariants(result.rows))[0] ?? null;
+      const result = await pool.query<CatalogProduct>(
+        'SELECT ' + PRODUCT_COLUMNS + ' FROM products p WHERE p.active=true AND p.id=$1 LIMIT 1', [id]);
+      return result.rows[0] ?? null;
     }
   };
 }
