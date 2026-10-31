@@ -132,7 +132,7 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
           <Badge tone={payment.tone}>{payment.label}</Badge>
         </div>
       </div>
-      <div className="admin-panel-body admin-stack">
+      <div className="admin-panel-body admin-stack admin-order-detail">
         {order.payment === 'online' && order.status === 'pending_payment' && <Notice tone="warning" className="admin-no-print">
           این سفارش اینترنتی هنوز پرداخت نشده است. تا اتصال درگاه و تأیید واقعی پرداخت، نباید آماده یا ارسال شود؛
           فقط می‌توانید آن را لغو کنید. برای این سفارش موجودی رزرو نشده است.</Notice>}
