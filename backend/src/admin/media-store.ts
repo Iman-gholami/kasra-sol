@@ -7,6 +7,9 @@ import { recompressStored } from './image-compress';
 export const MEDIA_FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(png|jpg|webp)$/;
 export const MEDIA_TYPE: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
 const TIMEOUT_MS = 8000;
+/** How long a read waits for the bucket before using the local copy. The storefront's /api/media proxy gives the API
+ * 8 s, so a bucket that stalls (rather than refusing) must leave time for the local copy and the answer. */
+export const READ_TIMEOUT_MS = 2500;
 
 export type BucketConfig = { endpoint: string; bucket: string; region: string; accessKeyId: string; secretAccessKey: string };
 
@@ -27,7 +30,10 @@ export class StorageUnavailable extends Error {}
  * bucket does not. Without a bucket, MEDIA_DIR is the only store. */
 export class MediaStore {
   private readonly client: AwsClient | null;
-  constructor(readonly bucket: BucketConfig | null, readonly directory: string) {
+  private readonly readTimeoutMs: number;
+  constructor(readonly bucket: BucketConfig | null, readonly directory: string,
+              { readTimeoutMs = READ_TIMEOUT_MS }: { readTimeoutMs?: number } = {}) {
+    this.readTimeoutMs = readTimeoutMs;
     // One quick retry of a 5xx answer (aws4fetch's default backs off ten times, up to a minute): an admin waits for
     // the upload, and a visitor's photo is read from the local copy instead.
     this.client = bucket && new AwsClient({ accessKeyId: bucket.accessKeyId, secretAccessKey: bucket.secretAccessKey,
@@ -38,8 +44,8 @@ export class MediaStore {
 
   private url(name = '') { return this.bucket!.endpoint + '/' + encodeURIComponent(this.bucket!.bucket) + '/' + name; }
 
-  private async s3(url: string, init: RequestInit = {}) {
-    return this.client!.fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  private async s3(url: string, init: RequestInit = {}, timeoutMs = TIMEOUT_MS) {
+    return this.client!.fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   }
 
   /** Stores a new photo under a fresh name; never overwrites one. Throws StorageUnavailable when the bucket refuses. */
@@ -69,8 +75,11 @@ export class MediaStore {
   /** The photo's bytes from the bucket, else from MEDIA_DIR; null when neither has it. */
   async get(name: string): Promise<Buffer | null> {
     if (this.client) {
-      const response = await this.s3(this.url(name)).catch(() => null);
-      if (response?.ok) return Buffer.from(await response.arrayBuffer());
+      try {
+        // The deadline covers the body too: a transfer that stalls halfway also falls back to the local copy.
+        const response = await this.s3(this.url(name), {}, this.readTimeoutMs);
+        if (response.ok) return Buffer.from(await response.arrayBuffer());
+      } catch { /* unreachable, refused or too slow: the local copy answers */ }
     }
     try { return await readFile(join(this.directory, name)); }
     catch (error) {

@@ -42,6 +42,19 @@ describe('compressing an upload', () => {
     assert.deepEqual([meta.width, meta.height], [480, 640]);
   });
 
+  it('keeps a very grainy photo under the budget by making it smaller when no quality is enough', async () => {
+    // Fits the 2 MB upload limit, yet about 850 KB even at the lowest quality at full size.
+    const grainy = await sharp({ create: { width: 1200, height: 1600, channels: 3, background: '#808080',
+      noise: { type: 'gaussian', mean: 128, sigma: 60 } } }).webp({ quality: 70 }).toBuffer();
+    assert.ok(grainy.length < 2 * 1024 * 1024);
+    const stored = await compressUpload(grainy);
+    const meta = await sharp(stored).metadata();
+    assert.equal(meta.format, 'webp');
+    assert.ok(stored.length <= MAX_STORED_BYTES, stored.length + ' bytes');
+    assert.ok(meta.width! < MAX_WIDTH && meta.width! >= 400, meta.width + '×' + meta.height);
+    assert.ok(Math.abs(meta.width! / meta.height! - 3 / 4) < 0.01, 'the aspect ratio is kept');
+  });
+
   it('rejects bytes that only look like an image', async () => {
     const fake = Buffer.concat([Buffer.from([255, 216, 255, 224]), Buffer.alloc(64, 7)]);
     await assert.rejects(compressUpload(fake));

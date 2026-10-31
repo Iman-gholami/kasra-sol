@@ -6,7 +6,7 @@ import { mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { bucketFromEnv, MediaStore, StorageUnavailable } from '../src/admin/media-store';
+import { bucketFromEnv, MediaStore, READ_TIMEOUT_MS, StorageUnavailable } from '../src/admin/media-store';
 
 const NAME = '0b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e.webp';
 const OTHER = '1b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e.jpg';
@@ -102,6 +102,22 @@ describe('with the object storage bucket', () => {
       assert.equal(await store.get(OTHER), null);
     });
   }
+
+  it('gives up on a stalled bucket in time for the storefront to serve the local copy', async t => {
+    // The storefront's /api/media proxy waits 8 s for the API; a stalled bucket must leave time for the local copy.
+    assert.ok(READ_TIMEOUT_MS <= 3000, 'reads give up after ' + READ_TIMEOUT_MS + ' ms');
+    // A bucket that accepts the connection and never answers. (AbortSignal.timeout does not keep Node running; the
+    // server does in production, a timer does here.)
+    t.mock.method(globalThis, 'fetch', (input: Request) => new Promise((_resolve, reject) => {
+      const alive = setTimeout(() => {}, 5000);
+      input.signal.addEventListener('abort', () => { clearTimeout(alive); reject(input.signal.reason); });
+    }));
+    const store = new MediaStore(bucket, await folder(), { readTimeoutMs: 50 });
+    await writeFile(join(store.directory, NAME), 'local copy');
+    const started = Date.now();
+    assert.deepEqual(await store.get(NAME), Buffer.from('local copy'));
+    assert.ok(Date.now() - started < 1000, (Date.now() - started) + ' ms');
+  });
 
   it('copies only the missing photos into the bucket, compressing old uploads in their own format', async t => {
     const legacy = await sharp({ create: { width: 2400, height: 3200, channels: 3, background: '#a08070',
