@@ -9,7 +9,8 @@ import { SiteShell } from '@/components/layout/site-shell';
 import { StoreChrome } from '@/components/layout/store-chrome';
 import { PageViewBeacon } from '@/components/layout/page-view-beacon';
 import { ToastProvider } from '@/components/ui/toast';
-import { robotsMeta, siteUrl } from '@/lib/seo';
+import { HOME_SHARE, robotsMeta, SITE_NAME, siteUrl } from '@/lib/seo';
+import { HOME_SHARE_IMAGE, SHARE_SIZE } from '@/lib/share-image';
 import './globals.css';
 
 // The Persian subset (derived from the verified upstream file, see src/fonts/README.md) is 40 KB lighter, which
@@ -30,7 +31,11 @@ export async function generateMetadata(): Promise<Metadata> {
     description: 'مجموعه‌ای نمایشی از شومیز، مانتو و تیشرت زنانه؛ طراحی مینیمال و خرید آسان.',
     applicationName: 'Kasra Boutique',
     // The launch switch (src/lib/seo.ts); robots.txt follows the same one. Private pages stay noindex on their own.
-    robots: robotsMeta()
+    robots: robotsMeta(),
+    // Link previews of pages without their own: the home page card (main pages set theirs, with a canonical address).
+    openGraph: { type: 'website', siteName: SITE_NAME, locale: 'fa_IR', ...HOME_SHARE,
+      images: [{ url: HOME_SHARE_IMAGE, ...SHARE_SIZE, alt: SITE_NAME }] },
+    twitter: { card: 'summary_large_image', ...HOME_SHARE, images: [HOME_SHARE_IMAGE] }
   };
 }
 

@@ -62,3 +62,36 @@ Only the owner can do this: it needs a Google account and access to the DNS of `
 
 Optional: [Bing Webmaster Tools](https://www.bing.com/webmasters) can import the site from Search Console in one step.
 Indexing takes from days to a few weeks; nothing in the store speeds it up beyond the steps above.
+
+## Canonical addresses, product data and link previews
+
+- **Canonical addresses.** The home page, the shop, the categories, every product and the information pages declare
+  their own address as canonical (`<link rel="canonical">`, from `pageMetadata` in [`src/lib/seo.ts`](../src/lib/seo.ts)).
+  Filtered, sorted or paged lists (`/shop?sort=newest&page=2`) point to the list without them, so search engines
+  index one page per list. Private pages have none.
+- **Product data.** Every product page carries schema.org `Product` and `Offer` data built from the product it shows
+  (API data in production, [`src/lib/structured-data.ts`](../src/lib/structured-data.ts)): name, description, SKU,
+  photos, brand, category, colours, sizes, price, availability (in stock while any colour and size has units) and the
+  crossed-out price of a discount. Prices are in **rial** (`IRR`): schema.org needs an ISO 4217 currency and the
+  toman has none, so the stored toman price is multiplied by 10. Ratings, shipping and return terms are left out until
+  the store really has them. Google's [Rich Results Test](https://search.google.com/test/rich-results) shows how a
+  product page is read once the site is public.
+- **Link previews.** Every main page has Open Graph and Twitter card tags (title, description, address, image). The
+  home page card is `public/images/share/kasra-boutique.jpg` (1200×630, made by `scripts/share-images.mts`). A product's
+  card is a **JPEG** of its first photo on the studio gray, never the AVIF/WebP photo itself: Telegram, WhatsApp and
+  others do not show AVIF, and not all of them show WebP. The API stores `<id>.jpg` next to every uploaded `<id>.webp`
+  (and makes it for older uploads the first time it is asked for); demo photos have committed cards in
+  `public/images/share/`. Link-preview fetchers (and plain HTTP clients, which the Iranian messengers' fetchers may be)
+  receive the tags in `<head>` (`htmlLimitedBots` in `next.config.ts`).
+
+### Checking previews in the messengers (after a deployment)
+
+`tests/share-preview.spec.ts` fetches the pages as the Telegram, WhatsApp and Instagram fetchers and as plain HTTP
+clients and checks the tags and the JPEG cards. The apps themselves can only be checked by hand, on the public domain:
+
+1. Send `https://kasraboutique.ir/` and one product link to yourself in **Telegram**, **Bale**, **WhatsApp**, **Eitaa**
+   and **Rubika** (and an Instagram direct message). Each preview should show the card, the title and the description.
+2. Messengers cache previews. In Telegram, send the link to [@WebpageBot](https://t.me/WebpageBot) to refresh it; in
+   the others, add `?v=2` to the link to see the current version.
+3. If one of them still shows no picture, note the app and the link and open an issue: the fix is in the tags or the
+   card, not in the app.

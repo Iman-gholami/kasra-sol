@@ -2,7 +2,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import { compressUpload, MAX_HEIGHT, MAX_STORED_BYTES, MAX_WIDTH, recompressStored } from '../src/admin/image-compress';
+import { compressUpload, MAX_HEIGHT, MAX_SHARE_BYTES, MAX_STORED_BYTES, MAX_WIDTH, recompressStored, shareImage } from '../src/admin/image-compress';
 
 /** A camera-sized photo: grainy (hard to compress), with camera and GPS metadata. */
 const cameraPhoto = (width: number, height: number, format: 'jpeg' | 'png' | 'webp' = 'jpeg') =>
@@ -45,6 +45,26 @@ describe('compressing an upload', () => {
   it('rejects bytes that only look like an image', async () => {
     const fake = Buffer.concat([Buffer.from([255, 216, 255, 224]), Buffer.alloc(64, 7)]);
     await assert.rejects(compressUpload(fake));
+  });
+});
+
+describe('the share image for messengers', () => {
+  it('is a 1200×630 JPEG under WhatsApp\'s size limit, made from a camera photo', async () => {
+    const share = await shareImage(await cameraPhoto(3000, 4000));
+    const meta = await sharp(share).metadata();
+    assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 1200, 630]);
+    assert.ok(share.length <= MAX_SHARE_BYTES, share.length + ' bytes');
+    assert.equal(meta.exif, undefined);
+  });
+
+  it('shows the whole portrait photo on the studio gray instead of cropping it', async () => {
+    const red = await sharp({ create: { width: 900, height: 1200, channels: 3, background: '#ff0000' } }).png().toBuffer();
+    const { data, info } = await sharp(await shareImage(red)).raw().toBuffer({ resolveWithObject: true });
+    const pixel = (x: number, y: number) => [...data.subarray((y * info.width + x) * 3, (y * info.width + x) * 3 + 3)];
+    const near = (actual: number[], expected: number[]) => actual.every((value, i) => Math.abs(value - expected[i]) < 12);
+    assert.ok(near(pixel(600, 315), [255, 0, 0]), 'the photo is in the middle');
+    assert.ok(near(pixel(600, 2), [255, 0, 0]) && near(pixel(600, 627), [255, 0, 0]), 'its full height is kept');
+    assert.ok(near(pixel(20, 315), [0xEA, 0xEC, 0xF0]) && near(pixel(1180, 315), [0xEA, 0xEC, 0xF0]), 'studio gray at the sides');
   });
 });
 

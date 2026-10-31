@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
+import { pageMetadata, SITE_NAME } from '@/lib/seo';
 import { Info } from 'lucide-react';
-export const metadata: Metadata = { title: 'ارسال و بازگشت — اطلاعات نمونه' };
+export const metadata: Metadata = { title: 'ارسال و بازگشت — اطلاعات نمونه', ...pageMetadata({ path: '/shipping-and-returns', title: 'ارسال و بازگشت — اطلاعات نمونه | ' + SITE_NAME }) };
 export default function Page() {
   return <article className="container content-page">
     <p className="section-kicker">ارسال و بازگشت</p>

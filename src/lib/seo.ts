@@ -1,3 +1,6 @@
+import type { Metadata } from 'next';
+import { HOME_SHARE_IMAGE, SHARE_SIZE } from '@/lib/share-image';
+
 /** Settings read from the environment (a plain object in tests). */
 type Env = Record<string, string | undefined>;
 
@@ -32,3 +35,25 @@ export const robotsMeta = (env: Env = built()) =>
 
 /** Pages that are never worth indexing, whatever the switch says: personal, transactional or endless (search). */
 export const PRIVATE_PATHS = ['/admin', '/api/', '/cart', '/checkout', '/account', '/wishlist', '/order-confirmation', '/search'];
+
+export const SITE_NAME = 'کسری بوتیک';
+/** What a shared link to the home page says (the card itself is HOME_SHARE_IMAGE). */
+export const HOME_SHARE = {
+  title: 'کسری بوتیک | استایل هر روزت، به سبک خودت',
+  description: 'شومیز، مانتو و تیشرت زنانه با طراحی مینیمال؛ انتخاب‌های ساده برای استایل هر روزت.'
+};
+
+type ShareImage = { url: string; width?: number; height?: number; alt?: string };
+
+/** The canonical address and the link-preview tags of a main page. Next.js does not merge a page's `openGraph` with the
+ * layout's, so every page gets the complete set; relative addresses resolve against the build's site URL. Filters and
+ * sorting in the query string share the canonical address of the page without them. */
+export function pageMetadata({ path, title, description = HOME_SHARE.description, image }:
+  { path: string; title: string; description?: string; image?: ShareImage }): Metadata {
+  const images = [image ?? { url: HOME_SHARE_IMAGE, ...SHARE_SIZE, alt: SITE_NAME }];
+  return {
+    alternates: { canonical: path },
+    openGraph: { type: 'website', siteName: SITE_NAME, locale: 'fa_IR', url: path, title, description, images },
+    twitter: { card: 'summary_large_image', title, description, images: images.map(({ url, alt }) => ({ url, alt })) }
+  };
+}

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
+import { pageMetadata, SITE_NAME } from '@/lib/seo';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-export const metadata: Metadata = { title: 'درباره کسری بوتیک' };
+export const metadata: Metadata = { title: 'درباره کسری بوتیک', ...pageMetadata({ path: '/about', title: 'درباره کسری بوتیک | ' + SITE_NAME }) };
 export default function Page() {
   return <article className="container content-page">
     <p className="section-kicker">درباره کسری</p>

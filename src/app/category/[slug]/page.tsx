@@ -4,12 +4,15 @@ import { CatalogView } from '@/components/catalog/catalog-view';
 import { categories, getCategory } from '@/data/products';
 import { parseFilters, queryProducts } from '@/lib/catalog';
 import { editorialNumber } from '@/lib/format';
+import { pageMetadata, SITE_NAME } from '@/lib/seo';
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 export function generateStaticParams() { return categories.map(({ slug }) => ({ slug })); }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = getCategory((await params).slug);
-  return { title: category?.title ?? 'دسته‌بندی ناموجود', description: category?.description };
+  if (!category) return { title: 'دسته‌بندی ناموجود' };
+  return { title: category.title, description: category.description, ...pageMetadata({ path: '/category/' + category.slug,
+    title: category.title + ' | ' + SITE_NAME, description: category.description }) };
 }
 export default async function CategoryPage({ params, searchParams }: Props) {
   const category = getCategory((await params).slug);

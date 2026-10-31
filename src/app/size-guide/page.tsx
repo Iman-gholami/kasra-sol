@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
+import { pageMetadata, SITE_NAME } from '@/lib/seo';
 import { Info } from 'lucide-react';
-export const metadata: Metadata = { title: 'راهنمای سایز' };
+export const metadata: Metadata = { title: 'راهنمای سایز', ...pageMetadata({ path: '/size-guide', title: 'راهنمای سایز | ' + SITE_NAME }) };
 const rows = [
   ['S', '۸۴–۸۸', '۶۶–۷۰', '۹۰–۹۴'], ['M', '۸۸–۹۴', '۷۰–۷۶', '۹۴–۱۰۰'],
   ['L', '۹۴–۱۰۰', '۷۶–۸۲', '۱۰۰–۱۰۶'], ['XL', '۱۰۰–۱۰۸', '۸۲–۹۰', '۱۰۶–۱۱۴']

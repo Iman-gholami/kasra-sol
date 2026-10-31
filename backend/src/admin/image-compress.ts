@@ -42,3 +42,25 @@ export async function recompressStored(input: Buffer, extension: 'jpg' | 'png' |
   }
   return output.length < input.length ? output : input;
 }
+
+/** Link previews (Telegram, Bale, WhatsApp…): 1200×630, the size every messenger shows large. */
+export const SHARE_WIDTH = 1200;
+export const SHARE_HEIGHT = 630;
+/** WhatsApp drops preview images above about 300 KB. */
+export const MAX_SHARE_BYTES = 280 * 1024;
+// The storefront's studio gray (--color-studio), so a photo and its share image look like the product page.
+const STUDIO = '#EAECF0';
+
+/** The photo as a JPEG link preview: whole (never cropped) and centred on the studio gray. Messengers show JPEG
+ * everywhere, unlike the WebP/AVIF the storefront serves. */
+export async function shareImage(input: Buffer): Promise<Buffer> {
+  const photo = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'none' }).rotate()
+    .resize({ width: SHARE_WIDTH, height: SHARE_HEIGHT, fit: 'contain', background: STUDIO })
+    .flatten({ background: STUDIO }).toBuffer();
+  let output = Buffer.alloc(0);
+  for (const quality of QUALITIES) {
+    output = await sharp(photo).jpeg({ quality, mozjpeg: true }).toBuffer();
+    if (output.length <= MAX_SHARE_BYTES) break;
+  }
+  return output;
+}

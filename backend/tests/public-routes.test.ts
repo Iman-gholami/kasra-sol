@@ -1,7 +1,7 @@
 // Storefront-facing routes, run with Fastify's inject() against an in-memory database stand-in.
 import { before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -156,6 +156,28 @@ describe('uploaded images', () => {
     });
     const upload = (payload: Buffer, type: string) =>
       staff.inject({ method: 'POST', url: '/v1/admin/media', payload, headers: { 'content-type': type } });
+
+    it('stores a JPEG share image next to each photo, for messenger link previews', async () => {
+      database(() => ({ rows: [] }));
+      const photo = await sharp({ create: { width: 900, height: 1200, channels: 3, background: '#c9b49a' } }).png().toBuffer();
+      const url: string = (await upload(photo, 'image/png')).json().url;
+      const share = await staff.inject({ method: 'GET', url: '/v1/media/' + url.split('/').pop()!.replace('.webp', '.jpg') });
+      assert.equal(share.statusCode, 200);
+      assert.equal(share.headers['content-type'], 'image/jpeg');
+      const meta = await sharp(share.rawPayload).metadata();
+      assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 1200, 630]);
+    });
+
+    it('makes the share image of a photo uploaded before share images existed when it is first asked for', async () => {
+      const id = '2b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e';
+      await writeFile(join(mediaDir, id + '.webp'), await sharp({ create: { width: 600, height: 800, channels: 3,
+        background: '#445566' } }).webp().toBuffer());
+      const first = await staff.inject({ method: 'GET', url: '/v1/media/' + id + '.jpg' });
+      assert.equal(first.statusCode, 200);
+      assert.equal(first.headers['content-type'], 'image/jpeg');
+      assert.deepEqual(await readFile(join(mediaDir, id + '.jpg')), first.rawPayload, 'stored for the next request');
+      assert.equal((await staff.inject({ method: 'GET', url: '/v1/media/3b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e.jpg' })).statusCode, 404);
+    });
 
     it('stores a photo re-encoded as a phone-sized WebP and audits both sizes', async () => {
       database(() => ({ rows: [] }));

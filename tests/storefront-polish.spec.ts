@@ -19,10 +19,10 @@ test.describe('desktop', () => {
   test('the studio photos stand in their rooms: no frame on the cover, sharp portraits in the circles', async ({ page }) => {
     await page.goto('/');
     const hero = page.locator('.hero-slide[data-active] img').first();
-    await expect(hero).toHaveAttribute('src', /brand-preview%2Fhero-model\.avif/);
+    await expect(hero).toHaveAttribute('src', /^\/images\/brand-preview\/hero-model\.avif$/);
     await expect(page.locator('.hero-slide[data-active] .hero-figure')).toHaveClass(/hero-figure-studio/);
     const categoryPhoto = page.locator('.collection-circle img').first();
-    await expect(categoryPhoto).toHaveAttribute('src', /lookbook%2F[a-z]+-[a-z]+-portrait\.avif/);
+    await expect(categoryPhoto).toHaveAttribute('src', /^\/images\/lookbook\/[a-z]+-[a-z]+-portrait\.avif$/);
     await expect(page.locator('.demo-photo-note')).toContainText('عکس‌ها نمایشی‌اند');
     const image = await page.request.get('/images/brand-preview/hero-model.avif');
     expect(image.ok()).toBeTruthy();
