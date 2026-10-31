@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-export const metadata: Metadata = { title: 'سؤال‌های پرتکرار' };
+import { pageMetadata, SITE_NAME } from '@/lib/seo';
+export const metadata: Metadata = { title: 'سؤال‌های پرتکرار', ...pageMetadata({ path: '/faq', title: 'سؤال‌های پرتکرار | ' + SITE_NAME }) };
 const questions = [
   { q: 'آیا می‌توانم همین حالا سفارش واقعی ثبت کنم؟', a: 'خیر. این وب‌سایت فقط نسخه نمایشی است و هیچ سفارش یا پرداخت واقعی ثبت نمی‌شود.' },
   { q: 'چطور سایز مناسبم را انتخاب کنم؟', a: 'راهنمای سایز عمومی در وب‌سایت قرار دارد. پیش از فروش واقعی، اندازه‌های دقیق هر محصول باید ثبت شوند.' },

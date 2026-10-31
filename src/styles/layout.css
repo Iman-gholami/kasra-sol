@@ -27,10 +27,10 @@
    The wordmark is LTR, so inline-start padding balances the trailing letter-spacing on the left. */
 .brand-type small { font: 600 9px/2 Arial, sans-serif; letter-spacing: 0.32em; padding-inline-start: 0.32em; color: var(--color-text-muted); }
 
-.desktop-nav > ul { display: flex; align-items: center; gap: clamp(2px, 0.5vw, 8px); margin: 0; padding: 0; list-style: none; }
+.desktop-nav > ul { display: flex; align-items: center; gap: clamp(2px, 0.5cqi, 8px); margin: 0; padding: 0; list-style: none; }
 .desktop-nav > ul > li { display: flex; align-items: center; }
 .desktop-nav > ul > li > a {
-  display: inline-flex; align-items: center; min-block-size: var(--touch); padding-inline: clamp(8px, 0.9vw, 16px); border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; min-block-size: var(--touch); padding-inline: clamp(8px, 0.9cqi, 16px); border-radius: var(--radius-pill);
   font-size: var(--text-sm); font-weight: var(--font-weight-medium); white-space: nowrap;
   transition: background-color 400ms var(--ease-editorial);
 }
@@ -90,7 +90,7 @@
 .menu-list-display { border-block-start: 1px solid var(--color-text); }
 .menu-list.menu-list-display a {
   justify-content: flex-start; min-block-size: 68px; gap: var(--space-3);
-  font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.4rem); font-weight: var(--font-weight-light); line-height: 1.4;
+  font-size: clamp(1.75rem, 1.2rem + 2.4cqi, 2.4rem); font-weight: var(--font-weight-light); line-height: 1.4;
 }
 .menu-list.menu-list-display .menu-no { min-inline-size: 2ch; color: var(--color-accent); font-size: var(--text-md); line-height: 1; }
 .menu-list.menu-list-display a svg { margin-inline-start: auto; color: var(--color-text); }
@@ -124,7 +124,7 @@
 .footer { margin-block-start: var(--section-gap); }
 .footer-grid {
   display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); gap: var(--space-6);
-  padding: var(--space-7) clamp(20px, 3.5vw, 56px); border-radius: var(--radius-lg); background: var(--color-text); color: var(--color-inverse);
+  padding: var(--space-7) clamp(20px, 3.5cqi, 56px); border-radius: var(--radius-lg); background: var(--color-text); color: var(--color-inverse);
 }
 .footer-intro p { margin: 0 0 var(--space-3); max-inline-size: 38ch; color: var(--color-footer-muted); font-size: var(--text-sm); }
 .footer-intro .footer-demo { font-size: var(--text-xs); color: var(--color-footer-muted); }
@@ -151,7 +151,7 @@
 /* ---------- Bottom navigation (phones, browsing pages) ---------- */
 .bottom-nav { display: none; }
 
-@media (max-width: 1080px) {
+@container kasra (max-width: 1080px) {
   /* The five navigation links no longer fit beside a centred wordmark: the menu button takes over. */
   .menu-trigger { display: inline-grid; }
   .desktop-nav { display: none; }
@@ -161,12 +161,12 @@
   .search-trigger kbd { display: none; }
 }
 
-@media (max-width: 820px) {
+@container kasra (max-width: 820px) {
   .footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .footer-intro { grid-column: 1 / -1; }
 }
 
-@media (max-width: 600px) {
+@container kasra (max-width: 600px) {
   .header-inner { gap: var(--space-2); }
   .header-actions { gap: 0; }
   .header-wishlist { display: none; }
@@ -181,7 +181,7 @@
   .footer nav a { display: flex; min-block-size: var(--touch); }
 
   .bottom-nav {
-    display: block; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: var(--z-bottom-bar);
+    display: block; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: var(--z-bottom-bar); max-inline-size: 100cqi; margin-inline: auto;
     padding-block-end: var(--safe-bottom); padding-inline: var(--safe-start) var(--safe-end);
     background: var(--color-surface); border-block-start: 1px solid var(--color-border);
   }
@@ -202,14 +202,14 @@
   .bottom-nav .count { inset-block-start: -6px; inset-inline-end: -12px; }
   /* Keyboard up: the bottom nav would cover the field being edited. */
   .bottom-nav[data-keyboard] { display: none; }
-
-  /* Allow for the bottom-nav border and fractional viewport rounding at maximum scroll. */
-  html[data-bottom-bar="nav"] { --bottom-bar-space: calc(64px + var(--safe-bottom)); }
-  html[data-bottom-bar="pdp"] { --bottom-bar-space: var(--pdp-bar-h, calc(76px + var(--safe-bottom))); }
-  html[data-bottom-bar="cart"] { --bottom-bar-space: calc(74px + var(--safe-bottom)); }
   .site-shell { padding-block-end: var(--bottom-bar-space, 0px); }
 }
-@media (max-width: 360px) {
+/* The space a bottom bar takes, set on <html> (outside the <body> query container, so not in the block above; only
+   storefront pages set data-bottom-bar). Allows for the bar's border and fractional rounding at maximum scroll. */
+html[data-bottom-bar="nav"] { --bottom-bar-space: calc(64px + var(--safe-bottom)); }
+html[data-bottom-bar="pdp"] { --bottom-bar-space: var(--pdp-bar-h, calc(76px + var(--safe-bottom))); }
+html[data-bottom-bar="cart"] { --bottom-bar-space: calc(74px + var(--safe-bottom)); }
+@container kasra (max-width: 360px) {
   .brand-type small { display: none; }
   .brand-type strong { font-size: 18px; }
 }

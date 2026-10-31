@@ -29,6 +29,8 @@ if [ "${SKIP_PROVISION:-no}" = yes ]; then
   install -m 0700 "$DEPLOY"/server/*.sh "$DEPLOY"/server/*.py "$BIN/"
   printf '%s\n' POSTGRES_USER=kasra POSTGRES_DB=kasra "POSTGRES_PASSWORD=$(openssl rand -hex 32)" \
     "ORDER_TOKEN_SECRET=$(openssl rand -hex 32)" "ADMIN_API_KEY=$(openssl rand -hex 32)" "REDIS_PASSWORD=$(openssl rand -hex 32)" \
+    "GARAGE_RPC_SECRET=$(openssl rand -hex 32)" "GARAGE_ADMIN_TOKEN=$(openssl rand -hex 32)" \
+    "S3_ACCESS_KEY_ID=GK$(openssl rand -hex 12)" "S3_SECRET_ACCESS_KEY=$(openssl rand -hex 32)" \
     NEXT_PUBLIC_SITE_URL=https://127.0.0.1 SEED_DEMO_DATA=true KASRA_RELEASE= KASRA_PREVIOUS_RELEASE= > "$ENV_FILE"
   chmod 600 "$ENV_FILE"
 else
@@ -40,6 +42,7 @@ else
   systemctl is-enabled --quiet kasra-backup.timer || fail "backup timer not enabled"
 fi
 for image in $(KASRA_RELEASE=x POSTGRES_PASSWORD=x ORDER_TOKEN_SECRET=x REDIS_PASSWORD=x NEXT_PUBLIC_SITE_URL=x \
+    GARAGE_RPC_SECRET=x GARAGE_ADMIN_TOKEN=x S3_ACCESS_KEY_ID=x S3_SECRET_ACCESS_KEY=x \
     docker compose -f "$DEPLOY/compose.production.yaml" config --images | grep -v '^kasra-'); do
   docker image inspect "$image" >/dev/null 2>&1 || docker pull -q "$image"
 done
@@ -119,6 +122,26 @@ group "Owner account"
 printf '%s' 'test-owner-password-123' | "$BIN/create-owner.sh" testowner
 if printf '%s' 'another-password-1234' | "$BIN/create-owner.sh" second 2>/dev/null; then fail "a second owner was created"; fi
 
+group "Object storage"
+[ "$(docker inspect -f '{{.State.ExitCode}}' "$(compose ps -aq storage-init)")" = 0 ] || fail "storage-init did not prepare the bucket"
+owner_token=$(curl -fsS -H 'Content-Type: application/json' -d '{"username":"testowner","password":"test-owner-password-123"}' \
+  http://127.0.0.1:4000/v1/admin/auth/login | node -e 'process.stdin.on("data",d=>console.log(JSON.parse(d).token))')
+# A valid 24x30 PNG; the API stores it re-encoded as WebP.
+printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAeCAIAAAC5TEmyAAAAI0lEQVR4nGMQtbakCmIYNWjUoFGDRg0aNWjUoFGDRg0iBwEAIQ6BYBfu56YAAAAASUVORK5CYII=' \
+  | base64 -d > /tmp/kasra-test-photo.png
+photo=$(curl -fsS -H "Authorization: Bearer $owner_token" -H 'Content-Type: image/png' --data-binary @/tmp/kasra-test-photo.png \
+  http://127.0.0.1:4000/v1/admin/media | node -e 'process.stdin.on("data",d=>console.log(JSON.parse(d).url.split("/").pop()))')
+[[ $photo =~ ^[0-9a-f-]{36}\.webp$ ]] || fail "upload answered '$photo'"
+in_bucket() {
+  compose exec -T -e "NAME=$1" backend node -e 'const { AwsClient } = require("aws4fetch"); const e = process.env;
+    new AwsClient({ accessKeyId: e.S3_ACCESS_KEY_ID, secretAccessKey: e.S3_SECRET_ACCESS_KEY, service: "s3", region: e.S3_REGION })
+      .fetch(e.S3_ENDPOINT + "/" + e.S3_BUCKET + "/" + e.NAME).then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))'
+}
+in_bucket "$photo" || fail "the uploaded photo is not in the bucket"
+[ "$(curl -fsS -o /dev/null -w '%{content_type}' "http://127.0.0.1:3000/api/media/$photo")" = image/webp ] \
+  || fail "the storefront does not serve the uploaded photo"
+echo "Uploads are stored in the object storage and served by the storefront"
+
 group "Second release keeps the data"
 second=$(fake_release "second-$release")
 docker tag "kasra-frontend:$release" "kasra-frontend:$second"
@@ -163,7 +186,15 @@ dump=$(basename "$(ls -1t "$BACKUP_DIR"/db-*-manual.dump | head -n 1)")
 before=$(sql 'SELECT count(*) FROM orders')
 sql "UPDATE product_variants SET stock = stock + 5" >/dev/null
 changed=$(sql 'SELECT sum(stock) FROM product_variants')
-"$BIN/restore.sh" "$dump"
+# A photo that only a media backup still holds (as after losing the bucket) goes back into the bucket on restore.
+restored_photo=$(cat /proc/sys/kernel/random/uuid).png
+install -m 0644 /tmp/kasra-test-photo.png "$(docker volume inspect -f '{{.Mountpoint}}' kasra_media_data)/$restored_photo"
+"$BIN/backup.sh" manual
+media=$(basename "$(ls -1t "$BACKUP_DIR"/media-*-manual.tar.gz | head -n 1)")
+tar -tzf "$BACKUP_DIR/$media" | grep -q "$photo" || fail "the media backup lacks the uploaded photo"
+in_bucket "$restored_photo" && fail "the test photo is in the bucket before the restore"
+"$BIN/restore.sh" "$dump" "$media"
+in_bucket "$restored_photo" || fail "the restored photo was not copied into the bucket"
 [ "$(sql 'SELECT count(*) FROM orders')" = "$before" ] || fail "orders differ after restore"
 [ "$(sql 'SELECT sum(stock) FROM product_variants')" != "$changed" ] || fail "restore did not undo the stock change"
 ls "$BACKUP_DIR"/db-*-pre-restore.dump >/dev/null || fail "no safety backup before the restore"

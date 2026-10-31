@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
+import { pageMetadata, SITE_NAME } from '@/lib/seo';
 import Link from 'next/link';
 import { Info } from 'lucide-react';
-export const metadata: Metadata = { title: 'ارتباط با ما' };
+export const metadata: Metadata = { title: 'ارتباط با ما', ...pageMetadata({ path: '/contact', title: 'ارتباط با ما | ' + SITE_NAME }) };
 export default function Page() {
   return <article className="container content-page">
     <p className="section-kicker">ارتباط با ما</p>

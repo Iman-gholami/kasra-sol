@@ -3,8 +3,8 @@
 # and returns to the previous release automatically if the new one does not come up healthy.
 # Run through kasra-gate by .github/workflows/release.yml after the production approval, from the
 # release's own copy of deploy/ (so script changes ship with the release), with the images in
-# /opt/kasra/incoming/kasra-images-<commit>.tar.gz (and, when the server lacks them, the database and
-# cache images in /opt/kasra/incoming/infra-images.tar.gz).   Usage: deploy.sh <40-character commit>
+# /opt/kasra/incoming/kasra-images-<commit>.tar.gz (and, when the server lacks them, the database, cache and
+# object storage images in /opt/kasra/incoming/infra-images.tar.gz).   Usage: deploy.sh <40-character commit>
 source "$(dirname "$0")/lib.sh"
 SOURCE=$(cd "$(dirname "$0")/.." && pwd)
 require_root
@@ -20,10 +20,13 @@ for bundle in "$KASRA_DIR/incoming/infra-images.tar.gz" "$KASRA_DIR/incoming/kas
     rm -f "$bundle"
   fi
 done
-# Servers provisioned before Redis had a password get one now (the cache restarts with it).
+# Servers provisioned before Redis had a password get one now (the cache restarts with it), and those provisioned
+# before the object storage get its secrets.
 [ -n "$(env_get REDIS_PASSWORD)" ] || env_set REDIS_PASSWORD "$(openssl rand -hex 32)"
+ensure_storage_secrets
 install -d -m 0700 "$KASRA_DIR/releases/$release"
 install -m 0600 "$SOURCE/compose.production.yaml" "$KASRA_DIR/releases/$release/compose.yaml"
+install -m 0644 "$SOURCE/garage.toml" "$KASRA_DIR/releases/$release/garage.toml"
 for image in $(KASRA_RELEASE=$release docker compose --project-directory "$KASRA_DIR" \
     -f "$KASRA_DIR/releases/$release/compose.yaml" config --images); do
   docker image inspect "$image" >/dev/null 2>&1 || die "image $image is missing on the server"

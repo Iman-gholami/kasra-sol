@@ -91,7 +91,7 @@ def run(command, env=None):
 
 def infra_missing(compose_file):
     # Read the pinned images without running Compose on files a job supplied.
-    images = re.findall(r"^\s+image:\s*((?:postgres|redis):[\w.-]+)\s*$", open(compose_file).read(), re.M)
+    images = re.findall(r"^\s+image:\s*((?:postgres|redis|dxflrs/garage):[\w.-]+)\s*$", open(compose_file).read(), re.M)
     return [i for i in images if subprocess.run(["docker", "image", "inspect", i],
                                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode]
 
@@ -111,7 +111,7 @@ def main():
                 finish(2, "status window looks like 30m or 6h")
             finish(run([BIN + "/status.sh", window]))
         if task == "infra-missing":
-            # Read-only: which pinned database/cache images the server lacks.
+            # Read-only: which pinned database/cache/object storage images the server lacks.
             if len(args) != 1 or shutil.which("docker") is None:
                 finish(2, "usage: infra-missing <checkout> (on a provisioned server)")
             for image in infra_missing(os.path.join(args[0], "deploy/compose.production.yaml")):

@@ -103,6 +103,10 @@ if [ ! -f "$ENV_FILE" ]; then
     echo "ORDER_TOKEN_SECRET=$(secret)"
     echo "ADMIN_API_KEY=$(secret)"
     echo "REDIS_PASSWORD=$(secret)"
+    echo "GARAGE_RPC_SECRET=$(secret)"
+    echo "GARAGE_ADMIN_TOKEN=$(secret)"
+    echo "S3_ACCESS_KEY_ID=GK$(openssl rand -hex 12)"
+    echo "S3_SECRET_ACCESS_KEY=$(secret)"
     echo "NEXT_PUBLIC_SITE_URL=$SITE_URL"
     echo "SEED_DEMO_DATA=$SEED_DEMO_DATA"
     echo "KASRA_RELEASE="
@@ -112,6 +116,7 @@ if [ ! -f "$ENV_FILE" ]; then
 else
   log "Keeping the existing $ENV_FILE (secrets unchanged)"
   [ -n "$(env_get REDIS_PASSWORD)" ] || env_set REDIS_PASSWORD "$(openssl rand -hex 32)"
+  ensure_storage_secrets
   env_set SEED_DEMO_DATA "$SEED_DEMO_DATA"
   [ -n "$(env_get KASRA_DOMAIN)" ] || env_set NEXT_PUBLIC_SITE_URL "$SITE_URL"
 fi

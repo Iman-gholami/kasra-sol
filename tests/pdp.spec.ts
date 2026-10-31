@@ -156,11 +156,8 @@ test('PDP compact gallery, safe-area purchase and RTL do not overflow tested vie
       return {scrollWidth:document.documentElement.scrollWidth,viewport:window.innerWidth,photoHeight:main.height,photoWidth:gallery.width};
     });
     expect(info.scrollWidth).toBeLessThanOrEqual(width+1);
-    if(width<=430) {
-      expect(info.photoHeight).toBeLessThan(520);
-      await expect(page.locator('.pdp-sticky-bar')).toHaveClass(/is-visible/);
-    } else {
-      await expect(page.locator('.pdp-sticky-bar')).not.toBeVisible();
-    }
+    // One phone layout at every width: wider screens show it in a centred column, purchase bar included.
+    expect(info.photoHeight).toBeLessThan(520);
+    await expect(page.locator('.pdp-sticky-bar')).toHaveClass(/is-visible/);
   }
 });

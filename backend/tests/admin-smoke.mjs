@@ -114,10 +114,13 @@ try {
   });
   assert.equal(upload.status, 201, 'Owner can upload PNG: ' + upload.status);
   const { url: imageUrl } = await upload.json();
-  assert.match(imageUrl, /^\/api\/media\/[a-f0-9-]{36}\.png$/);
+  // Stored re-encoded as WebP (backend/src/admin/image-compress.ts), whatever the uploaded format.
+  assert.match(imageUrl, /^\/api\/media\/[a-f0-9-]{36}\.webp$/);
   const publicImage = await fetch(base + '/v1/media/' + imageUrl.split('/').at(-1));
   assert.equal(publicImage.status, 200);
-  assert.equal(Buffer.compare(Buffer.from(await publicImage.arrayBuffer()), png), 0);
+  assert.equal(publicImage.headers.get('content-type'), 'image/webp');
+  const served = Buffer.from(await publicImage.arrayBuffer());
+  assert.equal(served.toString('ascii', 0, 4) + served.toString('ascii', 8, 12), 'RIFFWEBP');
   assert.equal((await call('/v1/media/../../etc/passwd')).status, 404);
 
   const product = {

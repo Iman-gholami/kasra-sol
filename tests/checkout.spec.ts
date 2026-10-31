@@ -42,7 +42,8 @@ test('cart: free-shipping progress, savings, stock notes and save for later with
 
   await page.getByRole('button', { name: 'انتقال به علاقه‌مندی‌ها، مانتو کوتاه ژیوا' }).click();
   await expect(page.locator('.cart-removed')).toContainText('به علاقه‌مندی‌ها منتقل شد');
-  await expect(page.getByRole('link', { name: 'علاقه‌مندی‌ها، ۱ مورد' })).toBeVisible();
+  // The purchase flow hides the site header and its wishlist badge; the browser store holds the move.
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('kasra-demo-v1') ?? '{}').wishlist)).toEqual(['manto-03']);
   const undo = page.getByRole('button', { name: 'بازگرداندن' });
   await expect(undo).toBeFocused();
   await undo.click();
@@ -81,7 +82,9 @@ test('shipping step: free post above the threshold, courier only inside Tehran, 
   await page.getByLabel('شهر', { exact: true }).fill('تهران');
   await page.getByLabel('شهر', { exact: true }).blur();
   await courier.check();
-  await expect(page.getByRole('complementary', { name: 'خلاصه سفارش' })).toContainText('۱۲۰٬۰۰۰ تومان');
+  const summary = page.locator('.checkout-summary-mobile');
+  await summary.locator('summary').click();
+  await expect(summary).toContainText('۱۲۰٬۰۰۰ تومان');
   await page.getByLabel('شهر', { exact: true }).fill('کرج');
   await page.getByLabel('شهر', { exact: true }).blur();
   await expect(page.locator('.choice-notice')).toContainText('روش ارسال به پست پیشتاز تغییر کرد');
@@ -110,7 +113,7 @@ test('cart discount code: states, Enter applies, removal, and the code carries i
   await expect(summary).not.toContainText('۵۸٬۹۰۰');
   await page.getByLabel('کد تخفیف').fill('KASRA10');
   await page.getByRole('button', { name: 'ثبت کد' }).click();
-  await page.getByRole('link', { name: 'ادامه فرایند خرید' }).click();
+  await page.locator('.summary-cta').click();
   await page.getByRole('button', { name: 'پر کردن با اطلاعات نمونه' }).click();
   await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
   await expect(page.locator('.checkout-code-note')).toContainText('KASRA10');
@@ -169,7 +172,7 @@ test('gateway: failure and cancel keep the cart for a retry; success shows the o
   await expect(gateway).toBeHidden();
   await expect(page.locator('.checkout-outcome[role="alert"]')).toContainText('پرداخت انجام نشد. سبد خریدت محفوظ است');
   await expect(pay).toBeFocused();
-  await expect(page.getByRole('link', { name: 'سبد خرید، ۱ کالا' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('kasra-demo-v1') ?? '{}').cart.length)).toBe(1);
   await pay.click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.checkout-outcome')).toContainText('پرداخت را لغو کردی');
@@ -183,15 +186,16 @@ test('gateway: failure and cancel keep the cart for a retry; success shows the o
   await expect(order).toContainText('شومیز لینن آوید');
   await expect(order).toContainText('مهمان نمایشی');
   await expect(order).toContainText('هیچ سفارش واقعی ثبت نشده');
-  await expect(page.getByRole('link', { name: 'سبد خرید', exact: true })).toBeVisible();
+  await expect(page.locator('.site-header').getByRole('link', { name: 'سبد خرید', exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('پرداخت آزمایشی موفق بود');
   await page.goBack();
   await expect(page.getByRole('heading', { name: 'سبد خرید خالی است' })).toBeVisible();
 });
 
-test.describe('phone purchase-flow chrome', () => {
-  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+for (const [device, options] of [['phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }],
+  ['desktop column', { viewport: { width: 1440, height: 900 } }]] as const) test.describe(device + ' purchase-flow chrome', () => {
+  test.use(options);
 
   test('cart and checkout swap the site header and footer for a back-and-logo header; the floating bar yields to the inline CTA', async ({ page }) => {
     await seed(page, [shomiz(), manto]);
@@ -217,15 +221,6 @@ test.describe('phone purchase-flow chrome', () => {
     await page.goto('/order-confirmation');
     await expect(page.locator('.site-header')).toBeVisible();
   });
-});
-
-test('desktop keeps the site header and hides the phone flow header', async ({ page }) => {
-  await seed(page, [shomiz()]);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/cart');
-  await expect(page.locator('.site-header')).toBeVisible();
-  await expect(page.locator('.flow-header')).toBeHidden();
-  await expect(page.getByRole('heading', { level: 1, name: 'سبد خرید' })).toBeVisible();
 });
 
 // The shared header/footer wordmarks and the phone bottom navigation already fail axe's label-in-name rule

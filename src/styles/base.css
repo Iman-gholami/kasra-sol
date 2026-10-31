@@ -40,6 +40,18 @@ p { text-wrap: pretty; }
 [hidden] { display: none !important; }
 bdi { unicode-bidi: isolate; }
 
+/* One phone-width design (docs/MOBILE-ONLY.md). <body> is the query container of every layout rule (@container
+   kasra): on a phone it is the screen, on wider screens a centred column of --app-width, so the storefront always gets
+   its phone layout. The back office keeps the full width. */
+body { container: kasra / inline-size; }
+html:not(:has(.site-shell[data-admin])) { background: var(--color-backdrop); }
+html:not(:has(.site-shell[data-admin])) body {
+  max-inline-size: var(--app-width); margin-inline: auto;
+  box-shadow: 0 0 0 1px var(--color-border), 0 24px 64px rgb(24 24 24 / 0.08);
+  /* --text-base, sized by the column: container units on the container itself would measure the screen. */
+  font-size: clamp(0.9375rem, 0.9rem + 0.15 * min(1vw, var(--app-width) / 100), 1rem);
+}
+
 /* Layout helpers */
 .site-shell { min-block-size: 100svh; display: flex; flex-direction: column; }
 #main-content { flex: 1; min-inline-size: 0; }
@@ -56,7 +68,7 @@ bdi { unicode-bidi: isolate; }
 }
 
 .skip-link {
-  position: fixed; inset-block-start: var(--space-3); inset-inline-start: var(--space-3); z-index: var(--z-skip);
+  position: fixed; inset-block-start: var(--space-3); inset-inline-start: calc(var(--app-edge) + var(--space-3)); z-index: var(--z-skip);
   padding: var(--space-3) var(--space-4); background: var(--color-surface-raised); color: var(--color-text);
   font-weight: var(--font-weight-semibold);
   transform: translateY(calc(-100% - 24px)); transition: transform var(--duration-base) var(--ease-standard);
@@ -86,7 +98,7 @@ bdi { unicode-bidi: isolate; }
 .currency { font-size: max(var(--text-xs), 0.8em); font-weight: var(--font-weight-medium); color: var(--color-text-muted); }
 #main-content:focus { outline: none; }
 
-@media (max-width: 600px) {
+@container kasra (max-width: 600px) {
   .section-heading { gap: var(--space-4); margin-block-end: var(--space-4); }
   .section-heading > p { display: none; }
   .page-heading { margin-block: var(--space-5) var(--space-3); }

@@ -67,7 +67,7 @@ Dependencies are pinned by `package-lock.json` and `backend/package-lock.json`; 
 ```text
 src/
   fonts/                Official Estedad 8.5 variable WOFF2, OFL license/provenance
-  app/                  App Router pages, metadata, sitemap, robots, /api/health
+  app/                  App Router pages, metadata, sitemap (live catalog), robots, /api/health
   components/layout/    Navigation, footer
   components/catalog/   Filter and result UI
   components/products/  Cards, detail/gallery, variant selection
@@ -91,7 +91,13 @@ To connect a backend, replace `queryProducts` and product lookup methods with ty
 
 ## Data / assets
 
-`src/data/products.ts` defines 12 products per category, each with multiple colors and per-size stock. **Six photorealistic AI-generated model images**, optimized to AVIF and stored locally under `public/images/lookbook/`, are intentionally **reused across the 36 mock products** to evaluate the visual design of the storefront. These images do **not** represent actual inventory or faithfully depict the named clothes, sizes, available colors or variants. The previous SVG illustrations remain in the repository for reference but are no longer used in product displays. Before production, replace this demo mapping with distinct, properly licensed authentic product photos, preferably on an image CDN. Persian typography uses the official **Estedad 8.5 variable WOFF2** (100–900) bundled at `src/fonts/Estedad-VF.woff2`, loaded through `next/font/local` with `font-display: swap` and local font preloading. It is self-hosted at runtime and makes no font-CDN requests. The font's SIL OFL 1.1 license and source/version verification are at `src/fonts/OFL.txt` and `src/fonts/README.md`.
+`src/data/products.ts` defines 12 products per category, each with multiple colors and per-size stock. **Six photorealistic AI-generated model images**, optimized to AVIF and stored locally under `public/images/lookbook/`, are intentionally **reused across the 36 mock products** to evaluate the visual design of the storefront. These images do **not** represent actual inventory or faithfully depict the named clothes, sizes, available colors or variants. The previous SVG illustrations remain in the repository for reference but are no longer used in product displays. Before production, replace this demo mapping with distinct, properly licensed authentic product photos, preferably on an image CDN.
+
+Images are served as stored: `next/image` is kept for layout and lazy loading, but `images.unoptimized` in
+`next.config.ts` turns off the `/_next/image` resizer, which is slow and CPU-hungry outside Vercel. Nothing heavy reaches
+a phone because every image is compressed once, when it is stored: committed images must stay under 200 KB
+(`tests-unit/images.test.ts`), and the API re-encodes every upload to a WebP of at most 1200×1600 pixels and 350 KB,
+without camera metadata such as the GPS position (`backend/src/admin/image-compress.ts`). Persian typography uses the official **Estedad 8.5 variable WOFF2** (100–900) bundled at `src/fonts/Estedad-VF.woff2`, loaded through `next/font/local` with `font-display: swap` and local font preloading. It is self-hosted at runtime and makes no font-CDN requests. The font's SIL OFL 1.1 license and source/version verification are at `src/fonts/OFL.txt` and `src/fonts/README.md`.
 
 ## Local typography — Estedad 8.5
 
@@ -101,12 +107,19 @@ The upstream is [Amin Abedi's official Estedad repository](https://github.com/am
 
 ## Deployment
 
-Production runs on a ParsPack VPS: Nginx in front of the Compose stack in [`deploy/compose.production.yaml`](deploy/compose.production.yaml), with images built and tested by GitHub Actions. Every merge to `main` runs the **Release** workflow (tests and images), whose deployment waits for the owner's approval in GitHub (the protected `production` environment), then installs the release on the server, verifies the site and rolls back automatically on failure.
+Production runs on a ParsPack VPS: Nginx in front of the Compose stack in [`deploy/compose.production.yaml`](deploy/compose.production.yaml), with images built and tested by GitHub Actions. Uploaded product photos are kept in an S3-compatible object storage (Garage) in the same stack, for now on the same VPS; see [Object storage](docs/DEPLOYMENT.md#object-storage-product-photos) for how it works and how to move the bucket to an external provider with its own backups. Every merge to `main` runs the **Release** workflow (tests and images), whose deployment waits for the owner's approval in GitHub (the protected `production` environment), then installs the release on the server, verifies the site and rolls back automatically on failure.
 
 - [Production deployment](docs/DEPLOYMENT.md): architecture, one-time setup, temporary IP access, connecting the domain and HTTPS, backups, restore, rollback, operations.
 - [Releasing a change](docs/RELEASING.md): the change → pull request → approval → deployment process.
 
 For a local or staging copy of the full stack, `compose.yaml` still builds everything on the machine (see [PostgreSQL + Fastify backend](#postgresql--fastify-backend)). Load testing must only be treated as complete when actually executed; current verification status is recorded in [PERFORMANCE.md](docs/PERFORMANCE.md).
+
+## One phone layout
+
+The storefront has a single design, the phone's; tablets and computers show it as a centred 480 px column on the studio
+backdrop, like digikalajet.com. Layout breakpoints are container queries on `<body>` (the column), so a wide screen gets
+exactly the phone page; the back office keeps the full width. See [One phone layout](docs/MOBILE-ONLY.md) for how it
+works, the rules for new styles and the tests.
 
 ## Shop and website stock: barcodes, receiving and the counter
 
@@ -157,19 +170,23 @@ See [Visual Refinement Audit](docs/DESIGN-REFINEMENT.md). CI now uploads 390px a
 5. Legally reviewed policies, seller identity, genuine contact details and customer support.
 6. Audit logs, security monitoring, analytics with appropriate consent, backups and incident response.
 7. CDN cache correctness, real-user Core Web Vitals, realistic campaign-load tests and origin protection.
+8. Opening the store to search engines and registering it in Google Search Console: one switch, `SITE_INDEXABLE`,
+   for robots.txt, the robots meta tags and the sitemap together ([SEO.md](docs/SEO.md)).
 
 This repository intentionally avoids fictional production features.
 
 ## PostgreSQL + Fastify backend
 
 The same TypeScript monorepo now contains a [Fastify API](backend/README.md) backed by PostgreSQL,
-Drizzle ORM and optional Redis caching. Docker Compose starts PostgreSQL, Redis, Fastify and Next.js.
+Drizzle ORM and optional Redis caching. Docker Compose starts PostgreSQL, Redis, the Garage object storage for product
+photos (prepared by the one-shot `storage-init` service), Fastify and Next.js.
 Catalog, product pages, search suggestions and checkout use the API in Compose. Plain
 `npm run dev` keeps the existing demo storefront without a configured backend.
 
 ```sh
 cp .env.example .env
-# Replace every placeholder secret (e.g. `openssl rand -hex 32`); the API refuses the examples.
+# Replace every placeholder secret (e.g. `openssl rand -hex 32`); the API refuses the examples. The object storage
+# needs its four values in the formats .env.example describes.
 docker compose up --build -d
 curl -f http://127.0.0.1:4000/health/ready
 curl -f 'http://127.0.0.1:4000/v1/products?limit=12'

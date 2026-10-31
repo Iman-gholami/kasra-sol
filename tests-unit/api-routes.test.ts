@@ -10,8 +10,6 @@ import { GET as health } from '@/app/api/health/route';
 import { GET as mediaFile } from '@/app/api/media/[file]/route';
 import { POST as placeOrder } from '@/app/api/orders/route';
 import { GET as suggestions } from '@/app/api/search-suggestions/route';
-import sitemap from '@/app/sitemap';
-import robots from '@/app/robots';
 import { json, setEnv, stubFetch } from './helpers';
 
 const SITE = 'http://shop.test';
@@ -442,18 +440,3 @@ describe('GET /api/search-suggestions', () => {
   });
 });
 
-describe('sitemap and robots', () => {
-  it('lists the home page, the shop, every category and every product', t => {
-    setEnv(t, { NEXT_PUBLIC_SITE_URL: 'https://kasra.example/' });
-    const urls = sitemap().map(entry => entry.url);
-    assert.equal(urls[0], 'https://kasra.example');
-    assert.ok(urls.includes('https://kasra.example/shop'));
-    assert.ok(urls.includes('https://kasra.example/category/manto'));
-    assert.ok(urls.includes('https://kasra.example/product/tshirt-12'));
-    assert.equal(urls.length, 2 + 3 + 36);
-    assert.equal(new Set(urls).size, urls.length);
-  });
-  it('keeps the demo store out of search engines', () => {
-    assert.deepEqual(robots().rules, { userAgent: '*', disallow: '/' });
-  });
-});

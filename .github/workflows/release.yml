@@ -28,6 +28,8 @@ jobs:
     with:
       site-url: ${{ vars.PRODUCTION_SITE_URL }}
       publish: true
+      # Search engines stay out until the owner sets the repository variable SITE_INDEXABLE to true (docs/SEO.md).
+      indexable: ${{ vars.SITE_INDEXABLE == 'true' }}
 
   deploy:
     name: Deploy to production
@@ -58,10 +60,17 @@ jobs:
         with:
           name: release-${{ github.sha }}
           path: bundle
-      - name: Find the database and cache images the server does not have yet
+      - name: Find the database, cache and object storage images the server does not have yet
         id: infra
         run: |
           missing=$(python3 deploy/server/gate-client.py infra-missing "$GITHUB_WORKSPACE" | tr '\n' ' ')
+          # A gate installed before the object storage checks only the PostgreSQL and Redis images (deploy.sh updates
+          # it). Ask about an image no server has: a gate that does not report it cannot see the storage image either.
+          mkdir -p "$GITHUB_WORKSPACE/gate-probe/deploy"
+          printf 'services:\n  probe:\n    image: dxflrs/garage:no-such-release\n' > "$GITHUB_WORKSPACE/gate-probe/deploy/compose.production.yaml"
+          if [ -z "$(python3 deploy/server/gate-client.py infra-missing "$GITHUB_WORKSPACE/gate-probe")" ]; then
+            missing="$missing(the server's gate predates the object storage)"
+          fi
           echo "Missing on the server: ${missing:-none}"
           echo "missing=$missing" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4

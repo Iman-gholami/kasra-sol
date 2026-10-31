@@ -86,7 +86,7 @@ test('shop by color avoids horizontal overflow in six responsive widths',async (
       };
     });
     expect(d.doc).toBeLessThanOrEqual(width+1);
-    expect(d.columns).toBe(width<=820?2:4);
+    expect(d.columns).toBe(2);
     if(width<=430)expect(d.scroll).toBeGreaterThan(d.client);
   }
 });

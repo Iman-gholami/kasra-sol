@@ -1,10 +1,11 @@
 // Storefront-facing routes, run with Fastify's inject() against an in-memory database stand-in.
 import { before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
+import sharp from 'sharp';
 import { database, queries, type Query } from './support/fake-db';
 import { tehranDate } from '../src/admin/calendar';
 
@@ -12,6 +13,7 @@ process.env.ORDER_TOKEN_SECRET ??= 'unit-test-order-token-secret-0123456789abcde
 const { orderRoutes } = await import('../src/orders');
 const { analyticsRoutes } = await import('../src/analytics');
 const { mediaRoutes } = await import('../src/admin/media');
+const { MediaStore } = await import('../src/admin/media-store');
 
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -30,7 +32,8 @@ before(async () => {
   app = Fastify({ trustProxy: true });
   await app.register(orderRoutes, {});
   await app.register(analyticsRoutes);
-  await app.register(async scope => mediaRoutes(scope, async (_req, reply) => { await reply.code(401).send(); return null; }));
+  await app.register(async scope => mediaRoutes(scope, async (_req, reply) => { await reply.code(401).send(); return null; },
+    new MediaStore(null, mediaDir)));
   await app.ready();
 });
 
@@ -142,5 +145,66 @@ describe('uploaded images', () => {
     const response = await app.inject({ method: 'POST', url: '/v1/admin/media', payload: Buffer.alloc(32),
       headers: { 'content-type': 'image/png' } });
     assert.equal(response.statusCode, 401);
+  });
+
+  describe('as a member of staff allowed to edit products', () => {
+    let staff: FastifyInstance;
+    before(async () => {
+      staff = Fastify();
+      await staff.register(async scope => mediaRoutes(scope, async () => ({ id: 'staff-1' }), new MediaStore(null, mediaDir)));
+      await staff.ready();
+    });
+    const upload = (payload: Buffer, type: string) =>
+      staff.inject({ method: 'POST', url: '/v1/admin/media', payload, headers: { 'content-type': type } });
+
+    it('stores a JPEG share image next to each photo, for messenger link previews', async () => {
+      database(() => ({ rows: [] }));
+      const photo = await sharp({ create: { width: 900, height: 1200, channels: 3, background: '#c9b49a' } }).png().toBuffer();
+      const url: string = (await upload(photo, 'image/png')).json().url;
+      const share = await staff.inject({ method: 'GET', url: '/v1/media/' + url.split('/').pop()!.replace('.webp', '.jpg') });
+      assert.equal(share.statusCode, 200);
+      assert.equal(share.headers['content-type'], 'image/jpeg');
+      const meta = await sharp(share.rawPayload).metadata();
+      assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 1200, 630]);
+    });
+
+    it('makes the share image of a photo uploaded before share images existed when it is first asked for', async () => {
+      const id = '2b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e';
+      await writeFile(join(mediaDir, id + '.webp'), await sharp({ create: { width: 600, height: 800, channels: 3,
+        background: '#445566' } }).webp().toBuffer());
+      const first = await staff.inject({ method: 'GET', url: '/v1/media/' + id + '.jpg' });
+      assert.equal(first.statusCode, 200);
+      assert.equal(first.headers['content-type'], 'image/jpeg');
+      assert.deepEqual(await readFile(join(mediaDir, id + '.jpg')), first.rawPayload, 'stored for the next request');
+      assert.equal((await staff.inject({ method: 'GET', url: '/v1/media/3b6f3c7e-1d2a-4b5c-8d9e-0f1a2b3c4d5e.jpg' })).statusCode, 404);
+    });
+
+    it('stores a photo re-encoded as a phone-sized WebP and audits both sizes', async () => {
+      database(() => ({ rows: [] }));
+      const photo = await sharp({ create: { width: 2400, height: 3200, channels: 3, background: '#c9b49a',
+        noise: { type: 'gaussian', mean: 128, sigma: 5 } } }).jpeg({ quality: 85 }).toBuffer();
+      assert.ok(photo.length < 2 * 1024 * 1024, 'under the upload limit');
+      const response = await upload(photo, 'image/jpeg');
+      assert.equal(response.statusCode, 201);
+      const url: string = response.json().url;
+      assert.match(url, /^\/api\/media\/[0-9a-f-]{36}\.webp$/);
+      const served = await staff.inject({ method: 'GET', url: '/v1/media/' + url.split('/').pop() });
+      assert.equal(served.headers['content-type'], 'image/webp');
+      const meta = await sharp(served.rawPayload).metadata();
+      assert.deepEqual([meta.format, meta.width, meta.height], ['webp', 1200, 1600]);
+      assert.ok(served.rawPayload.length < photo.length);
+      const audit = queries.find(query => query.text.includes('audit'));
+      assert.ok(audit, 'the upload is audited');
+      assert.match(JSON.stringify(audit.values), /storedBytes/);
+    });
+
+    it('refuses a file whose bytes are not the image its type claims', async () => {
+      database(() => ({ rows: [] }));
+      const png = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#000000' } }).png().toBuffer();
+      assert.equal((await upload(png, 'image/jpeg')).statusCode, 415);
+      const broken = Buffer.concat([Buffer.from([255, 216, 255, 224]), Buffer.alloc(64, 7)]);
+      assert.equal((await upload(broken, 'image/jpeg')).statusCode, 415);
+      assert.equal(queries.length, 0, 'nothing is stored or audited');
+    });
   });
 });

@@ -53,6 +53,25 @@ jobs:
             sleep 2
           done
           BASE_URL=http://127.0.0.1:3100 OUTPUT_FILE=artifacts/screenshots/lab-metrics-v4.json node scripts/measure-lab.cjs
+      # robots.txt, every page's robots meta tag and the sitemap follow one build-time switch (src/lib/seo.ts). Prerendered
+      # pages and pages rendered per request once disagreed, so both builds are checked against a running server.
+      - name: Search engines are kept out of a normal build
+        run: node scripts/check-indexing.mjs http://127.0.0.1:3100 closed
+      - name: Search engines are let in by a launch build
+        env:
+          NEXT_PUBLIC_SITE_INDEXABLE: "true"
+          NEXT_PUBLIC_SITE_URL: https://kasraboutique.ir
+        run: |
+          npm run build
+          cp -R .next/static .next/standalone/.next/
+          cp -R public .next/standalone/
+          # Started without the build's variables: the switch must come from the build, not the server's environment.
+          env -u NEXT_PUBLIC_SITE_INDEXABLE -u NEXT_PUBLIC_SITE_URL PORT=3101 HOSTNAME=127.0.0.1 node .next/standalone/server.js > /tmp/kasra-launch.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3101/api/health > /dev/null; then break; fi
+            sleep 2
+          done
+          node scripts/check-indexing.mjs http://127.0.0.1:3101 open https://kasraboutique.ir
       - name: Upload visual review screenshots
         if: always()
         uses: actions/upload-artifact@v4

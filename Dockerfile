@@ -14,8 +14,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ARG NEXT_PUBLIC_BACKEND_ENABLED=false
+# Search engines stay out (robots.txt, noindex) unless the release is built with "true" (src/lib/seo.ts).
+ARG NEXT_PUBLIC_SITE_INDEXABLE=false
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_BACKEND_ENABLED=$NEXT_PUBLIC_BACKEND_ENABLED
+ENV NEXT_PUBLIC_SITE_INDEXABLE=$NEXT_PUBLIC_SITE_INDEXABLE
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

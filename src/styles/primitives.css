@@ -100,10 +100,10 @@
 /* ---------- Collection circles (`components/home/collection-circles.tsx`) ----------
    Story-style: a studio portrait inside a Kasra-red ring, the name below. Under the home cover and on the empty
    search page. */
-.collection-circles { display: flex; justify-content: center; gap: clamp(20px, 6vw, 72px); margin: 0; padding: 0; list-style: none; }
+.collection-circles { display: flex; justify-content: center; gap: clamp(20px, 6cqi, 72px); margin: 0; padding: 0; list-style: none; }
 .collection-circles a { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); font-size: var(--text-md); font-weight: var(--font-weight-semibold); }
 .collection-circle {
-  display: block; inline-size: clamp(88px, 24vw, 132px); aspect-ratio: 1; padding: 3px; border: 1.5px solid var(--color-accent); border-radius: 50%;
+  display: block; inline-size: clamp(88px, 24cqi, 132px); aspect-ratio: 1; padding: 3px; border: 1.5px solid var(--color-accent); border-radius: 50%;
   transition: border-color var(--duration-fast) var(--ease-standard);
 }
 .collection-circle > span { position: relative; display: block; block-size: 100%; overflow: hidden; border-radius: 50%; background: var(--color-studio); }
@@ -152,7 +152,7 @@ select.control {
   --sheet-drag-x: 0px; --sheet-drag-y: 0px;
   position: fixed; margin: 0; padding: 0; border: 0; color: var(--color-text);
   background: var(--color-surface); box-shadow: var(--shadow-3);
-  max-inline-size: 100vw; max-block-size: 100dvh; overflow: hidden; overscroll-behavior: contain;
+  max-inline-size: 100cqi; max-block-size: 100dvh; overflow: hidden; overscroll-behavior: contain;
   opacity: 1; transform: translate3d(var(--sheet-drag-x), var(--sheet-drag-y), 0);
   transition: transform var(--duration-base) var(--ease-exit), opacity var(--duration-base) var(--ease-exit),
     overlay var(--duration-base) allow-discrete, display var(--duration-base) allow-discrete;
@@ -191,7 +191,7 @@ select.control {
 .sheet-bottom .sheet-header > .sheet-handle { flex: 0 0 100%; }
 
 .sheet-center {
-  inset: 0; margin: auto; inline-size: min(100% - 32px, 620px); max-block-size: min(88dvh, 820px);
+  inset: 0; margin: auto; inline-size: min(100cqi - 32px, 620px); max-block-size: min(88dvh, 820px);
   border-radius: var(--radius-lg);
 }
 .sheet-center:not([open]), .sheet-dropdown:not([open]) { opacity: 0; transform: translateY(8px) scale(0.98); }
@@ -199,27 +199,27 @@ select.control {
   .sheet-center[open], .sheet-dropdown[open] { opacity: 0; transform: translateY(8px) scale(0.98); }
 }
 .sheet-bottom {
-  inset: auto 0 0 0; margin-inline: auto; inline-size: 100%; max-inline-size: 720px; max-block-size: 92dvh;
+  inset: auto 0 0 0; margin-inline: auto; inline-size: 100%; max-inline-size: min(720px, 100cqi); max-block-size: 92dvh;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .sheet-bottom .sheet-handle { display: block; }
 .sheet-bottom:not([open]) { transform: translateY(100%); }
 @starting-style { .sheet-bottom[open] { transform: translateY(100%); } }
-.sheet-start, .sheet-end { inset-block: 0; block-size: 100dvh; inline-size: min(380px, 88vw); max-block-size: 100dvh; }
-.sheet-start { inset-inline-start: 0; inset-inline-end: auto; }
-.sheet-end { inset-inline-end: 0; inset-inline-start: auto; }
+.sheet-start, .sheet-end { inset-block: 0; block-size: 100dvh; inline-size: min(380px, 88cqi); max-block-size: 100dvh; }
+.sheet-start { inset-inline-start: var(--app-edge); inset-inline-end: auto; }
+.sheet-end { inset-inline-end: var(--app-edge); inset-inline-start: auto; }
 .sheet-start:not([open]) { transform: translateX(calc(100% * var(--inline-sign))); }
 .sheet-end:not([open]) { transform: translateX(calc(-100% * var(--inline-sign))); }
 @starting-style {
   .sheet-start[open] { transform: translateX(calc(100% * var(--inline-sign))); }
   .sheet-end[open] { transform: translateX(calc(-100% * var(--inline-sign))); }
 }
-.sheet-full { inset: 0; inline-size: 100vw; block-size: 100dvh; max-block-size: 100dvh; box-shadow: none; }
+.sheet-full { inset: 0; margin-inline: auto; inline-size: 100cqi; block-size: 100dvh; max-block-size: 100dvh; box-shadow: none; }
 .sheet-full:not([open]) { opacity: 0; transform: translateY(12px); }
 @starting-style { .sheet-full[open] { opacity: 0; transform: translateY(12px); } }
 .sheet-dropdown {
   inset-block-start: var(--anchor-top, 96px); inset-inline: 0; margin-inline: auto;
-  inline-size: min(100% - 2 * var(--gutter), 780px); max-block-size: min(100dvh - var(--anchor-top, 96px) - 24px, 760px);
+  inline-size: min(100cqi - 2 * var(--gutter), 780px); max-block-size: min(100dvh - var(--anchor-top, 96px) - 24px, 760px);
   border-radius: var(--radius-lg); border: 1px solid var(--color-border);
 }
 .sheet-dropdown::backdrop { background: rgb(28 24 21 / 0.28); }
@@ -227,6 +227,7 @@ select.control {
 /* ---------- Toast ---------- */
 .toast-region {
   position: fixed; z-index: var(--z-toast); inset-inline: 0; inset-block-end: calc(var(--space-5) + max(var(--bottom-bar-space, 0px), var(--safe-bottom)));
+  max-inline-size: 100cqi; margin-inline: auto;
   display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding-inline: var(--space-4);
   pointer-events: none;
 }
@@ -315,7 +316,7 @@ select.control {
 .empty-state p { margin: 0; max-inline-size: 44ch; color: var(--color-text-muted); }
 .empty-actions, .discovery-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-block-start: var(--space-2); }
 
-@media (max-width: 600px) {
+@container kasra (max-width: 600px) {
   .sheet-header { padding: var(--space-3) var(--space-4); }
   .sheet-body { padding: var(--space-4); }
   .sheet-footer { padding-inline: var(--space-4); }

@@ -9,6 +9,7 @@ import { HeroSlider } from '@/components/home/hero-slider';
 import { CollectionCircles } from '@/components/home/collection-circles';
 import { WeekLooks } from '@/components/home/week-looks';
 import { getShopByColorResults } from '@/lib/shop-by-color';
+import { HOME_SHARE, pageMetadata } from '@/lib/seo';
 import type { Product } from '@/types/store';
 
 // The cover figure takes about three quarters of the studio room on phones and a third of the page on wide screens.
@@ -23,6 +24,7 @@ function coverSlides(picked: Product[], newest: Product[]) {
   return slides.length ? slides : newest.slice(0, 3);
 }
 
+export const metadata = pageMetadata({ path: '/', ...HOME_SHARE });
 export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const demoPrefetch = process.env.BACKEND_INTERNAL_URL ? undefined : true;
