@@ -13,6 +13,7 @@ import { analyticsRoutes } from './analytics';
 import { DomainError } from './pricing';
 import { normalizeSearch } from './search';
 import { assertProductionDatabaseUrl, isUsableSecret, requireSecret, trustProxySetting } from './config';
+import { postgresShopinoCatalog, shopinoCatalogRoutes } from './shopino-catalog';
 import { categories } from '../../src/data/facets';
 
 // Receipt tokens are HMACs of this secret; refuse to start rather than fail (or sign with a public value) later.
@@ -142,6 +143,9 @@ await app.register(orderRoutes, {
   }
 });
 await app.register(analyticsRoutes);
+await app.register(shopinoCatalogRoutes, {
+  store: postgresShopinoCatalog(pool), siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? ''
+});
 await app.register(adminRoutes, {
   invalidateCatalog: async () => {
     if (redis?.status === 'ready') await redis.incr('kasra:catalog:revision').catch(() => {});
