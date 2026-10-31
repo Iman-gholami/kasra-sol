@@ -1,8 +1,9 @@
-# Shopino marketplace: catalog foundation (draft)
+# Shopino marketplace: catalog and tracking foundation (draft)
 
 This is **not a complete Shopino integration** and is not the API document to upload to Shopino.
-Order intake and shipment tracking are not implemented. In particular, an inbound Shopino order must not
-be represented as paid until the marketplace's payment and verification contract is agreed.
+Order intake is not implemented, so no Shopino order can yet be imported or linked to a Kasra order.
+In particular, an inbound Shopino order must not be represented as paid until the marketplace's payment
+and verification contract is agreed.
 
 ## Catalog reads
 
@@ -24,12 +25,25 @@ The current product model does not associate images with a particular variant, s
 `images` and each variant has an empty `images` array. A removed and later re-added variant receives a new
 ID and must be refreshed by Shopino before ordering it.
 
+## Tracking lookup
+
+`POST /api/shopino/tracking` accepts `{ "order_ids": [12, 13] }` and returns codes in the same order,
+e.g. `{ "codes": ["POST123", null] }`. Unknown references and orders without a code return `null`.
+This is authenticated with `Authorization: Bearer <token>`; requests fail closed until a distinct
+64-character lowercase hexadecimal `SHOPINO_API_TOKEN` is set in the backend environment. Generate it with
+`openssl rand -hex 32` and share it with Shopino through a secure channel, never in the repository or URL.
+
+Migration `011_shopino_order_links` additively maps each marketplace order to a numeric Kasra reference and
+stores its tracking code. A staff member with `orders:fulfill` can edit the code in a linked order's detail;
+the action is audited, and does not assert or change payment state. **The table stays empty until order intake
+is implemented**, so this endpoint alone cannot yet complete the Shopino workflow.
+
 ## Required before a complete integration
 
 1. Confirm whether Shopino sends an order only after a successful payment, how that payment can be verified,
    and how cancellation, returns and repeated notifications are communicated.
 2. Agree with Shopino on the authentication scheme for order and tracking requests and the retry/error contract.
-3. Implement authenticated, idempotent order intake, inventory handling and numeric Shopino order references
-   without treating unverified payments as paid. Add tracking-code storage and an authenticated lookup.
+3. Implement authenticated, idempotent order intake and inventory handling, linking each order to a numeric
+   reference without treating unverified payments as paid.
 4. Test the complete flow against Shopino and create the final API document containing the actual public URLs
    and authentication instructions; give credentials to Shopino through an appropriate secure channel.

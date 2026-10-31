@@ -108,8 +108,10 @@ export async function orderAdminRoutes(app: FastifyInstance, check: Guard,
     const id = z.string().uuid().safeParse((req.params as { id: string }).id);
     if (!id.success) return reply.code(404).send({ error: 'not_found' });
     const found = await pool.query(
-      'SELECT id,status,payment,payment_status AS "paymentStatus",shipping,code,subtotal,discount,' +
-      'shipping_cost AS "shippingCost",total,address,created_at AS "createdAt" FROM orders WHERE id=$1', [id.data]);
+      'SELECT o.id,o.status,o.payment,o.payment_status AS "paymentStatus",o.shipping,o.code,o.subtotal,o.discount,' +
+      'o.shipping_cost AS "shippingCost",o.total,o.address,o.created_at AS "createdAt",' +
+      "(SELECT jsonb_build_object('reference',s.id,'trackingCode',s.tracking_code) " +
+      'FROM shopino_order_links s WHERE s.order_id=o.id) AS shopino FROM orders o WHERE o.id=$1', [id.data]);
     const order = found.rows[0];
     if (!order) return reply.code(404).send({ error: 'not_found' });
     const [items, history] = await Promise.all([
@@ -125,6 +127,28 @@ export async function orderAdminRoutes(app: FastifyInstance, check: Guard,
     return reply.header('Cache-Control', 'no-store').send({
       item: { ...order, items: items.rows, history: history.rows, nextStatuses: nextStatuses(order.payment, order.status) }
     });
+  });
+
+  // Tracking is an operator-entered shipping identifier, not evidence that an order was paid.
+  app.patch('/v1/admin/orders/:id/tracking', async (req, reply) => {
+    const actor = await check(req, reply, 'orders:fulfill');
+    if (!actor) return;
+    const id = z.string().uuid().safeParse((req.params as { id: string }).id);
+    const input = z.object({ trackingCode: z.string().trim().max(128)
+      .refine(value => !/[\u0000-\u001f\u007f]/.test(value)).nullable() }).strict().safeParse(req.body);
+    if (!id.success || !input.success) return reply.code(400).send({ error: 'invalid_payload' });
+    const trackingCode = input.data.trackingCode || null;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const updated = await client.query(
+        'UPDATE shopino_order_links SET tracking_code=$1,updated_at=now() WHERE order_id=$2 RETURNING id',
+        [trackingCode, id.data]);
+      if (!updated.rowCount) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'not_found' }); }
+      await recordAudit(client, actor.id, 'orders.tracking', id.data, { hasTrackingCode: Boolean(trackingCode) });
+      await client.query('COMMIT');
+      return reply.header('Cache-Control', 'no-store').send({ ok: true, trackingCode });
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   });
 
   app.patch('/v1/admin/orders/:id/status', async (req, reply) => {

@@ -163,6 +163,35 @@ test('an online order stays unpaid: it can be cancelled but never prepared or sh
   await expect(detail.getByRole('status').filter({ hasText: 'لغوشده' })).toBeVisible();
 });
 
+test('a Shopino order shows and saves its tracking code on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, accounts().owner);
+  await openTab(page, 'سفارش‌ها');
+  await page.getByLabel('فیلتر وضعیت سفارش').selectOption('all');
+  await page.route(/\/api\/admin\/orders\/[a-f0-9-]{36}$/, async route => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.item.shopino = { reference: 42, trackingCode: null };
+    await route.fulfill({ response, json: body });
+  });
+  let sent = '';
+  await page.route(/\/api\/admin\/orders\/[a-f0-9-]{36}\/tracking$/, async route => {
+    sent = route.request().postDataJSON().trackingCode;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, trackingCode: sent }) });
+  });
+  await page.getByRole('button', { name: /جزئیات سفارش/ }).first().click();
+  const detail = page.getByTestId('order-detail');
+  await expect(detail.getByRole('heading', { name: 'کد رهگیری سفارش شاپینو' })).toBeVisible();
+  await expect(detail.getByText('ثبت کد، تأیید پرداخت نیست.', { exact: false })).toBeVisible();
+  await detail.getByLabel('کد رهگیری مرسوله').fill('۱۲۳۴۵');
+  await detail.getByRole('button', { name: 'ذخیره کد رهگیری' }).click();
+  await expect(detail.getByRole('status').filter({ hasText: 'کد رهگیری ذخیره شد' })).toBeVisible();
+  await expect(detail.getByLabel('کد رهگیری مرسوله')).toHaveValue('12345');
+  expect(sent).toBe('12345');
+  expect(await overflowing(page)).toEqual([]);
+  expect(await accessibilityViolations(page, '[data-testid="order-detail"]')).toEqual([]);
+});
+
 test('staff: least privilege in the menu and on every API call', async ({ page }) => {
   await signIn(page, accounts().staff);
   const nav = page.getByRole('navigation', { name: 'بخش‌های مدیریت' });

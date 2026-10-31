@@ -36,6 +36,7 @@ const ENDPOINTS: [method: string, route: string, permission: Permission][] = [
   ['GET', '/v1/admin/orders/export', 'orders:export'],
   ['GET', '/v1/admin/orders/:id', 'orders:read'],
   ['PATCH', '/v1/admin/orders/:id/status', 'orders:fulfill'],
+  ['PATCH', '/v1/admin/orders/:id/tracking', 'orders:fulfill'],
   ['POST', '/v1/admin/media', 'products:write'],
   ['GET', '/v1/admin/reports/overview', 'reports:read'],
   ['GET', '/v1/admin/reports/traffic', 'reports:read'],

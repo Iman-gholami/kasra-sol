@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { NextRequest } from 'next/server';
 import { GET as list } from '@/app/api/shopino/products/route';
 import { GET as detail } from '@/app/api/shopino/products/[id]/route';
+import { POST as tracking } from '@/app/api/shopino/tracking/route';
 import { json, setEnv, stubFetch } from './helpers';
 
 describe('Shopino catalog proxy', () => {
@@ -34,5 +35,30 @@ describe('Shopino catalog proxy', () => {
   it('returns a service error when the backend is not configured', async t => {
     setEnv(t, { BACKEND_INTERNAL_URL: undefined });
     assert.equal((await list(new NextRequest('https://shop.test/api/shopino/products'))).status, 503);
+  });
+
+  it('forwards authenticated server-to-server tracking requests and preserves the result', async t => {
+    setEnv(t, { BACKEND_INTERNAL_URL: 'http://api.test' });
+    const calls = stubFetch(t, () => json({ codes: [null, 'POST123'] }));
+    const response = await tracking(new NextRequest('https://shop.test/api/shopino/tracking', {
+      method: 'POST', headers: { authorization: 'Bearer ' + 'a'.repeat(64), 'content-type': 'application/json' },
+      body: JSON.stringify({ order_ids: [1, 2] })
+    }));
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { codes: [null, 'POST123'] });
+    assert.equal(calls[0].url, 'http://api.test/v1/shopino/tracking');
+    assert.equal(calls[0].init.headers!.Authorization, 'Bearer ' + 'a'.repeat(64));
+    assert.equal(calls[0].init.body, '{"order_ids":[1,2]}');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+  });
+
+  it('rejects oversized tracking requests without contacting the backend', async t => {
+    setEnv(t, { BACKEND_INTERNAL_URL: 'http://api.test' });
+    const calls = stubFetch(t, () => json({}));
+    const response = await tracking(new NextRequest('https://shop.test/api/shopino/tracking', {
+      method: 'POST', body: 'x'.repeat(32_769)
+    }));
+    assert.equal(response.status, 413);
+    assert.equal(calls.length, 0);
   });
 });

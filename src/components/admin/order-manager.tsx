@@ -5,7 +5,7 @@ import { ArrowRight, ClipboardList, Download, Phone, Printer, RefreshCw, Search 
 import { adminApi, AdminApiError, adminDownload, errorMessage } from '@/components/admin/admin-api';
 import {
   formatDateTime, formatNumber, formatToman, ORDER_STATUS, PAYMENT_METHOD, paymentState, SHIPPING_METHOD,
-  statusLabel, statusTone, TRANSITION_ACTIONS
+  statusLabel, statusTone, toLatinDigits, TRANSITION_ACTIONS
 } from '@/components/admin/labels';
 import { Badge, Loading, Notice, Pager } from '@/components/admin/ui';
 
@@ -21,6 +21,7 @@ type OrderDetail = {
   items: { productId: string; name: string; colorId: string; colorName: string | null; size: string;
     quantity: number; unitPrice: number; productActive: boolean | null }[];
   history: { from: string | null; to: string; note: string | null; createdAt: string; actor: string | null }[];
+  shopino: { reference: number; trackingCode: string | null } | null;
   nextStatuses: string[];
 };
 const FILTERS = [['open', 'سفارش‌های باز'], ['all', 'همه سفارش‌ها'],
@@ -36,6 +37,41 @@ function confirmText(order: { payment: string }, next: string) {
     ? 'این سفارش لغو شود؟\nموجودی اقلام آن به انبار برمی‌گردد و این کار قابل بازگشت نیست.'
     : 'سفارش پرداخت‌نشده لغو شود؟ این کار قابل بازگشت نیست.';
   return TRANSITION_ACTIONS[next] + ' برای این سفارش ثبت شود؟';
+}
+
+function ShopinoTracking({ orderId, trackingCode, canFulfill }: {
+  orderId: string; trackingCode: string | null; canFulfill: boolean;
+}) {
+  const [value, setValue] = useState(trackingCode ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true); setError(''); setSaved(false);
+    try {
+      const result = await adminApi<{ trackingCode: string | null }>('orders/' + orderId + '/tracking', {
+        method: 'PATCH', body: { trackingCode: toLatinDigits(value).trim() || null }
+      });
+      setValue(result.trackingCode ?? '');
+      setSaved(true);
+    } catch (cause) { setError(errorMessage(cause)); } finally { setSaving(false); }
+  }
+  return <section className="admin-subcard admin-no-print" aria-labelledby="shopino-tracking-title">
+    <h3 id="shopino-tracking-title">کد رهگیری سفارش شاپینو</h3>
+    <p className="admin-sub">پس از ثبت، شاپینو می‌تواند کد را دریافت کند. ثبت کد، تأیید پرداخت نیست.</p>
+    {canFulfill ? <form onSubmit={submit} noValidate className="admin-stack">
+      <label className="admin-field">کد رهگیری مرسوله
+        <input value={value} onChange={event => { setValue(event.target.value); setSaved(false); }}
+          dir="ltr" maxLength={128} autoComplete="off" spellCheck={false}/>
+      </label>
+      <div><button type="submit" disabled={saving} aria-busy={saving} className="admin-btn admin-btn-outline">
+        ذخیره کد رهگیری</button></div>
+    </form> : <p><bdi dir="ltr">{value || 'هنوز ثبت نشده است'}</bdi></p>}
+    {error && <Notice tone="error">{error}</Notice>}
+    {saved && <Notice tone="success">کد رهگیری ذخیره شد.</Notice>}
+  </section>;
 }
 
 function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: boolean; onBack: () => void }) {
@@ -158,6 +194,8 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
             </li>)}
           </ol>
         </section>
+        {order.shopino && <ShopinoTracking orderId={order.id} trackingCode={order.shopino.trackingCode}
+          canFulfill={canFulfill}/>}
         {canFulfill && order.nextStatuses.length > 0 && <section aria-labelledby="actions-title" className="admin-subcard admin-no-print">
           <h3 id="actions-title">اقدام بعدی</h3>
           <label className="admin-field">یادداشت داخلی (اختیاری، مثلاً دلیل لغو یا کد رهگیری)
