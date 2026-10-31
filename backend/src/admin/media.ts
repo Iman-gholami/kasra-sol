@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Permission } from './permissions';
 import { detectImage, MAX_IMAGE_BYTES } from './image-type';
+import { compressUpload } from './image-compress';
 import { pool } from '../db/connection';
 import { recordAudit } from './audit';
 
@@ -29,12 +30,17 @@ export async function mediaRoutes(app: FastifyInstance, check:
     const extension = detectImage(body);
     if (!extension || req.headers['content-type'] !== mime[extension])
       return reply.code(415).send({ error: 'invalid_image' });
-    const filename = randomUUID() + '.' + extension;
+    // Stored resized and re-encoded: the storefront serves this file as it is (no image optimizer in front of it).
+    let stored: Buffer;
+    try { stored = await compressUpload(body); }
+    catch { return reply.code(415).send({ error: 'invalid_image' }); }
+    const filename = randomUUID() + '.webp';
     await mkdir(directory(), { recursive: true });
     const fd = await open(join(directory(), filename), 'wx', 0o600);
-    try { await fd.writeFile(body); } finally { await fd.close(); }
+    try { await fd.writeFile(stored); } finally { await fd.close(); }
     app.log.info({ actor: actor.id, filename }, 'Product image uploaded');
-    await recordAudit(pool, actor.id, 'media.uploaded', filename, { bytes: body.length, type: extension });
+    await recordAudit(pool, actor.id, 'media.uploaded', filename,
+      { bytes: body.length, storedBytes: stored.length, type: extension });
     return reply.code(201).header('Cache-Control', 'no-store')
       .send({ url: '/api/media/' + filename });
   });

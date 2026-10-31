@@ -5,6 +5,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
+import sharp from 'sharp';
 import { database, queries, type Query } from './support/fake-db';
 import { tehranDate } from '../src/admin/calendar';
 
@@ -142,5 +143,44 @@ describe('uploaded images', () => {
     const response = await app.inject({ method: 'POST', url: '/v1/admin/media', payload: Buffer.alloc(32),
       headers: { 'content-type': 'image/png' } });
     assert.equal(response.statusCode, 401);
+  });
+
+  describe('as a member of staff allowed to edit products', () => {
+    let staff: FastifyInstance;
+    before(async () => {
+      staff = Fastify();
+      await staff.register(async scope => mediaRoutes(scope, async () => ({ id: 'staff-1' })));
+      await staff.ready();
+    });
+    const upload = (payload: Buffer, type: string) =>
+      staff.inject({ method: 'POST', url: '/v1/admin/media', payload, headers: { 'content-type': type } });
+
+    it('stores a photo re-encoded as a phone-sized WebP and audits both sizes', async () => {
+      database(() => ({ rows: [] }));
+      const photo = await sharp({ create: { width: 2400, height: 3200, channels: 3, background: '#c9b49a',
+        noise: { type: 'gaussian', mean: 128, sigma: 5 } } }).jpeg({ quality: 85 }).toBuffer();
+      assert.ok(photo.length < 2 * 1024 * 1024, 'under the upload limit');
+      const response = await upload(photo, 'image/jpeg');
+      assert.equal(response.statusCode, 201);
+      const url: string = response.json().url;
+      assert.match(url, /^\/api\/media\/[0-9a-f-]{36}\.webp$/);
+      const served = await staff.inject({ method: 'GET', url: '/v1/media/' + url.split('/').pop() });
+      assert.equal(served.headers['content-type'], 'image/webp');
+      const meta = await sharp(served.rawPayload).metadata();
+      assert.deepEqual([meta.format, meta.width, meta.height], ['webp', 1200, 1600]);
+      assert.ok(served.rawPayload.length < photo.length);
+      const audit = queries.find(query => query.text.includes('audit'));
+      assert.ok(audit, 'the upload is audited');
+      assert.match(JSON.stringify(audit.values), /storedBytes/);
+    });
+
+    it('refuses a file whose bytes are not the image its type claims', async () => {
+      database(() => ({ rows: [] }));
+      const png = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#000000' } }).png().toBuffer();
+      assert.equal((await upload(png, 'image/jpeg')).statusCode, 415);
+      const broken = Buffer.concat([Buffer.from([255, 216, 255, 224]), Buffer.alloc(64, 7)]);
+      assert.equal((await upload(broken, 'image/jpeg')).statusCode, 415);
+      assert.equal(queries.length, 0, 'nothing is stored or audited');
+    });
   });
 });

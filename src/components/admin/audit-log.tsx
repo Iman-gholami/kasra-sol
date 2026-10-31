@@ -55,7 +55,8 @@ function summary(entry: Entry): string {
       (typeof d.reason === 'string' ? ' · ' + d.reason : '');
     case 'products.home_slider': return Array.isArray(d.to)
       ? (d.to.length ? num(d.to.length) + ' محصول به ترتیب انتخاب‌شده' : 'خالی؛ محصولات تخفیف‌دار نمایش داده می‌شوند') : '';
-    case 'media.uploaded': return typeof d.bytes === 'number' ? formatNumber(Math.ceil(d.bytes / 1024)) + ' کیلوبایت' : '';
+    case 'media.uploaded': return typeof d.bytes === 'number' ? formatNumber(Math.ceil(d.bytes / 1024)) + ' کیلوبایت' +
+      (typeof d.storedBytes === 'number' ? '، فشرده‌شده به ' + formatNumber(Math.ceil(d.storedBytes / 1024)) + ' کیلوبایت' : '') : '';
     case 'auth.login': case 'auth.login_failed': case 'auth.login_locked':
       return typeof d.ip === 'string' ? 'IP: ' + d.ip : '';
     default: return '';

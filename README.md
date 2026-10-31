@@ -91,7 +91,13 @@ To connect a backend, replace `queryProducts` and product lookup methods with ty
 
 ## Data / assets
 
-`src/data/products.ts` defines 12 products per category, each with multiple colors and per-size stock. **Six photorealistic AI-generated model images**, optimized to AVIF and stored locally under `public/images/lookbook/`, are intentionally **reused across the 36 mock products** to evaluate the visual design of the storefront. These images do **not** represent actual inventory or faithfully depict the named clothes, sizes, available colors or variants. The previous SVG illustrations remain in the repository for reference but are no longer used in product displays. Before production, replace this demo mapping with distinct, properly licensed authentic product photos, preferably on an image CDN. Persian typography uses the official **Estedad 8.5 variable WOFF2** (100–900) bundled at `src/fonts/Estedad-VF.woff2`, loaded through `next/font/local` with `font-display: swap` and local font preloading. It is self-hosted at runtime and makes no font-CDN requests. The font's SIL OFL 1.1 license and source/version verification are at `src/fonts/OFL.txt` and `src/fonts/README.md`.
+`src/data/products.ts` defines 12 products per category, each with multiple colors and per-size stock. **Six photorealistic AI-generated model images**, optimized to AVIF and stored locally under `public/images/lookbook/`, are intentionally **reused across the 36 mock products** to evaluate the visual design of the storefront. These images do **not** represent actual inventory or faithfully depict the named clothes, sizes, available colors or variants. The previous SVG illustrations remain in the repository for reference but are no longer used in product displays. Before production, replace this demo mapping with distinct, properly licensed authentic product photos, preferably on an image CDN.
+
+Images are served as stored: `next/image` is kept for layout and lazy loading, but `images.unoptimized` in
+`next.config.ts` turns off the `/_next/image` resizer, which is slow and CPU-hungry outside Vercel. Nothing heavy reaches
+a phone because every image is compressed once, when it is stored: committed images must stay under 200 KB
+(`tests-unit/images.test.ts`), and the API re-encodes every upload to a WebP of at most 1200×1600 pixels and 350 KB,
+without camera metadata such as the GPS position (`backend/src/admin/image-compress.ts`). Persian typography uses the official **Estedad 8.5 variable WOFF2** (100–900) bundled at `src/fonts/Estedad-VF.woff2`, loaded through `next/font/local` with `font-display: swap` and local font preloading. It is self-hosted at runtime and makes no font-CDN requests. The font's SIL OFL 1.1 license and source/version verification are at `src/fonts/OFL.txt` and `src/fonts/README.md`.
 
 ## Local typography — Estedad 8.5
 
