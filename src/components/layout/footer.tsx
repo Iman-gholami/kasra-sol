@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { categories } from '@/data/facets';
 import { EnamadSeal, enamadEnabled } from '@/components/layout/enamad-seal';
+import { KasraWordmark } from '@/components/layout/kasra-wordmark';
 
 export function Footer() {
   return <footer className="footer">
     <div className="container footer-grid">
       <div className="footer-intro">
         <Link className="footer-wordmark" href="/">
-          <span dir="ltr">KASRA</span><small dir="ltr">BOUTIQUE</small>
+          <KasraWordmark/>
+          <span className="sr-only">کسری بوتیک، صفحه اصلی</span>
         </Link>
         <p>انتخاب‌هایی برای استایلِ خودت؛ ساده، راحت و با حال‌وهوای هر روز.</p>
         <p className="footer-demo">این وب‌سایت نسخه نمایشی است؛ کالاها، تصاویر، قیمت‌ها و موجودی‌ها آزمایشی‌اند.</p>

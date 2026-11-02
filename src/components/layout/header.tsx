@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { HeaderActions } from '@/components/layout/header-actions';
 import { MobileMenu } from '@/components/layout/mobile-menu';
 import { PrimaryNav } from '@/components/layout/primary-nav';
+import { KasraWordmark } from '@/components/layout/kasra-wordmark';
 
 /** Server shell; only the menu, primary nav state and the action icons hydrate.
  * Masthead layout: navigation at the inline start, the wordmark centred, actions at the end. The start group
@@ -21,8 +22,8 @@ export function Header() {
           <PrimaryNav />
         </div>
         <Link href="/" className="brand">
-          <span className="brand-monogram">K</span>
-          <span className="brand-type"><strong dir="ltr">KASRA</strong><small dir="ltr">BOUTIQUE</small></span>
+          <KasraWordmark className="brand-wordmark"/>
+          <span className="sr-only">کسری بوتیک، صفحه اصلی</span>
         </Link>
         <HeaderActions />
       </div>
