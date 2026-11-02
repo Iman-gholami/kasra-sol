@@ -38,6 +38,8 @@ export type CatalogFilters = {
   max?: number;
   inStock?: boolean;
   discounted?: boolean;
+  /** Models down to their last unit (stock across every colour and size adds up to one): `last=1`. */
+  lastPiece?: boolean;
   sort?: 'newest' | 'price-asc' | 'price-desc' | 'featured';
   page?: number;
 };

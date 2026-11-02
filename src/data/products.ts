@@ -54,6 +54,9 @@ const collections: {
   }
 ];
 
+/** Demo «آخرین دونه‌ها»: models down to their very last piece (one unit, in their second colour, size M). */
+const demoLastPieces = new Set(['shomiz-04', 'shomiz-07', 'manto-06', 'manto-11', 'tshirt-08']);
+
 export const products: Product[] = collections.flatMap((collection, categoryIndex) =>
   collection.names.map((name, i) => {
     const index = i + 1;
@@ -80,7 +83,8 @@ export const products: Product[] = collections.flatMap((collection, categoryInde
         sizes.map((size, sizeIndex) => ({
           colorId: color.id,
           size,
-          stock: (i + colorIndex + sizeIndex) % 7 === 0 ? 0 : 2 + (i + sizeIndex) % 8
+          stock: demoLastPieces.has(slug) ? Number(colorIndex === 1 && size === 'M')
+            : (i + colorIndex + sizeIndex) % 7 === 0 ? 0 : 2 + (i + sizeIndex) % 8
         }))
       ),
       material: collection.material,

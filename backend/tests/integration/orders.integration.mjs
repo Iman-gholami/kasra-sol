@@ -146,6 +146,22 @@ describe('server-authoritative totals', () => {
       await pool.query('UPDATE products SET compare_at=NULL WHERE id=$1', [PRODUCT]);
     }
   });
+  it('lists a model under last=1 only while its stock across every variant adds up to one', async () => {
+    try {
+      for (const [m, l, expected] of [[1, 0, true], [0, 1, true], [1, 1, false], [2, 0, false], [0, 0, false]]) {
+        await setStock('M', m);
+        await setStock('L', l);
+        // Distinct query strings avoid the optional catalog cache between fixtures.
+        const response = await fetch(base + '/v1/products?last=1&q=test&min=' + PRICE + '&max=' + PRICE +
+          '&limit=' + (40 + m * 3 + l), { headers: { 'X-Forwarded-For': nextClient() } });
+        assert.equal(response.status, 200);
+        assert.equal((await response.json()).items.some(item => item.id === PRODUCT), expected, `M=${m} L=${l}`);
+      }
+    } finally {
+      await setStock('M', 0);
+      await setStock('L', 0);
+    }
+  });
   it('ignores client-supplied prices and totals', async () => {
     await setStock('M', 5);
     const body = cod(2);

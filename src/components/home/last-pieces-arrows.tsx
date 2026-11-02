@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-/** Previous/next for the sale rail, for mouse users (CSS shows them only with a fine pointer that can hover; touch
+/** Previous/next for «آخرین دونه‌ها», for mouse users (CSS shows them only with a fine pointer that can hover; touch
  * screens swipe and keyboards tab through the cards). Each press moves by the cards that fit; a button is disabled
  * at its end. Both stay disabled (and hidden) until the rail has hydrated and measured itself: a button that cannot
  * act yet never looks pressable. They float over the photos, so appearing shifts nothing. */
-export function SaleRailArrows({ trackId }: { trackId: string }) {
+export function LastPiecesArrows({ trackId }: { trackId: string }) {
   const [edges, setEdges] = useState({ atStart: true, atEnd: true });
   // Where a smooth scroll is headed. A second press while it runs continues from there, so a quick double press moves
   // two pages (a new scroll would otherwise start from wherever the first one has got to). Forgotten once the rail has
@@ -37,7 +37,7 @@ export function SaleRailArrows({ trackId }: { trackId: string }) {
 
   function move(forward: boolean) {
     const track = document.getElementById(trackId);
-    const card = track?.querySelector<HTMLElement>('.sale-card'), list = track?.querySelector('.sale-rail-list');
+    const card = track?.querySelector<HTMLElement>('.last-card'), list = track?.querySelector('.last-pieces-list');
     if (!track || !card || !list) return;
     const step = card.offsetWidth + (parseFloat(getComputedStyle(list).columnGap) || 0);
     const distance = Math.max(1, Math.floor(track.clientWidth / step)) * step;
@@ -51,12 +51,12 @@ export function SaleRailArrows({ trackId }: { trackId: string }) {
     track.scrollTo({ left: to, behavior: reduced ? 'instant' : 'smooth' });
   }
 
-  return <div className="sale-rail-arrows">
-    <button type="button" className="sale-rail-arrow" aria-label="تخفیف‌های قبلی" aria-controls={trackId}
+  return <div className="last-pieces-arrows">
+    <button type="button" className="last-pieces-arrow" aria-label="دونه‌های قبلی" aria-controls={trackId}
       disabled={edges.atStart} onClick={() => move(false)}>
       <ChevronRight size={20} aria-hidden="true"/>
     </button>
-    <button type="button" className="sale-rail-arrow" aria-label="تخفیف‌های بعدی" aria-controls={trackId}
+    <button type="button" className="last-pieces-arrow" aria-label="دونه‌های بعدی" aria-controls={trackId}
       disabled={edges.atEnd} onClick={() => move(true)}>
       <ChevronLeft size={20} aria-hidden="true"/>
     </button>

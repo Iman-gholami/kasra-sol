@@ -13,11 +13,14 @@ it('reads numbers from the query string', () => {
 });
 it('rejects unknown categories and sorts, and out-of-range numbers', () => {
   for (const query of [{ category: 'shoes' }, { sort: 'random' }, { min: '-1' }, { max: '1.5' }, { page: '0' },
-    { page: '1001' }, { limit: '49' }, { limit: '0' }, { stock: 'yes' }, { sale: '2' }, { q: 'x'.repeat(101) },
+    { page: '1001' }, { limit: '49' }, { limit: '0' }, { stock: 'yes' }, { sale: '2' }, { last: 'yes' }, { q: 'x'.repeat(101) },
     { size: 'x'.repeat(21) }, { color: 'x'.repeat(81) }])
     assert.equal(filters.safeParse(query).success, false, JSON.stringify(query));
 });
 it('accepts every category and sort the storefront offers', () => {
   for (const category of ['shomiz', 'manto', 'tshirt']) assert.equal(filters.safeParse({ category }).success, true);
   for (const sort of ['newest', 'price-asc', 'price-desc', 'featured']) assert.equal(filters.safeParse({ sort }).success, true);
+});
+it('accepts the last-piece flag (last=1)', () => {
+  assert.deepEqual(filters.parse({ last: '1' }), { last: '1', sort: 'featured', page: 1, limit: 12 });
 });

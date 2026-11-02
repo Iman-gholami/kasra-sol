@@ -8,8 +8,8 @@ import { ShopByColor } from '@/components/home/shop-by-color';
 import { HeroSlider } from '@/components/home/hero-slider';
 import { CollectionCircles } from '@/components/home/collection-circles';
 import { WeekLooks } from '@/components/home/week-looks';
-import { SaleRail } from '@/components/home/sale-rail';
-import { getSaleRail } from '@/lib/sale-rail';
+import { LastPieces } from '@/components/home/last-pieces';
+import { getLastPieces } from '@/lib/last-pieces';
 import { getShopByColorResults } from '@/lib/shop-by-color';
 import { HOME_SHARE, pageMetadata } from '@/lib/seo';
 import type { Product } from '@/types/store';
@@ -43,7 +43,7 @@ export default async function HomePage() {
   const slides = heroProducts.map(({ id, slug, name, images, price, compareAt }) =>
     ({ id, slug, name, image: process.env.BACKEND_INTERNAL_URL ? images[0] : studioPhotos.cover, price, compareAt }));
   const colors = getShopByColorResults(products);
-  const sale = getSaleRail(products);
+  const lastPieces = getLastPieces(products);
 
   return <>
     <section className="hero container wide-editorial" aria-labelledby="hero-title">
@@ -69,7 +69,7 @@ export default async function HomePage() {
       <ProductGrid products={arrivals}/>
     </section>
 
-    {sale && <SaleRail rail={sale}/>}
+    {lastPieces && <LastPieces rail={lastPieces}/>}
 
     <ShopByColor options={colors}/>
 

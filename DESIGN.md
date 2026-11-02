@@ -161,16 +161,17 @@ the week of looks, new arrivals, shop by colour, the service links and the closi
   are rounded like the rooms. The day and outfit sit under each photo; each look opens `/shop` on its category and
   colour. Pointing at or focusing a look fades the other five models (only the models: a photo's gray is the strip's,
   so the strip stays whole). Phones and tablets scroll the strip sideways, about two and a half looks at a time.
-- **Sale rail** (`components/home/sale-rail.tsx`, `lib/sale-rail.ts`): «تخفیف‌های ویژه», between the new arrivals
-  and shop by colour. One Kasra-red panel (`--radius-lg`) that scrolls sideways with scroll-snap, about two and a
-  half tiles at a time. The first tile holds the title, a white garment hang tag naming the biggest discount
-  («تا ۱۸٪», the section's one decorative element), the count and «مشاهده همه»; then a white card per model (3:4
-  photo, discount pill, name kept to two lines so prices align, struck and current price); then a closing
-  «مشاهده همه» tile. Both links open `/shop?sale=1`. Products: discounted and still in stock, biggest discount first
-  and the newest first among equals, at most ten; with fewer than two the section is left out. Server-rendered; only
-  the arrows hydrate. They are paper discs over the photos, shown only with a fine pointer that can hover (touch
-  swipes, keyboards tab through the cards), disabled at each end and until hydrated, and a quick double press moves
-  two pages. Focus rings turn white on the red panel.
+- **«آخرین دونه‌ها»** (`components/home/last-pieces.tsx`, `lib/last-pieces.ts`): between the new arrivals and shop
+  by colour, the models down to their very last piece (stock over every colour and size adds up to exactly one),
+  newest first, at most ten; left out when there are none. One Kasra-red panel (`--radius-lg`) that scrolls sideways
+  with scroll-snap, about two and a half tiles at a time. The first tile holds the title, a white hanger with a «۱ دونه»
+  tag (the section's one decorative element: the last piece on the rack; it swings once when a mouse points at it),
+  the line «از هر کدوم فقط یکی مونده؛ مال کسیه که زودتر برسه.» and «مشاهده همه»; then a white card per model (3:4
+  photo with a «فقط ۱ دونه» pill, name kept to two lines, the colour swatch and size that are left, price); then a
+  closing «مشاهده همه» tile. Both links open `/shop?last=1`, a catalog filter the API also serves (`last=1`), shown
+  in the shop as a removable «آخرین دونه‌ها» chip. Server-rendered; only the arrows hydrate. They are paper discs over
+  the photos, shown only with a fine pointer that can hover (touch swipes, keyboards tab through the cards), disabled
+  at each end and until hydrated, and a quick double press moves two pages. Focus rings turn white on the red panel.
 - **Shop by colour:** on the white page under a hairline (its product photos bring their own gray); colour choices
   are soft pills, the chosen one ringed in ink. The preview leads with products whose card photos differ.
 - **Service links:** one quiet row of three split by hairlines, each with its arrow; stacked on phones.
@@ -365,4 +366,4 @@ desktop. Product photography for launch should be at least 1600px on the long ed
 - [x] Product page (gallery, buy box, details and accordions, zoom, phone purchase bar, loading state)
 - [x] Cart and checkout (styling only)
 - [x] Home cover as a product slider chosen in the back office; collection circles
-- [x] The owner's KASRA logo as the wordmark and favicon; the home sale rail; a one-height purchase row
+- [x] The owner's KASRA logo as the wordmark and favicon; «آخرین دونه‌ها» on the home page; a one-height purchase row

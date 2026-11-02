@@ -5,6 +5,7 @@ import { categories } from '@/data/products';
 import { variantMatchesColorFamily } from '@/lib/shop-by-color';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
 import { visitorHeaders } from '@/lib/backend-products';
+import { lastPieceOf } from '@/lib/last-pieces';
 
 export const PAGE_SIZE = 12;
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -34,6 +35,7 @@ export const parseFilters = (params: SearchParams, category?: CategorySlug): Cat
     max: numeric(one(params.max)),
     inStock: one(params.stock) === '1',
     discounted: one(params.sale) === '1',
+    lastPiece: one(params.last) === '1',
     sort: ['newest', 'price-asc', 'price-desc', 'featured'].includes(sort ?? '') ? sort as CatalogFilters['sort'] : 'featured',
     page: Math.min(1000, Math.max(1, Math.floor(numeric(one(params.page)) ?? 1)))
   };
@@ -51,6 +53,7 @@ export async function queryProducts(filters: CatalogFilters): Promise<{ items: P
     if (filters.max !== undefined) params.set('max', String(filters.max));
     if (filters.inStock) params.set('stock', '1');
     if (filters.discounted) params.set('sale', '1');
+    if (filters.lastPiece) params.set('last', '1');
     if (filters.sort) params.set('sort', filters.sort);
     params.set('page', String(filters.page ?? 1));
     const response = await fetch(process.env.BACKEND_INTERNAL_URL + '/v1/products?' + params,
@@ -64,6 +67,7 @@ export async function queryProducts(filters: CatalogFilters): Promise<{ items: P
     if (filters.min !== undefined && product.price < filters.min) return false;
     if (filters.max !== undefined && product.price > filters.max) return false;
     if (filters.discounted && !(product.compareAt && product.compareAt > product.price)) return false;
+    if (filters.lastPiece && !lastPieceOf(product)) return false;
     const variants = product.variants.filter((variant) =>
       (!filters.size || variant.size === filters.size) &&
       (!filters.color || variantMatchesColorFamily(product, variant.colorId, filters.color)));

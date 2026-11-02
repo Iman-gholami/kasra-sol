@@ -71,7 +71,7 @@ export function CatalogFilters({ filters, action, fixedCategory, count }: Props)
 
   const activeCount = Number(Boolean(filters.category && !fixedCategory)) + Number(Boolean(filters.size)) +
     Number(Boolean(filters.color)) + Number(filters.min !== undefined) + Number(filters.max !== undefined) +
-    Number(Boolean(filters.inStock)) + Number(Boolean(filters.discounted));
+    Number(Boolean(filters.inStock)) + Number(Boolean(filters.discounted)) + Number(Boolean(filters.lastPiece));
   const clearHref = action + (filters.q ? '?q=' + encodeURIComponent(filters.q) : '');
 
   function go(href: string, mode: 'push' | 'replace') {
@@ -253,6 +253,7 @@ export function SortForm({ action, filters, fixedCategory }: { action: string; f
     {filters.max !== undefined && <input type="hidden" name="max" value={String(filters.max)}/>}
     {filters.inStock && <input type="hidden" name="stock" value="1"/>}
     {filters.discounted && <input type="hidden" name="sale" value="1"/>}
+    {filters.lastPiece && <input type="hidden" name="last" value="1"/>}
     <label htmlFor={uid}>مرتب‌سازی</label>
     <select id={uid} name="sort" className="control" defaultValue={filters.sort ?? 'featured'} key={filters.sort ?? 'featured'}>
       {Object.entries(sortLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}

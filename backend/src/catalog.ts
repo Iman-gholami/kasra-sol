@@ -10,6 +10,8 @@ export const filters = z.object({
   color: z.string().max(80).optional(), min: z.coerce.number().int().min(0).optional(),
   max: z.coerce.number().int().min(0).optional(),
   stock: z.enum(['0','1']).optional(), sale: z.enum(['0','1']).optional(),
+  // last=1: models down to their last unit, the storefront's «آخرین دونه‌ها» (stock over all variants adds up to one).
+  last: z.enum(['0','1']).optional(),
   sort: z.enum(['newest','price-asc','price-desc','featured']).default('featured'),
   page: z.coerce.number().int().min(1).max(1000).default(1),
   limit: z.coerce.number().int().min(1).max(48).default(12)
@@ -41,6 +43,8 @@ export async function listProducts(query: z.infer<typeof filters>) {
     query.min !== undefined ? gte(products.price, query.min) : undefined,
     query.max !== undefined ? lte(products.price, query.max) : undefined,
     query.sale === '1' ? gt(products.compareAt, products.price) : undefined,
+    query.last === '1' ? sql`(SELECT COALESCE(SUM(${variants.stock}), 0) FROM ${variants}
+      WHERE ${variants.productId} = ${products.id}) = 1` : undefined,
     query.size || query.color || query.stock === '1' ? exists(db.select({ id: variants.id }).from(variants).where(variantFilter)) : undefined);
   const [{ total }] = await db.select({ total: count() }).from(products).where(where);
   const pages = Math.max(1, Math.ceil(total / query.limit));
