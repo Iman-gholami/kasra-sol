@@ -20,7 +20,7 @@ test('homepage, category navigation, search and filters', async ({ page }) => {
 
 test('variant stock, cart quantity and demo checkout', async ({ page }) => {
   await page.goto('/product/shomiz-01');
-  await page.getByRole('button', { name: 'رنگ و سایز رو انتخاب کن' }).click();
+  await page.getByRole('button', { name: 'انتخاب رنگ و سایز', exact: true }).click();
   await expect(page.locator('.status-message.error')).toContainText('انتخاب');
   await page.getByRole('button', { name: 'رنگ کرم' }).click();
   await expect(page.getByRole('button', { name: 'سایز S ناموجود' })).toBeDisabled();
@@ -138,7 +138,7 @@ test('size guide is accessible in place and closes with Escape', async ({ page }
   await expect(dialog).toContainText('اندازه‌گیری اختصاصی این کالا هنوز ثبت نشده است');
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole('button', { name: 'رنگ و سایز رو انتخاب کن' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'انتخاب رنگ و سایز', exact: true })).toBeVisible();
 });
 
 test('header search previews and full Persian search route', async ({ page }) => {

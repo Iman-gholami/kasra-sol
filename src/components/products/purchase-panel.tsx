@@ -171,13 +171,16 @@ export function PurchasePanel({ product }: { product: Product }) {
       <div className="purchase-row">
         <button type="button" className="size-guide-trigger" aria-label="راهنمای سایز"
           aria-haspopup="dialog" aria-expanded={guideOpen} onClick={() => setGuideOpen(true)}>
-          <Ruler size={19} strokeWidth={1.8} aria-hidden="true"/>
+          <Ruler size={16} strokeWidth={1.8} aria-hidden="true"/>
           <span>راهنمای سایز</span>
         </button>
-        <button ref={buyButton} type="button" className="btn btn-primary btn-dark btn-lg" onClick={add}>
-          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : allInCart ? fullText : 'رنگ و سایز رو انتخاب کن'}
+        {/* When everything is already in the cart the label shortens, as on the bottom bar, so it keeps one line; the
+            full sentence stays the button's name (it contains the visible words). */}
+        <button ref={buyButton} type="button" className="btn btn-primary btn-dark" onClick={add} aria-label={allInCart ? fullText : undefined}>
+          <ShoppingBag size={18} aria-hidden="true"/>
+          <span className="purchase-label">{ready ? 'افزودن به سبد خرید' : allInCart ? 'در سبد خریدت' : 'انتخاب رنگ و سایز'}</span>
         </button>
-        <button type="button" className={'btn btn-secondary btn-lg pdp-wishlist' + (isFavorite ? ' is-liked' : '')}
+        <button type="button" className={'btn btn-secondary pdp-wishlist' + (isFavorite ? ' is-liked' : '')}
           aria-label={isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'} aria-pressed={isFavorite}
           onClick={() => toggleWishlist(product.id)}>
           <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} aria-hidden="true"/>
