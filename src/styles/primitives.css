@@ -154,18 +154,25 @@ select.control {
   background: var(--color-surface); box-shadow: var(--shadow-3);
   max-inline-size: 100cqi; max-block-size: 100dvh; overflow: hidden; overscroll-behavior: contain;
   opacity: 1; transform: translate3d(var(--sheet-drag-x), var(--sheet-drag-y), 0);
-  transition: transform var(--duration-base) var(--ease-exit), opacity var(--duration-base) var(--ease-exit),
-    overlay var(--duration-base) allow-discrete, display var(--duration-base) allow-discrete;
+  transition: transform var(--duration-base) var(--ease-exit), opacity var(--duration-base) var(--ease-exit);
 }
 .sheet[open] { transition-duration: var(--duration-slow); transition-timing-function: var(--ease-enter); }
 .sheet:not([open]) { pointer-events: none; }
 .sheet[data-dragging="true"] { transition: none; }
 .sheet::backdrop {
   background: var(--color-scrim); opacity: 0;
-  transition: opacity var(--duration-base) var(--ease-standard), overlay var(--duration-base) allow-discrete, display var(--duration-base) allow-discrete;
+  transition: opacity var(--duration-base) var(--ease-standard);
 }
 .sheet[open]::backdrop { opacity: 1; }
 @starting-style { .sheet[open]::backdrop { opacity: 0; } }
+/* The exit motion keeps a closing sheet drawn by transitioning `display` and `overlay`, so it runs only where `overlay`
+   exists (Chrome). Safari 18–26 transitions `display` on a <dialog> without `overlay`, and that breaks the sheet: on
+   iPhones the dialog opened unseen (the page frozen under it, the next tap closing it). WebKit has since turned the
+   transition off for dialogs (Safari 27). Without it the sheet still slides in, and closes at once. */
+@supports (overlay: auto) {
+  .sheet { transition-property: transform, opacity, overlay, display; transition-behavior: allow-discrete; }
+  .sheet::backdrop { transition-property: opacity, overlay, display; transition-behavior: allow-discrete; }
+}
 .sheet-inner { display: flex; flex-direction: column; max-block-size: inherit; block-size: 100%; }
 .sheet-header {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
