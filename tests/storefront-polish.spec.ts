@@ -34,7 +34,7 @@ test.describe('desktop', () => {
     await expect(page.locator('.announcement')).toHaveCSS('background-color', 'rgb(181, 31, 43)');
     await expect(page.locator('.site-header')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
     await expect(page.locator('.brand-wordmark')).toHaveCSS('color', 'rgb(181, 31, 43)');
-    await expect(page.locator('.footer-grid')).toHaveCSS('background-color', 'rgb(24, 24, 24)');
+    await expect(page.locator('.footer-panel')).toHaveCSS('background-color', 'rgb(24, 24, 24)');
     await expect(page.locator('.footer nav a').first()).toHaveCSS('color', 'rgb(209, 213, 219)');
     await page.goto('/shop');
     await expect(page.locator('.product-card .discount-tag').first()).toHaveCSS('background-color', 'rgb(181, 31, 43)');
@@ -48,7 +48,7 @@ test.describe('desktop', () => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/');
       const header = await box(page.locator('.header-inner'));
-      for (const selector of ['.hero', '.week', '.closing', '.footer-grid']) {
+      for (const selector of ['.hero', '.week', '.closing', '.footer-panel']) {
         const section = await box(page.locator(selector));
         expect(Math.abs(section.x - header.x), selector + ' start at ' + width).toBeLessThanOrEqual(1);
         expect(Math.abs(section.x + section.width - header.x - header.width), selector + ' end at ' + width).toBeLessThanOrEqual(1);

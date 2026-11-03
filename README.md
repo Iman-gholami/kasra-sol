@@ -167,7 +167,8 @@ See [Visual Refinement Audit](docs/DESIGN-REFINEMENT.md). CI now uploads 390px a
 2. Authentication/accounts and rate-limited Iranian OTP integration.
 3. Pricing/tax/discount and shipping quotes computed by backend.
 4. Durable transactional orders, payment gateway + webhook reconciliation, refunds.
-5. Legally reviewed policies, seller identity, genuine contact details and customer support.
+5. Legally reviewed policies, seller identity and customer support. The store's phone lines and social pages are in
+   place (`src/data/contact.ts`, shown in the footer and on the contact page).
 6. Audit logs, security monitoring, analytics with appropriate consent, backups and incident response.
 7. CDN cache correctness, real-user Core Web Vitals, realistic campaign-load tests and origin protection.
 8. Opening the store to search engines and registering it in Google Search Console: one switch, `SITE_INDEXABLE`,
