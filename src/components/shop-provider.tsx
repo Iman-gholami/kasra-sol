@@ -65,6 +65,16 @@ export async function ensureShopProducts(ids: string[]) {
     notify({ ...current, catalogError: true });
   }
 }
+/** Loads these products again, e.g. after the API refused an order because a price changed since they were loaded,
+ * so every page shows their current prices and stock. Resolves false when the lookup fails. */
+export async function refreshShopProducts(ids: string[]): Promise<boolean> {
+  if (!backendEnabled) return true;
+  try {
+    for (const item of await fetchProducts(ids)) registry.set(item.id, item);
+    notify({ ...current });
+    return true;
+  } catch { return false; }
+}
 export function registerShopProduct(product: Product) {
   if (registry.get(product.id) === product) return;
   registry.set(product.id, product);

@@ -275,6 +275,32 @@ describe('last-piece discount per variant', () => {
     assert.deepEqual(await unitPrices(both.body.id), [['L', 400_000], ['M', 400_000]]);
   });
 
+  it('an expensive product (30,000,000) with M:1 is on sale without overflowing the price arithmetic', async () => {
+    const expensive = 30_000_000;
+    await setStock('M', 1);
+    await pool.query('UPDATE products SET price=$1 WHERE id=$2', [expensive, PRODUCT]);
+    try {
+      const response = await fetch(base + '/v1/products?sale=1&q=test&min=' + expensive + '&max=' + expensive + '&limit=' + (30 + ++listing),
+        { headers: { 'X-Forwarded-For': nextClient() } });
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).items.some(item => item.id === PRODUCT), true);
+    } finally { await pool.query('UPDATE products SET price=$1 WHERE id=$2', [PRICE, PRODUCT]); }
+  });
+
+  it('refuses an order whose shown subtotal is out of date (price_changed) without creating it or moving stock', async () => {
+    await setStock('M', 1);
+    // The shopper loaded M at the catalog price; it has since dropped to its last unit and its last-piece price.
+    const stale = await order({ ...cod(1, 'M'), expectedSubtotal: PRICE });
+    assert.equal(stale.status, 409);
+    assert.equal(stale.body.error, 'price_changed');
+    assert.equal(stale.body.subtotal, 400_000);
+    assert.equal(await stockOf('M'), 1);
+    const fresh = await order({ ...cod(1, 'M'), expectedSubtotal: 400_000 });
+    assert.equal(fresh.status, 201);
+    assert.equal(fresh.body.totals.subtotal, 400_000);
+    assert.equal(await stockOf('M'), 0);
+  });
+
   it('M:2 L:0 — no discount, and the product is not on sale', async () => {
     await setStock('M', 2);
     await setStock('L', 0);

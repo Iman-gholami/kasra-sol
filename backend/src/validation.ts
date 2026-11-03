@@ -26,6 +26,10 @@ export const checkout = z.object({
   items: cart, fields: address,
   shipping: z.enum(['post','express','courier']),
   payment: z.enum(['online','cod']),
-  code: z.string().max(32).default('')
+  code: z.string().max(32).default(''),
+  /** The subtotal the shopper was shown. When it no longer matches (a colour and size reached or left its last unit,
+   * or a price was edited since the page loaded), the order is refused with `price_changed` instead of charging a
+   * different amount. Optional, so older clients keep working. */
+  expectedSubtotal: z.number().int().min(0).optional()
 });
 export type Checkout = z.infer<typeof checkout>;

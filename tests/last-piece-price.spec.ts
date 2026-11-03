@@ -118,3 +118,40 @@ test.describe('listings', () => {
     await expect(card(page, 'شومیز ساده ویانا')).toHaveCount(1);
   });
 });
+
+test.describe('order confirmation', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('a placed order keeps the price each line was sold at, then shows that price', async ({ page }) => {
+    await seed(page, [L, M]);
+    await page.goto('/checkout');
+    await page.getByRole('button', { name: 'پر کردن با اطلاعات نمونه' }).click();
+    await page.getByRole('radio', { name: /پیک همان‌روز/ }).check();
+    await page.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
+    await page.getByRole('radio', { name: /پرداخت در محل/ }).check();
+    await page.getByRole('button', { name: /^ثبت/ }).click();
+    await expect(page).toHaveURL(/order-confirmation/);
+    const items = page.locator('.order-card-wide .checkout-lines li');
+    await expect(items.filter({ hasText: 'مشکی' }).locator('strong.price')).toHaveText('۶۴۳٬۰۰۰ تومان');
+    await expect(items.filter({ hasText: 'سفید' }).locator('strong.price')).toHaveText('۸۰۴٬۰۰۰ تومان');
+    const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('kasra-demo-order-v1') ?? 'null'));
+    expect(stored.lines.map((line: { unitPrice: number }) => line.unitPrice)).toEqual([643_000, 804_000]);
+  });
+
+  test('the confirmation reads the stored unit price, not today’s catalog price', async ({ page }) => {
+    // With the API, the demo catalog is not the source of prices: an order placed at 700,000 shows 700,000.
+    await page.goto('/');
+    await page.evaluate(order => sessionStorage.setItem('kasra-demo-order-v1', JSON.stringify(order)), {
+      id: 'KS-123456', items: [L], fields: { name: 'مشتری نمونه', mobile: '09120000000', province: 'تهران', city: 'تهران',
+        address: 'خیابان نمونه، پلاک ۱', postal: '1234567890', notes: '' },
+      shipping: 'courier', payment: 'cod', code: '',
+      totals: { units: 1, subtotal: 700_000, original: 804_000, savings: 104_000, discount: 0, shipping: 0, total: 700_000 },
+      lines: [{ item: L, unitPrice: 700_000, product: { id: 'shomiz-06', slug: 'shomiz-06', name: 'شومیز ساده ویانا',
+        images: ['/images/lookbook/shomiz-cream.avif'], colors: [{ id: 'black', name: 'مشکی', hex: '#1d1d1f' }] } }]
+    });
+    await page.goto('/order-confirmation');
+    const item = page.locator('.order-card-wide .checkout-lines li');
+    await expect(item).toHaveCount(1);
+    await expect(item.locator('strong.price')).toHaveText('۷۰۰٬۰۰۰ تومان');
+  });
+});

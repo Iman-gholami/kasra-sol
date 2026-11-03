@@ -61,7 +61,13 @@ export function freeShippingProgress(subtotal: number) {
   return { remaining, reached: remaining === 0, ratio: Math.min(1, subtotal / FREE_SHIPPING_THRESHOLD) };
 }
 
-export type Line = { item: CartItem; product: Product };
+/** `unitPrice` is set on the lines of a placed order: the price each unit was sold at, kept with the order so the
+ * confirmation never re-prices it from today's catalog (with the API, the demo catalog is not the source of prices). */
+export type Line = { item: CartItem; product: Product; unitPrice?: number };
+/** What one unit of a line sells at: the price it was sold at, or its colour and size's price now. */
+export const unitPrice = (line: Line) => line.unitPrice ?? offerFor(line.product, line.item.colorId, line.item.size).price;
+/** The lines of an order being placed, each with the price it sells at now. */
+export const soldLines = (lines: Line[]): Line[] => lines.map(line => ({ item: line.item, product: line.product, unitPrice: unitPrice(line) }));
 
 export const resolveLines = (cart: CartItem[], lookup: (id: string) => Product | undefined = byId): Line[] =>
   cart.flatMap(item => { const product = lookup(item.productId); return product ? [{ item, product }] : []; });

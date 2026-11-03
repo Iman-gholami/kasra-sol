@@ -81,6 +81,14 @@ describe('checkout input', () => {
     assert.equal(checkout.safeParse({ ...order, fields: { ...order.fields, notes: 'x'.repeat(501) } }).success, false);
     assert.equal(checkout.safeParse({ ...order, code: 'x'.repeat(33) }).success, false);
   });
+  it('takes an optional expected subtotal: the whole toman amount the shopper was shown', () => {
+    assert.equal(checkout.parse(order).expectedSubtotal, undefined);
+    assert.equal(checkout.parse({ ...order, expectedSubtotal: 400_000 }).expectedSubtotal, 400_000);
+    assert.equal(checkout.safeParse({ ...order, expectedSubtotal: 0 }).success, true);
+    assert.equal(checkout.safeParse({ ...order, expectedSubtotal: -1 }).success, false);
+    assert.equal(checkout.safeParse({ ...order, expectedSubtotal: 1.5 }).success, false);
+    assert.equal(checkout.safeParse({ ...order, expectedSubtotal: '400000' }).success, false);
+  });
 });
 
 describe('lastPieceInput', () => {

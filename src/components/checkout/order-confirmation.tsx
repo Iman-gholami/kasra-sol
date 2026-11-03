@@ -30,7 +30,8 @@ export function OrderConfirmation() {
   const realOrder = Boolean(order.status);
   const shipping = shippingById(order.shipping);
   const payment = paymentById(order.payment);
-  const lines = resolveLines(order.items);
+  // The lines as sold; an order kept from before unit prices were stored is resolved from the demo catalog.
+  const lines = order.lines ?? resolveLines(order.items);
   const mobile = toPersianDigits(normalizeMobile(fields.mobile));
   const steps = ['ثبت سفارش', 'آماده‌سازی و بسته‌بندی', 'تحویل به ' + shipping.title, 'تحویل به تو'];
 

@@ -2,17 +2,16 @@ import Image from 'next/image';
 import type { ReactNode } from 'react';
 import { LineDetails } from '@/components/cart/line-details';
 import { formatNumber, toman } from '@/lib/format';
-import { offerFor } from '@/lib/last-piece-discount';
-import type { Line } from '@/lib/checkout';
+import { unitPrice, type Line } from '@/lib/checkout';
 
 export function SummaryLines({ lines }: { lines: Line[] }) {
   return <ul className="checkout-lines">
-    {lines.map(({ item, product }) => <li key={item.productId + ':' + item.colorId + ':' + item.size}>
+    {lines.map(line => { const { item, product } = line; return <li key={item.productId + ':' + item.colorId + ':' + item.size}>
       <span className="checkout-line-thumb"><Image src={product.images[0]} alt="" fill sizes="56px"/></span>
       <span className="checkout-line-name">{product.name}</span>
       <LineDetails item={item} product={product} showQuantity/>
-      <strong className="price">{toman(item.quantity * offerFor(product, item.colorId, item.size).price)}</strong>
-    </li>)}
+      <strong className="price">{toman(item.quantity * unitPrice(line))}</strong>
+    </li>; })}
   </ul>;
 }
 

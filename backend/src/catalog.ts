@@ -34,10 +34,10 @@ async function hydrate(rows: (typeof products.$inferSelect)[]) {
 export async function listProducts(query: z.infer<typeof filters>) {
   const setting = query.sale === '1' ? await getLastPieceSetting(db) : undefined;
   // On sale: the product's own sale, or (while the setting is on) a variant at exactly one unit whose last-piece price,
-  // the same rounding as variantOffer, is below the product's price.
+  // the same rounding as variantOffer, is below the product's price (numeric: price × percent overflows int4 above ~21M).
   const lastPieceSale = setting?.enabled ? sql`(EXISTS (SELECT 1 FROM ${variants} WHERE ${variants.productId} = ${products.id}
       AND ${variants.stock} = 1)
-    AND round(GREATEST(${products.price}, COALESCE(${products.compareAt}, 0)) * ${100 - setting.percent} / 100000.0) * 1000 < ${products.price})` : undefined;
+    AND round(GREATEST(${products.price}, COALESCE(${products.compareAt}, 0))::numeric * ${100 - setting.percent} / 100000.0) * 1000 < ${products.price})` : undefined;
   const variantFilter = and(eq(variants.productId, products.id),
     query.size ? eq(variants.size, query.size) : undefined,
     query.color ? sql`EXISTS (SELECT 1 FROM jsonb_array_elements(${products.colors}) AS color

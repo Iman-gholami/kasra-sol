@@ -897,3 +897,52 @@ test('the owner sets the last-piece discount: a colour and size at one unit sell
   await context.close();
   expect(problems).toEqual([]);
 });
+
+test('checkout refuses a subtotal that changed after the page loaded, shows the new price, then orders at it', async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  const headers = { 'X-Forwarded-For': visitorAddress() };
+  const owner = await (await request.post(API + '/v1/admin/auth/login', { data: accounts().owner, headers })).json() as { token: string };
+  const auth = { ...headers, Authorization: 'Bearer ' + owner.token };
+  const setting = (enabled: boolean, percent: number) =>
+    request.put(API + '/v1/admin/last-piece-discount', { headers: auth, data: { enabled, percent } });
+  const image = await (await request.post(API + '/v1/admin/media', { headers: { ...auth, 'Content-Type': 'image/png' }, data: PNG }))
+    .json() as { url: string };
+  const id = 'e2e-price-change';
+  expect((await request.post(API + '/v1/admin/products', { headers: auth, data: {
+    id, slug: id, name: 'شومیز تغییر قیمت آزمون', category: 'shomiz', description: 'شومیز برای آزمون تغییر قیمت هنگام سفارش',
+    price: 640_000, compareAt: null, images: [image.url], colors: [{ id: 'white', name: 'سفید', hex: '#ffffff' }], sizes: ['S'],
+    variants: [{ colorId: 'white', size: 'S', stock: 1 }], material: 'پنبه', fit: 'آزاد', care: 'شست‌وشو با آب سرد',
+    featured: false } })).status()).toBe(201);
+  expect((await request.patch(API + '/v1/admin/products/' + id + '/visibility', { headers: auth, data: { active: true } })).status()).toBe(200);
+  expect((await setting(true, 25)).status()).toBe(200);
+  const context = await browser.newContext({ extraHTTPHeaders: { 'X-Forwarded-For': visitorAddress() } });
+  try {
+    const shop = await context.newPage();
+    const problems = watchConsole(shop);
+    await shop.goto('/product/' + id + '?color=white&size=S');
+    await expect(shop.locator('.detail-price strong.price')).toHaveText('۴۸۰٬۰۰۰ تومان');
+    await shop.getByRole('button', { name: 'افزودن به سبد خرید', exact: true }).click();
+    await expect(shop.getByRole('dialog', { name: 'به سبد خرید اضافه شد' })).toBeVisible();
+    await shop.goto('/checkout');
+    await shop.getByRole('button', { name: 'پر کردن با اطلاعات نمونه' }).click();
+    await shop.getByRole('radio', { name: /پیک همان‌روز/ }).check();
+    await shop.getByRole('button', { name: 'ادامه و انتخاب روش پرداخت' }).click();
+    await shop.getByRole('radio', { name: /پرداخت در محل/ }).check();
+    // The owner deepens the discount while the shopper is on the payment step: 640,000 − 30% = 448,000.
+    expect((await setting(true, 30)).status()).toBe(200);
+    await shop.getByRole('button', { name: 'ثبت نهایی سفارش' }).click();
+    await expect(shop.locator('.checkout-outcome[role="alert"]')).toContainText('قیمت یکی از اقلام تغییر کرده و مبلغ سفارش به‌روز شد');
+    await expect(shop).toHaveURL(/checkout/);
+    // The order summary is the collapsed box at the top of the column: open it, as a shopper would.
+    const box = shop.locator('details.checkout-summary-mobile');
+    await box.locator('summary').click();
+    await expect(box.locator('.checkout-lines li strong.price')).toHaveText('۴۴۸٬۰۰۰ تومان');
+    await shop.getByRole('button', { name: 'ثبت نهایی سفارش' }).click();
+    await expect(shop).toHaveURL(/order-confirmation/);
+    await expect(shop.locator('.order-card-wide .checkout-lines li strong.price')).toHaveText('۴۴۸٬۰۰۰ تومان');
+    expect(problems.filter(problem => !problem.includes('409'))).toEqual([]);
+  } finally {
+    await context.close();
+    await setting(false, 20);
+  }
+});

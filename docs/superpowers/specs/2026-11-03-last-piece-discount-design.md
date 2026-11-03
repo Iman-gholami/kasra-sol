@@ -90,13 +90,19 @@ function lastPieceDeal(product: Product): { percent: number; everyVariant: boole
 - **Orders** (`resolveCart` in `backend/src/orders.ts`): the quote and the order price every line with
   `variantOffer`, using the stock of **that line's variant row**, which the order already reads (and, for cash on
   delivery, locks `FOR UPDATE` in the same transaction). `unit_price` stores the variant's price, and totals are
-  computed from it, so the customer pays exactly what the page showed for that colour and size. If the variant is
-  restocked between the cart and the order, the order uses the price at that moment; the quote shows it before
-  placing, as for any price change. A variant at stock 1 can only be ordered once (quantity 1), and a second order for
-  it fails on stock as today.
+  computed from it, so the customer pays exactly what the page showed for that colour and size. If the variant
+  reaches or leaves its last unit (or the setting or a price changes) between loading the page and placing the order,
+  the storefront sends the subtotal it showed as `expectedSubtotal`; when the server's subtotal differs, the order is
+  refused with `409 price_changed` (and the new `subtotal`), nothing is stored or decremented, and the checkout reloads
+  the cart's products, shows the new prices with «قیمت یکی از اقلام تغییر کرده و مبلغ سفارش به‌روز شد…» and lets the
+  shopper place it again. The field is optional, so an older client is still served. A variant at stock 1 can only
+  be ordered once (quantity 1), and a second order for it fails on stock as today.
+- **Confirmation**: the placed order keeps its lines with each line's unit price (`lines` in the tab's stored order),
+  so «اقلام سفارش» shows what was sold, not a re-priced line from the demo catalog.
 - **The «تخفیف‌دارها» filter** (`sale=1`): includes a product when it has its own sale **or** the setting is on and at
   least one of its variants has stock 1 and the discounted price is below the product's price (the same formula in
-  SQL: `EXISTS (variant with stock = 1)` and `round(original × (100 − percent) / 100000) × 1000 < price`).
+  SQL: `EXISTS (variant with stock = 1)` and `round(original × (100 − percent) / 100000) × 1000 < price`, computed in
+  `numeric`: `original × (100 − percent)` overflows a 32-bit integer for prices above about 21,000,000 toman).
 - **Not applied**: the shop counter and its labels; the back office's product editor and lists (they show and edit the
   catalog price); the price range filter and price sorts (they keep the catalog price — accepted, rare);
   structured data for search engines (the offer stays the catalog price, which is the price a product page shows
@@ -251,6 +257,8 @@ mixed stock.
 | M:2, L:0 | no discount; `sale=1` does not list it (no own sale) |
 | M:1 → 3 | after restocking, the API and a new order use the catalog price |
 | setting off | M:1 is at the catalog price |
+| price 30,000,000, M:1 | `sale=1` answers 200 and lists it (no integer overflow) |
+| M:1, order sent with `expectedSubtotal` = the catalog price | `409 price_changed` with the discounted `subtotal`; no order, stock still 1; resent with the discounted subtotal it is placed |
 
 Plus: `PUT` without `products:price` is 403; with it, it saves, is in the activity log and changes the public price.
 
@@ -265,7 +273,11 @@ Plus: `PUT` without `products:price` is 403; with it, it saves, is in the activi
   card (its only variant left) shows the discounted price struck; `?sale=1` includes both.
 - tshirt-05 in its first colour and M shows 424,000 struck 530,000.
 - Back office (admin E2E, real API): turn it on at 20%, see a variant's public price change and its line in the live
-  list, turn it off and see the catalog price back.
+  list, turn it off and see the catalog price back. And: a shopper reaches the payment step at 25%, the owner changes
+  it to 30%, «ثبت نهایی سفارش» is refused with the notice, the summary shows the new price, and the second press
+  places the order at it, which the confirmation shows.
+- The confirmation shows each line at the price stored with the order (a stored 700,000 line shows 700,000 although
+  the demo catalog prices it at 643,000), and placing an order stores those prices.
 - The rail: nine demo cards (the table above), each with its colour, size and price, on the Kasra-red band with the
   stamp beside the title; a card opens its product with that colour and size chosen; «مشاهده همه» opens
   `/last-pieces` with all nine; swiping on a 320px phone never widens the page; the arrows on phones and desktop; no

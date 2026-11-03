@@ -55,7 +55,7 @@ async function cached<T>(key: string, loader: () => Promise<T>): Promise<T> {
 }
 
 app.setErrorHandler((error, _req, reply) => {
-  if (error instanceof DomainError) return reply.code(error.status).send({ error: 'business_rule', message: error.message });
+  if (error instanceof DomainError) return reply.code(error.status).send({ ...error.extra, error: error.code, message: error.message });
   const known = error as { statusCode?: number; message?: string };
   if (known.statusCode === 429) return reply.code(429).send({ error: 'rate_limited', message: 'Too many requests' });
   if (typeof known.statusCode === 'number' && known.statusCode >= 400 && known.statusCode < 500)
