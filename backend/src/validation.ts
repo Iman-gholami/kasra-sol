@@ -3,7 +3,9 @@ export const cartItem = z.object({
   productId: z.string().min(1).max(80),
   colorId: z.string().min(1).max(80),
   size: z.string().min(1).max(20),
-  quantity: z.number().int().min(1).max(20)
+  quantity: z.number().int().min(1).max(20),
+  /** The unit price the shopper was shown for this line (see `expectedSubtotal`); never used as a price. */
+  expectedPrice: z.number().int().min(0).optional()
 });
 export const cart = z.array(cartItem).min(1).max(30).superRefine((lines, ctx) => {
   const keys = new Set<string>();
@@ -26,6 +28,10 @@ export const checkout = z.object({
   items: cart, fields: address,
   shipping: z.enum(['post','express','courier']),
   payment: z.enum(['online','cod']),
-  code: z.string().max(32).default('')
+  code: z.string().max(32).default(''),
+  /** The subtotal the shopper was shown. When it, or a line's `expectedPrice`, no longer matches (a colour and size
+   * reached or left its last unit, or a price was edited since the page loaded), the order is refused with
+   * `price_changed` instead of charging a different amount. Optional, so older clients keep working. */
+  expectedSubtotal: z.number().int().min(0).optional()
 });
 export type Checkout = z.infer<typeof checkout>;

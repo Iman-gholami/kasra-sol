@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { toLatinDigits } from '../../../src/lib/format';
+import { LAST_PIECE_PERCENT } from '../../../src/lib/last-piece-discount';
 
 const ident = z.string().regex(/^[a-z0-9][a-z0-9-]{1,78}$/);
 const size = z.string().trim().min(1).max(20);
@@ -56,3 +58,11 @@ export const MAX_SLIDES = 5;
 /** The home page slider: an ordered pick of products, each at most once. */
 export const homeSlidesInput = z.object({ productIds: z.array(ident).max(MAX_SLIDES) }).strict()
   .refine(input => new Set(input.productIds).size === input.productIds.length, 'Each product can appear once');
+
+/** The last-piece discount (back office «تخفیف آخرین دونه‌ها»): on/off and a whole percent from 5 to 70, which the
+ * form may send in Persian digits. */
+export const lastPieceInput = z.object({
+  enabled: z.boolean(),
+  percent: z.preprocess(value => typeof value === 'string' ? toLatinDigits(value.trim()) : value,
+    z.coerce.number().int().min(LAST_PIECE_PERCENT.min).max(LAST_PIECE_PERCENT.max))
+}).strict();

@@ -1,4 +1,5 @@
 import { byId } from '@/data/products';
+import { offerFor } from '@/lib/last-piece-discount';
 import { formatNumber, normalizePersian, toLatinDigits } from '@/lib/format';
 import type { CartItem, Product } from '@/types/store';
 
@@ -60,18 +61,26 @@ export function freeShippingProgress(subtotal: number) {
   return { remaining, reached: remaining === 0, ratio: Math.min(1, subtotal / FREE_SHIPPING_THRESHOLD) };
 }
 
-export type Line = { item: CartItem; product: Product };
+/** `unitPrice` is set on the lines of a placed order: the price each unit was sold at, kept with the order so the
+ * confirmation never re-prices it from today's catalog (with the API, the demo catalog is not the source of prices). */
+export type Line = { item: CartItem; product: Product; unitPrice?: number };
+/** What one unit of a line sells at: the price it was sold at, or its colour and size's price now. */
+export const unitPrice = (line: Line) => line.unitPrice ?? offerFor(line.product, line.item.colorId, line.item.size).price;
+/** The lines of an order being placed, each with the price it sells at now. */
+export const soldLines = (lines: Line[]): Line[] => lines.map(line => ({ item: line.item, product: line.product, unitPrice: unitPrice(line) }));
 
 export const resolveLines = (cart: CartItem[], lookup: (id: string) => Product | undefined = byId): Line[] =>
   cart.flatMap(item => { const product = lookup(item.productId); return product ? [{ item, product }] : []; });
 
-/** `original` is the price before product markdowns; `savings` is what those markdowns take off. */
+/** `original` is the price before product markdowns; `savings` is what those markdowns take off. Each line is priced
+ * at its own colour and size (a last piece carries its discount). */
 export function cartTotals(lines: Line[]) {
   let units = 0, subtotal = 0, original = 0;
   for (const { item, product } of lines) {
+    const { price, compareAt } = offerFor(product, item.colorId, item.size);
     units += item.quantity;
-    subtotal += product.price * item.quantity;
-    original += Math.max(product.price, product.compareAt ?? product.price) * item.quantity;
+    subtotal += price * item.quantity;
+    original += Math.max(price, compareAt ?? price) * item.quantity;
   }
   return { units, subtotal, original, savings: original - subtotal };
 }

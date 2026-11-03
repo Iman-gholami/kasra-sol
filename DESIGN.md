@@ -54,7 +54,8 @@ desktop toolbar, filter sidebar and navigation panel) are no longer shown and ar
 
 ### Typography
 
-One family for everything: **Estedad** (variable 100–900, self-hosted). The wordmark stays Georgia.
+One family for everything: **Estedad** (variable 100–900, self-hosted). The wordmark is the owner's logo, drawn as an
+SVG (below), not typed.
 
 | Role | Size | Weight |
 | --- | --- | --- |
@@ -101,6 +102,15 @@ Edge-to-edge elements on phones (the product gallery, checkout cards in the purc
   so all content is present immediately and nothing moves.
 
 ## Component patterns
+
+### Wordmark (logo)
+`components/layout/kasra-wordmark.tsx`. The owner's KASRA logo redrawn as one vector path: Bodoni Moda (SIL OFL)
+capitals narrowed to 92%, the K and A and the R and A set into each other, and a hairline along the baseline from the
+last A. It is drawn in `currentColor`: Kasra red on the white header and the purchase-flow header (30px tall, 26px on
+phones, 23px from 360px down), the logo's own cream (`--color-logo-cream`, `#F2D2AF`) on the dark footer. The SVG is
+`role="img"` named «KASRA», followed by «کسری بوتیک، صفحه اصلی» for screen readers, so each logo link starts with the
+word it shows. The favicon (`app/icon.svg`) is the logo's K in cream on a Kasra-red square. To regenerate the path,
+compose the glyphs with opentype.js using the settings in the component's comment.
 
 ### Header (masthead)
 `components/layout/header.tsx`, `styles/layout.css`. A three-column grid: navigation at the inline start, the
@@ -151,6 +161,23 @@ the week of looks, new arrivals, shop by colour, the service links and the closi
   are rounded like the rooms. The day and outfit sit under each photo; each look opens `/shop` on its category and
   colour. Pointing at or focusing a look fades the other five models (only the models: a photo's gray is the strip's,
   so the strip stays whole). Phones and tablets scroll the strip sideways, about two and a half looks at a time.
+- **«آخرین دونه‌ها»** (`components/home/last-pieces.tsx`, `last-piece-card.tsx`, `last-piece-stamp.tsx`,
+  `lib/last-pieces.ts`): between the new arrivals and shop by colour, one card per colour-and-size variant with exactly
+  one unit left (newest product first, at most ten; left out when there are none). Laid out like the owner's reference
+  (papionlady.com's «آخرین دونه») in Kasra red: a red band edge to edge (`overflow-x: clip`, so the sideways rail never
+  widens a phone's page); the stamp (a white scalloped sticker reading «فقط ۱ دونه», popping out of the band's top
+  edge; its edge turns with page scrolling where scroll timelines exist, never on its own) beside the white title, and
+  «مشاهده همه» at the inline end; white cards (`14px` radius) about 43% of the column wide, so the third is cut at the
+  edge: the 4:5 photo with the pill on its bottom edge («۲۰٪ تخفیف», or «فقط ۱ دونه» when the price is not lowered),
+  the name, the colour swatch with «مشکی، سایز L», and the struck original over the price at the inline end. Arrows on
+  every device (white discs centred on the photos, faded while disabled; a quick double press moves two pages). A card
+  opens `/product/<slug>?color=…&size=…` with that colour and size chosen. «مشاهده همه» is `/last-pieces`: every last
+  piece as the same cards in two columns, under a light heading, the line and the count.
+- **Last-piece discount** (`lib/last-piece-discount.ts`, back office «تخفیف آخرین دونه‌ها»): a variant whose own stock is
+  exactly 1 sells at the owner's percent off (the bigger of it and the product's own sale; demo mode: 20%). The product
+  page price follows the chosen colour and size (qualifying sizes carry a red «٪»); listings keep the product's price
+  with «تا ۲۰٪ تخفیف روی رنگ و سایزهای تک‌دونه» when only some combinations qualify; the cart, checkout and the
+  server's order total use the variant's price.
 - **Shop by colour:** on the white page under a hairline (its product photos bring their own gray); colour choices
   are soft pills, the chosen one ringed in ink. The preview leads with products whose card photos differ.
 - **Service links:** one quiet row of three split by hairlines, each with its arrow; stacked on phones.
@@ -171,7 +198,9 @@ photo: category, name (semibold, underline draws in on hover), price, colour dot
 - **Buy box:** the title in light type and the price above a soft panel holding colour, size, quantity and the
   buttons. Inside it, options are paper: the chosen colour box is ringed in ink, the chosen size is ink, and
   unavailable options lose their fill for a dashed outline. The stepper and the wishlist disc are paper too. The
-  add button keeps 16px side padding so its longest label fits a 320px phone.
+  purchase row is one height (52px): the size-guide tile, the add button and the wishlist circle. The add label stays
+  on one line in every state («انتخاب رنگ و سایز», «افزودن به سبد خرید», and «در سبد خریدت» when everything is in
+  the cart, whose full sentence remains the button's name); its bag icon gives way from 360px down.
 - **Details:** «درباره این مدل» in light type; material and shipping are soft accordion boxes; the demo notice is the
   same soft box.
 - **Phones:** the purchase bar is solid paper with a hairline, like the bottom navigation.
@@ -245,7 +274,7 @@ bottom sheets round their top corners; side drawers stay square against the scre
 are `--radius-md`.
 
 ### Footer
-`components/layout/footer.tsx`, `styles/layout.css`. A soft rounded panel (`--radius-lg`, `--color-surface-muted`) at
+`components/layout/footer.tsx`, `styles/layout.css`. The wordmark in the logo's cream heads it. A soft rounded panel (`--radius-lg`, `--color-surface-muted`) at
 page width: the panel itself is the page-width box, so its columns line up with the header. The copyright line sits
 beneath it, outside the panel.
 
@@ -343,3 +372,4 @@ desktop. Product photography for launch should be at least 1600px on the long ed
 - [x] Product page (gallery, buy box, details and accordions, zoom, phone purchase bar, loading state)
 - [x] Cart and checkout (styling only)
 - [x] Home cover as a product slider chosen in the back office; collection circles
+- [x] The owner's KASRA logo as the wordmark and favicon; «آخرین دونه‌ها» on the home page; a one-height purchase row

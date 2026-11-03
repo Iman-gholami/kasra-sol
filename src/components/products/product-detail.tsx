@@ -2,24 +2,18 @@ import Link from 'next/link';
 import { Info } from 'lucide-react';
 import { ProductGallery } from '@/components/products/product-gallery';
 import { PurchasePanel } from '@/components/products/purchase-panel';
-import { Price } from '@/components/products/price';
-import { discountPercent, formatPercent } from '@/lib/format';
 import { isDemoPhoto } from '@/lib/demo-photos';
 import type { Product } from '@/types/store';
 
 /** Server-rendered product page body. Only the gallery and the purchase panel hydrate.
  * Desktop: gallery + details on one side, a sticky buy column on the other. Phone: one column. */
-export function ProductDetail({ product }: { product: Product }) {
-  const discount = discountPercent(product.price, product.compareAt);
+export function ProductDetail({ product, selection }: { product: Product; selection?: { colorId?: string; size?: string } }) {
   return <div className="detail-layout pdp">
     <ProductGallery images={product.images} name={product.name}/>
     <div className="pdp-buy detail-copy">
       <h1>{product.name}</h1>
-      <div className="detail-price">
-        <Price price={product.price} compareAt={product.compareAt} size="lg"/>
-        {discount > 0 && <span className="sale-badge">{formatPercent(discount)} تخفیف</span>}
-      </div>
-      <PurchasePanel product={product}/>
+      {/* The price is part of the buy box: it follows the chosen colour and size (a last piece has its own). */}
+      <PurchasePanel product={product} initialColorId={selection?.colorId} initialSize={selection?.size}/>
     </div>
     <div className="pdp-details detail-extras">
       <h2 className="pdp-details-title">درباره این مدل</h2>

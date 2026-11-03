@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Check, ChevronRight, MapPin, ShoppingBag, Wallet } from 'lucide-react';
+import { KasraWordmark } from '@/components/layout/kasra-wordmark';
 
 /** Phone-only header of the purchase flow (hidden from 821px, where the site header stays): back one step,
  * and the wordmark as the way home. Named by its text, not an aria-label, so the label matches what shows. */
@@ -7,8 +8,7 @@ export function FlowHeader({ back, backLabel }: { back: string; backLabel: strin
   return <div className="flow-header">
     <Link href={back} className="icon-button flow-back" aria-label={backLabel}><ChevronRight size={24} aria-hidden="true"/></Link>
     <Link href="/" className="flow-logo">
-      <span className="flow-logo-mark" aria-hidden="true">K</span>
-      <span dir="ltr">KASRA</span>
+      <KasraWordmark/>
       <span className="sr-only">کسری بوتیک، صفحه اصلی</span>
     </Link>
   </div>;

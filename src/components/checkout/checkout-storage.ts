@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { DEFAULT_PAYMENT, DEFAULT_SHIPPING, paymentMethods, shippingMethods,
-  type OrderTotals, type PaymentMethodId, type ShippingMethodId } from '@/lib/checkout';
+  type Line, type OrderTotals, type PaymentMethodId, type ShippingMethodId } from '@/lib/checkout';
 import type { CartItem } from '@/types/store';
 import { clearOrderAttempt } from '@/lib/order-attempt';
 
@@ -15,6 +15,13 @@ export type CheckoutDraft = { fields: Fields; shipping: ShippingMethodId; paymen
 export type DemoOrder = {
   id: string; items: CartItem[]; fields: Fields; shipping: ShippingMethodId; payment: PaymentMethodId;
   code: string; totals: OrderTotals; status?: 'pending_payment' | 'confirmed_cod';
+  /** The lines as sold, each with its unit price (orders placed before this field show today's demo prices). */
+  lines?: Line[];
+};
+const soldLine = (line: unknown) => {
+  const { item, product, unitPrice } = (line ?? {}) as Partial<Line>;
+  return Boolean(item && typeof item === 'object' && product && typeof product.name === 'string' && Array.isArray(product.images)
+    && typeof product.images[0] === 'string' && Array.isArray(product.colors) && typeof unitPrice === 'number' && Number.isFinite(unitPrice));
 };
 
 export const emptyFields: Fields = { name: '', mobile: '', province: '', city: '', address: '', postal: '', notes: '' };
@@ -71,6 +78,9 @@ function orderSnapshot(): DemoOrder | null {
     try {
       const parsed = raw ? JSON.parse(raw) as DemoOrder : null;
       cachedOrder = parsed && typeof parsed.id === 'string' && Array.isArray(parsed.items) && parsed.totals ? parsed : null;
+      // A malformed snapshot falls back to the items rather than breaking the page.
+      if (cachedOrder?.lines && !(Array.isArray(cachedOrder.lines) && cachedOrder.lines.every(soldLine)))
+        cachedOrder = { ...cachedOrder, lines: undefined };
     } catch { cachedOrder = null; }
   }
   return cachedOrder;

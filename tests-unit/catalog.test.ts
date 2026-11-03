@@ -4,6 +4,7 @@ import { PAGE_SIZE, parseFilters, queryProducts } from '@/lib/catalog';
 import { catalogHref, sortLabels } from '@/lib/catalog-url';
 import { variantMatchesColorFamily } from '@/lib/shop-by-color';
 import { rankProduct } from '@/lib/search';
+import { lastPieceDeal } from '@/lib/last-piece-discount';
 import type { CatalogFilters, Product } from '@/types/store';
 import { json, setEnv, stubFetch } from './helpers';
 
@@ -118,7 +119,8 @@ describe('queryProducts (demo catalog)', () => {
   const cases: [string, CatalogFilters, (p: Product, f: CatalogFilters) => boolean][] = [
     ['category', { category: 'manto' }, p => p.category === 'manto'],
     ['price range', { min: 1_000_000, max: 1_500_000 }, p => p.price >= 1_000_000 && p.price <= 1_500_000],
-    ['on sale', { discounted: true }, p => (p.compareAt ?? 0) > p.price],
+    // A last-piece variant deal counts as on sale (shomiz-06 has one in black L, and no sale of its own).
+    ['on sale', { discounted: true }, p => (p.compareAt ?? 0) > p.price || lastPieceDeal(p) !== null],
     ['size', { size: 'S' }, (p, f) => sellable(p, f).length > 0],
     ['color family', { color: 'cream' }, (p, f) => sellable(p, f).length > 0],
     ['in stock in that size and color', { size: 'S', color: 'black', inStock: true },
@@ -131,6 +133,7 @@ describe('queryProducts (demo catalog)', () => {
       const { products } = await import('@/data/products');
       const found = await everything(filters);
       assert.ok(found.length > 0, 'the demo data should exercise this filter');
+      if (name === 'on sale') assert.ok(found.some(p => p.slug === 'shomiz-06'), 'a variant deal alone puts a product on sale');
       assert.deepEqual(found.map(p => p.id).sort(), products.filter(p => matches(p, filters)).map(p => p.id).sort());
     });
   }

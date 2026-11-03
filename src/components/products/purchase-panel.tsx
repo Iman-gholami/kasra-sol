@@ -8,7 +8,9 @@ import { useShop, registerShopProduct } from '@/components/shop-provider';
 import { QuantityStepper } from '@/components/ui/quantity-stepper';
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
 import { useBottomBar } from '@/components/ui/document-flags';
-import { formatNumber, toman } from '@/lib/format';
+import { discountPercent, formatNumber, formatPercent, toman } from '@/lib/format';
+import { lastPieceDeal, offerFor } from '@/lib/last-piece-discount';
+import { Price } from '@/components/products/price';
 import { lineLimit, MAX_CART_LINES, MAX_LINE_QUANTITY } from '@/lib/checkout';
 import type { Product } from '@/types/store';
 
@@ -16,10 +18,18 @@ type Notice = { text: string; error: boolean; cartLink?: boolean };
 
 /** Buy box: color → size → quantity → add. On phones a compact bar keeps the action in the thumb
  * zone whenever the main button is off-screen; it never covers content (the page reserves its height). */
-export function PurchasePanel({ product }: { product: Product }) {
+/** A colour and size from the page address count only when they can be bought: an unknown or sold-out colour is
+ * ignored, and so is a size the chosen colour does not have in stock. */
+function initialChoice(product: Product, colorId?: string, size?: string) {
+  const inStock = (c: string, s?: string) => product.variants.some(v => v.colorId === c && (s === undefined || v.size === s) && v.stock > 0);
+  if (!colorId || !product.colors.some(color => color.id === colorId) || !inStock(colorId)) return { colorId: '', size: '' };
+  return { colorId, size: size && inStock(colorId, size) ? size : '' };
+}
+
+export function PurchasePanel({ product, initialColorId, initialSize }: { product: Product; initialColorId?: string; initialSize?: string }) {
   const { cart, addToCart, showAdded, wishlist, toggleWishlist, hydrated } = useShop();
-  const [colorId, setColorId] = useState('');
-  const [size, setSize] = useState('');
+  const [colorId, setColorId] = useState(() => initialChoice(product, initialColorId, initialSize).colorId);
+  const [size, setSize] = useState(() => initialChoice(product, initialColorId, initialSize).size);
   const [quantity, setQuantity] = useState(1);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [sizeNotice, setSizeNotice] = useState('');
@@ -116,11 +126,25 @@ export function PurchasePanel({ product }: { product: Product }) {
     showAdded(item);
   }
 
+  // The price shown: the chosen colour and size's own (a last piece has its discount); before a full choice, the
+  // product's, unless every variant left is a last piece.
+  const deal = lastPieceDeal(product);
+  const chosen = colorId && size && variant ? offerFor(product, colorId, size) : null;
+  const shown = chosen ?? (deal?.everyVariant ? deal.offer : { price: product.price, compareAt: product.compareAt });
+  const shownDiscount = discountPercent(shown.price, shown.compareAt);
+  const shownIsLastPiece = chosen ? variant?.price !== undefined : Boolean(deal?.everyVariant);
+  const isDeal = (entry: string) => Boolean(colorId && getVariant(product, colorId, entry)?.price !== undefined);
+
   const summary = color ? color.name + (size ? '، سایز ' + size : '') : 'رنگ و سایز انتخاب نشده';
   const stickyLabel = ready ? 'افزودن به سبد خرید از نوار پایین' : allInCart ? fullText + ' از نوار پایین'
     : !colorId ? 'انتخاب رنگ و سایز از نوار پایین' : 'انتخاب سایز از نوار پایین';
 
   return <>
+    <div className="detail-price" aria-live="polite">
+      <Price price={shown.price} compareAt={shown.compareAt} size="lg"/>
+      {shownDiscount > 0 && <span className="sale-badge">{formatPercent(shownDiscount)} تخفیف{shownIsLastPiece ? ' آخرین دونه' : ''}</span>}
+      {deal && !deal.everyVariant && !chosen && <p className="detail-deal">تا {formatPercent(deal.percent)} تخفیف روی رنگ و سایزهای تک‌دونه</p>}
+    </div>
     <section className="buy-panel" aria-label="انتخاب مشخصات و خرید">
       <div className="variant-group">
         <div className="variant-label" id="pdp-color-label">رنگ <span className="variant-value">{color ? color.name : 'انتخاب کن'}</span></div>
@@ -146,9 +170,10 @@ export function PurchasePanel({ product }: { product: Product }) {
             const available = colorId ? Boolean(getVariant(product, colorId, entry)?.stock) : product.variants.some(v => v.size === entry && v.stock > 0);
             return <button key={entry} type="button" disabled={!available}
               className={'size-option' + (size === entry ? ' selected' : '')} aria-pressed={size === entry}
-              aria-label={'سایز ' + entry + (available ? '' : ' ناموجود')}
+              aria-label={'سایز ' + entry + (available ? isDeal(entry) ? '، با تخفیف آخرین دونه' : '' : ' ناموجود')}
               onClick={() => { setSize(entry); setSizeNotice(''); setQuantity(1); setNotice(null); }}>
               {entry}
+              {available && isDeal(entry) && <span className="size-deal" aria-hidden="true">٪</span>}
             </button>;
           })}
         </div>
@@ -171,13 +196,16 @@ export function PurchasePanel({ product }: { product: Product }) {
       <div className="purchase-row">
         <button type="button" className="size-guide-trigger" aria-label="راهنمای سایز"
           aria-haspopup="dialog" aria-expanded={guideOpen} onClick={() => setGuideOpen(true)}>
-          <Ruler size={19} strokeWidth={1.8} aria-hidden="true"/>
+          <Ruler size={16} strokeWidth={1.8} aria-hidden="true"/>
           <span>راهنمای سایز</span>
         </button>
-        <button ref={buyButton} type="button" className="btn btn-primary btn-dark btn-lg" onClick={add}>
-          <ShoppingBag size={19} aria-hidden="true"/> {ready ? 'افزودن به سبد خرید' : allInCart ? fullText : 'رنگ و سایز رو انتخاب کن'}
+        {/* When everything is already in the cart the label shortens, as on the bottom bar, so it keeps one line; the
+            full sentence stays the button's name (it contains the visible words). */}
+        <button ref={buyButton} type="button" className="btn btn-primary btn-dark" onClick={add} aria-label={allInCart ? fullText : undefined}>
+          <ShoppingBag size={18} aria-hidden="true"/>
+          <span className="purchase-label">{ready ? 'افزودن به سبد خرید' : allInCart ? 'در سبد خریدت' : 'انتخاب رنگ و سایز'}</span>
         </button>
-        <button type="button" className={'btn btn-secondary btn-lg pdp-wishlist' + (isFavorite ? ' is-liked' : '')}
+        <button type="button" className={'btn btn-secondary pdp-wishlist' + (isFavorite ? ' is-liked' : '')}
           aria-label={isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'} aria-pressed={isFavorite}
           onClick={() => toggleWishlist(product.id)}>
           <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} aria-hidden="true"/>
@@ -210,7 +238,7 @@ export function PurchasePanel({ product }: { product: Product }) {
       </div>}
       <div className="pdp-sticky-inner">
         <div className="pdp-sticky-price">
-          <strong className="price">{toman(product.price)}</strong>
+          <strong className="price">{toman(shown.price)}</strong>
           <span className={color ? undefined : 'is-empty'}>{summary}</span>
         </div>
         <button type="button" className="btn btn-primary" onClick={add} aria-label={stickyLabel}>

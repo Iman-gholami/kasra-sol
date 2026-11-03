@@ -1,4 +1,5 @@
 import { products } from '@/data/products';
+import { lastPieceDeal } from '@/lib/last-piece-discount';
 import { palette } from '@/data/facets';
 import type { ProductCardData } from '@/components/products/product-card';
 import type { Product, ProductColor } from '@/types/store';
@@ -41,6 +42,7 @@ function previewProduct(product: Product): ProductCardData {
     category: product.category,
     price: product.price,
     compareAt: product.compareAt,
+    deal: lastPieceDeal(product),
     // ProductCard needs just the hero thumbnail; no full gallery, size or stock tables in client payload.
     images: product.images.slice(0, 1),
     colors: product.colors

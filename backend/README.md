@@ -37,16 +37,20 @@ Demo seed runs only if **no products exist**; restarting never resets stock. Dem
 
 ```json
 {
-  "items": [{ "productId": "manto-01", "colorId": "black", "size": "M", "quantity": 1 }],
+  "items": [{ "productId": "manto-01", "colorId": "black", "size": "M", "quantity": 1, "expectedPrice": 640000 }],
   "fields": {
     "name": "Example Customer", "mobile": "09123456789", "province": "تهران",
     "city": "تهران", "address": "خیابان مثال، پلاک ۱۰", "postal": "1234567890", "notes": ""
   },
-  "shipping": "courier", "payment": "cod", "code": ""
+  "shipping": "courier", "payment": "cod", "code": "", "expectedSubtotal": 640000
 }
 ```
 
 Use a colorId belonging to an existing product. Never trust prices, discounts or stock submitted by a browser.
+`expectedSubtotal` and each line's `expectedPrice` (optional) are what the shopper was shown; they are never used as
+prices. When the server's subtotal or a line's unit price differs (a colour and size reached or left its last unit, or
+a price changed), the order is refused with
+`409 { "error": "price_changed", "subtotal": <server subtotal>, "message": … }` and nothing is stored.
 
 **Order semantics:** `confirmed_cod` orders atomically decrement inventory using row locks. `pending_payment` online orders are stored as **unpaid** and **do not reserve or decrement stock**; no payment confirmation can occur before integrating a real PSP and its verified, idempotent callback. No fake successful payment is emitted. Guest receipts require an unpredictable per-order HMAC access token; do not place it in a public URL or logs.
 
@@ -175,6 +179,13 @@ status; `PUT /v1/admin/home-slider` (`products:write`) replaces the pick with `{
 repeats, all published: otherwise `409 slide_unavailable`). The pick lives in `home_slides` (migration 007), is
 written to the audit log as `products.home_slider` and invalidates the public cache. A product archived later simply
 drops out of `GET /v1/home/slider`. With an empty pick the storefront shows its discounted products instead.
+
+Last-piece discount: `GET /v1/admin/last-piece-discount` (`products:read`) returns `{ enabled, percent, updatedAt,
+variants }`, the colours and sizes at exactly one unit with their price now and with the discount; `PUT` (`products:price`)
+saves `{ enabled, percent }` (a whole 5–70, Persian digits accepted). The single row lives in `last_piece_discount`
+(migration 011, off by default), is written to the audit log as `products.last_piece_discount` and invalidates the
+public cache. While it is on, the public product payloads, the quote and orders sell each variant at stock 1 at
+`round(original × (100 − percent) / 100 / 1000) × 1000`, unless the product's own sale is deeper.
 
 Uploaded images are stored in `media_data`, an independent **persistent Compose volume**
 mounted at `/app/backend/uploads` with `MEDIA_DIR` set accordingly.

@@ -1,4 +1,4 @@
-/* Homepage sections: hero, week of looks, new arrivals, shop by color, service links, closing call to action.
+/* Homepage sections: hero, week of looks, new arrivals, last pieces, shop by color, service links, closing call to action.
    One studio gray (--color-studio) runs through the page: the photos were re-shot on it (scripts/studio-photos.py), so
    wherever a photo sits in a gray room its edges disappear and the model stands in the room itself. */
 
@@ -121,6 +121,80 @@
 .week .demo-photo-note { margin-block-start: var(--space-5); }
 .demo-photo-note, .catalog-photo-note { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 0; color: var(--color-text-subtle); font-size: var(--text-xs); line-height: 1.7; }
 .demo-photo-note svg, .catalog-photo-note svg { flex-shrink: 0; }
+
+/* «آخرین دونه‌ها» (`components/home/last-pieces.tsx`), laid out like the owner's reference in Kasra red: a red band
+   edge to edge with the stamp and the title, «مشاهده همه», and white cards that scroll sideways (one per colour and
+   size with one unit left; the third card is cut at the edge, inviting a swipe), with arrows on every device. */
+.last-pieces { --last-card-w: min(43cqi, 190px); --last-pad: 16px; padding-block-start: 0; }
+/* overflow-x: clip keeps the sideways rail from widening a phone's page (as the old panel's overflow: hidden did)
+   while the stamp still pops out of the band's top edge. */
+.last-pieces-band { position: relative; overflow-x: clip; margin-inline: calc(var(--gutter) * -1); padding: 18px 0 22px; background: var(--color-brand); color: var(--color-inverse); }
+.last-pieces :focus-visible { outline-color: var(--color-inverse); }
+.last-pieces-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-inline: var(--last-pad); }
+.last-pieces-title { display: flex; align-items: center; gap: var(--space-1); min-inline-size: 0; }
+.last-pieces-title h2 { margin: 0; color: inherit; font-size: 1.25rem; font-weight: var(--font-weight-heavy); line-height: 1.6; }
+.last-pieces-all { display: inline-flex; align-items: center; gap: 2px; min-block-size: var(--touch); flex-shrink: 0; color: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-heavy); }
+/* The stamp pops out of the band's top edge; its scalloped edge turns with page scrolling where scroll timelines exist. */
+.last-pieces-stamp { display: block; inline-size: 72px; block-size: 72px; flex-shrink: 0; margin-block: -34px -8px; overflow: visible; filter: drop-shadow(0 6px 8px rgb(58 3 8 / 0.45)); }
+.last-pieces-stamp-edge { transform-box: view-box; transform-origin: 60px 60px; }
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .last-pieces-stamp-edge { animation: last-stamp-turn linear both; animation-timeline: scroll(root block); }
+  }
+}
+@keyframes last-stamp-turn { to { rotate: -720deg; } }
+
+.last-pieces-body { position: relative; margin-block-start: 6px; }
+.last-pieces-track { overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: var(--last-pad); scrollbar-width: none; }
+.last-pieces-track::-webkit-scrollbar { display: none; }
+.last-pieces-list { display: flex; gap: 10px; inline-size: max-content; margin: 0; padding: 0 var(--last-pad); list-style: none; }
+.last-pieces-list > li { flex: 0 0 var(--last-card-w); display: flex; scroll-snap-align: start; }
+
+/* The card, shared with /last-pieces. */
+.last-piece-card {
+  display: flex; flex-direction: column; inline-size: 100%; padding: 10px 10px 14px; border-radius: 14px;
+  background: var(--color-surface); color: var(--color-text); transition: transform var(--duration-fast) var(--ease-standard);
+}
+.last-piece-card:active { transform: scale(0.98); }
+@media (hover: hover) { .last-piece-card:hover .last-piece-name { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; } }
+.last-piece-photo { position: relative; display: block; aspect-ratio: 4 / 5; border-radius: 10px; background: var(--color-studio); }
+.last-piece-photo img { border-radius: 10px; object-fit: cover; }
+.last-piece-pill {
+  position: absolute; z-index: 1; inset-block-end: -12px; inset-inline-start: 6px; padding: 2px 10px; border-radius: var(--radius-pill);
+  background: var(--color-brand); color: var(--color-inverse); font-size: var(--text-xs); font-weight: var(--font-weight-heavy); line-height: 1.8;
+  box-shadow: 0 2px 6px rgb(181 31 43 / 0.25);
+}
+.last-piece-name {
+  display: -webkit-box; margin: 20px 0 4px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  font-size: 0.9375rem; font-weight: var(--font-weight-heavy); line-height: 1.6;
+}
+.last-piece-variant { display: flex; align-items: center; gap: 6px; margin-block-end: 6px; color: var(--color-text-muted); font-size: var(--text-xs); }
+.last-piece-swatch { inline-size: 11px; block-size: 11px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--color-outline-soft); }
+.last-piece-price { display: flex; flex-direction: column; align-items: flex-end; margin-block-start: auto; padding-block-start: 4px; }
+.last-piece-price del { color: var(--color-text-muted); font-size: var(--text-sm); }
+.last-piece-price strong { color: var(--color-text); font-size: 0.875rem; font-weight: var(--font-weight-bold); white-space: nowrap; }
+
+/* Arrows on every device, centred on the photos (card padding plus half a 4:5 photo); faded while disabled. */
+.last-pieces-arrows {
+  position: absolute; inset-inline: 4px; inset-block-start: calc(10px + (var(--last-card-w) - 20px) * 5 / 8);
+  display: flex; justify-content: space-between; transform: translateY(-50%); pointer-events: none;
+}
+.last-pieces-arrow {
+  display: grid; place-items: center; inline-size: var(--touch); block-size: var(--touch); padding: 0; border: 0; border-radius: 50%;
+  background: var(--color-surface); color: var(--color-text-muted); box-shadow: 0 4px 14px rgb(0 0 0 / 0.18); cursor: pointer; pointer-events: auto;
+  transition: opacity var(--duration-base) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+@media (hover: hover) { .last-pieces-arrow:hover:not(:disabled) { color: var(--color-brand); } }
+.last-pieces-arrow:disabled { opacity: 0.5; pointer-events: none; }
+
+/* «مشاهده همه»: every last piece, the same cards in two columns. */
+.last-pieces-page-heading { margin-block: var(--space-6) var(--space-5); }
+.last-pieces-page-heading h1 { margin: 0; font-size: var(--text-heading); font-weight: var(--font-weight-light); }
+.last-pieces-page-heading p { margin: var(--space-1) 0 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+.last-pieces-page-heading .last-pieces-count { color: var(--color-brand); font-weight: var(--font-weight-bold); }
+.last-pieces-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0 0 var(--section-gap); padding: 0; list-style: none; }
+.last-pieces-grid > li { display: flex; }
+.last-pieces-grid .last-piece-card { border: 1px solid var(--color-border); }
 
 /* Shop by color: on the white page, under a hairline (its product photos bring their own gray); colour choices are
    soft pills, the chosen one ringed in ink. */

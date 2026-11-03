@@ -72,6 +72,15 @@ the price at printing time; the counter always charges the current catalog price
   deletes the row in one statement, so two cashiers cannot take the same one. A held cart reserves **no** stock: prices and stock
   are read again on resume (units sold meanwhile are left out with a warning) and when the sale is recorded. At most 50 at once.
 
+## Last-piece discount («تخفیف آخرین دونه‌ها», view `products:read`, change `products:price`)
+
+A colour-and-size variant whose own stock is exactly 1 sells on the **website** at the owner's percent off (5–70%,
+starts off at 20%), set in the back office section «تخفیف آخرین دونه‌ها», which also lists the variants it applies to
+now. The bigger of it and the product's own sale wins; the discount disappears as soon as that variant is restocked or
+sold out. The API prices product data, quotes and orders with it (`unit_price` stores the discounted price). **The
+counter is not affected**: it keeps the catalog price printed on the labels. Changes are in the activity log
+(`products.last_piece_discount`). Design: `docs/superpowers/specs/2026-11-03-last-piece-discount-design.md`.
+
 ## Permissions
 
 | Permission | Default | Allows |

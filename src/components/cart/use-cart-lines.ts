@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { offerFor, type Offer } from '@/lib/last-piece-discount';
 import { getShopProduct } from '@/components/shop-provider';
 import { useShop } from '@/components/shop-provider';
 import { cartTotals } from '@/lib/checkout';
@@ -9,7 +10,7 @@ import type { CartItem, Product } from '@/types/store';
 export const lineKey = (item: CartItem) => item.productId + ':' + item.colorId + ':' + item.size;
 
 export type CartRow =
-  | { kind: 'line'; key: string; item: CartItem; product: Product; stock: number }
+  | { kind: 'line'; key: string; item: CartItem; product: Product; stock: number; offer: Offer }
   | { kind: 'removed'; key: string; item: CartItem; product: Product; moved: boolean };
 
 type Removed = { item: CartItem; moved: boolean };
@@ -33,7 +34,7 @@ export function useCartLines() {
       const product = getShopProduct(item.productId);
       if (!product) return [];
       const stock = product.variants.find(v => v.colorId === item.colorId && v.size === item.size)?.stock ?? 0;
-      return [{ kind: 'line', key, item, product, stock }];
+      return [{ kind: 'line', key, item, product, stock, offer: offerFor(product, item.colorId, item.size) }];
     }
     const gone = removed[key];
     const product = gone && getShopProduct(gone.item.productId);

@@ -1,7 +1,7 @@
 import { count } from 'drizzle-orm';
 import { db, pool } from './connection';
 import { products as productTable, variants as variantTable } from './schema';
-import { products as demoProducts } from '../../../src/data/products';
+import { catalogProducts as demoProducts } from '../../../src/data/products';
 import { normalizeSearch } from '../search';
 
 async function main() {

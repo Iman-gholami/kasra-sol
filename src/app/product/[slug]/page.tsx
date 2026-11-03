@@ -10,7 +10,8 @@ import { pageMetadata, siteUrl, SITE_NAME } from '@/lib/seo';
 import { shareImageFor, SHARE_SIZE } from '@/lib/share-image';
 import { jsonLd, productJsonLd } from '@/lib/structured-data';
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> };
+const first = (value?: string | string[]) => typeof value === 'string' ? value : value?.[0];
 // The inventory/price source can change independently of deployment.
 // Keep product routes dynamic until static demo and live API catalogs have separate route contracts.
 export const dynamic = 'force-dynamic';
@@ -36,14 +37,16 @@ async function RelatedProducts({ product }: { product: NonNullable<Awaited<Retur
   return <ProductGrid products={[...sameCategory, ...otherCategories]}/>;
 }
 
-export default async function ProductPage({ params }: Props) {
+export default async function ProductPage({ params, searchParams }: Props) {
   const product = await getProductBySlug((await params).slug);
+  // A link may choose a colour and size (the «آخرین دونه‌ها» cards do); the buy box checks they can be bought.
+  const query = (await searchParams) ?? {};
   if (!product) notFound();
   const category = categories.find(item => item.slug === product.category);
   return <div className="container">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(productJsonLd(product, siteUrl(), category?.title)) }}/>
     <Breadcrumbs items={[{ label: 'خانه', href: '/' }, { label: category?.title ?? 'محصولات', href: '/category/' + product.category }, { label: product.name }]}/>
-    <ProductDetail product={product}/>
+    <ProductDetail product={product} selection={{ colorId: first(query.color), size: first(query.size) }}/>
     <section className="related section-block" aria-labelledby="related-title">
       <div className="section-heading"><div><p className="section-kicker">ایده برای کنار هم پوشیدن</p><h2 id="related-title">این‌ها رو هم ببین</h2></div></div>
       <Suspense fallback={null}><RelatedProducts product={product}/></Suspense>

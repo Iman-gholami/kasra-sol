@@ -6,7 +6,8 @@ import { AlertCircle, Banknote, CreditCard, Info, MapPin, Tag, Truck, X } from '
 import { Sheet, useMountedOnce } from '@/components/ui/sheet';
 import { ChoiceCard, normalizeMobile, normalizePostal } from '@/components/checkout/fields';
 import type { CheckoutDraft, DemoOrder } from '@/components/checkout/checkout-storage';
-import { DEFAULT_PAYMENT, paymentById, paymentMethods, paymentRestriction, shippingById,
+import { refreshShopProducts } from '@/components/shop-provider';
+import { DEFAULT_PAYMENT, paymentById, paymentMethods, paymentRestriction, shippingById, soldLines, unitPrice,
   type Line, type OrderTotals, type PaymentMethodId } from '@/lib/checkout';
 import { toPersianDigits, toman } from '@/lib/format';
 import { orderAttempt } from '@/lib/order-attempt';
@@ -36,9 +37,12 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
       if (submitting.current) return;
       submitting.current = true;
       const payload = {
-        items: lines.map(line => line.item),
+        // Each line with the unit price on screen, so an order placed is the order shown, line by line.
+        items: lines.map(line => ({ ...line.item, expectedPrice: unitPrice(line) })),
         fields: { ...fields, mobile: normalizeMobile(fields.mobile), postal: normalizePostal(fields.postal) },
-        shipping: draft.shipping, payment: method, code: totals.discount ? draft.code : ''
+        shipping: draft.shipping, payment: method, code: totals.discount ? draft.code : '',
+        // The API refuses the order (price_changed) rather than charge a subtotal the shopper was not shown.
+        expectedSubtotal: totals.subtotal
       };
       const fingerprint = JSON.stringify(payload);
       setSaving(true);
@@ -51,9 +55,16 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
           body: fingerprint
         });
         const order = await response.json();
+        if (response.status === 409 && order.error === 'price_changed') {
+          // A colour and size reached or left its last unit (or a price was edited): show the new prices and totals
+          // before the shopper confirms again.
+          const refreshed = await refreshShopProducts(lines.map(line => line.item.productId));
+          throw new Error(refreshed ? 'قیمت یکی از اقلام تغییر کرده و مبلغ سفارش به‌روز شد. مبلغ تازه را ببین و دوباره ثبت کن.'
+            : 'قیمت یکی از اقلام تغییر کرده است. صفحه را دوباره بارگذاری کن و مبلغ تازه را ببین.');
+        }
         if (!response.ok) throw new Error(order.message || 'ثبت سفارش ناموفق بود. موجودی یا اطلاعات را دوباره بررسی کن.');
         onPlaced({
-          id: order.id, items: lines.map(line => line.item), fields: payload.fields,
+          id: order.id, items: lines.map(line => line.item), lines: soldLines(lines), fields: payload.fields,
           shipping: draft.shipping, payment: method, code: payload.code,
           totals: { ...totals, ...order.totals }, status: order.status
         });
@@ -66,7 +77,7 @@ export function PaymentStep({ draft, update, lines, totals, headingRef, onPlaced
     }
     onPlaced({
       id: 'KS-' + String(Math.floor(100000 + Math.random() * 900000)),
-      items: lines.map(line => line.item), fields, shipping: draft.shipping, payment: method,
+      items: lines.map(line => line.item), lines: soldLines(lines), fields, shipping: draft.shipping, payment: method,
       code: totals.discount ? draft.code : '', totals
     });
   }

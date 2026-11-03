@@ -21,3 +21,6 @@ it('accepts every category and sort the storefront offers', () => {
   for (const category of ['shomiz', 'manto', 'tshirt']) assert.equal(filters.safeParse({ category }).success, true);
   for (const sort of ['newest', 'price-asc', 'price-desc', 'featured']) assert.equal(filters.safeParse({ sort }).success, true);
 });
+it('ignores the removed last-piece filter (last=1): the storefront lists last pieces on their own page now', () => {
+  assert.deepEqual(filters.parse({ last: '1' }), { sort: 'featured', page: 1, limit: 12 });
+});

@@ -131,3 +131,14 @@ describe('order totals', () => {
     assert.equal(orderTotals([], 'post', '').total, 85_000);
   });
 });
+
+describe('cart totals with last-piece prices', () => {
+  it('charges each line at its own variant price and counts the last-piece saving', () => {
+    // shomiz-06 is 804,000; its black L is the demo's last piece at 20% off (643,000); its white M is not.
+    const lines = resolveLines([
+      { productId: 'shomiz-06', colorId: 'black', size: 'L', quantity: 1 },
+      { productId: 'shomiz-06', colorId: 'white', size: 'M', quantity: 1 }
+    ]);
+    assert.deepEqual(cartTotals(lines), { units: 2, subtotal: 643_000 + 804_000, original: 804_000 * 2, savings: 161_000 });
+  });
+});

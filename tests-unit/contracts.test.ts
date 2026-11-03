@@ -14,7 +14,7 @@ import { AUDIT_ACTION, AUDIT_GROUP, ORDER_STATUS, PERMISSION, PRODUCT_FIELD, TRA
 import { applyDiscount, discountCodes, MAX_CART_LINES, MAX_LINE_QUANTITY, orderTotals, paymentMethods, paymentRestriction,
   paymentById, resolveLines, shippingById, shippingMethods, shippingRestriction } from '@/lib/checkout';
 import { parseFilters, queryProducts } from '@/lib/catalog';
-import { categories, products } from '@/data/products';
+import { catalogProducts, categories, products } from '@/data/products';
 import type { Product } from '@/types/store';
 import { calculate, DomainError } from '../backend/src/pricing';
 import { PERMISSIONS, assignable } from '../backend/src/admin/permissions';
@@ -179,7 +179,8 @@ describe('catalog filters: the storefront only sends queries the API accepts', (
 
 describe('demo catalog: the seed data is valid for the API and the admin editor', () => {
   it('passes the product schema the admin panel saves with', () => {
-    for (const product of products) {
+    // The seed writes the catalog data; the demo storefront's last-piece prices are never stored.
+    for (const product of catalogProducts) {
       // The editor sends no creation date, and «no markdown» as null.
       const input: Record<string, unknown> = { ...product, compareAt: product.compareAt ?? null };
       delete input.createdAt;

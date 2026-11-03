@@ -56,6 +56,7 @@ export const AUDIT_ACTION: Record<string, string> = {
   'products.created': 'ایجاد محصول', 'products.updated': 'ویرایش محصول', 'products.price': 'تغییر قیمت',
   'products.visibility': 'انتشار یا آرشیو محصول', 'inventory.stock': 'تغییر موجودی', 'orders.status': 'تغییر وضعیت سفارش',
   'media.uploaded': 'آپلود تصویر', 'orders.exported': 'دریافت خروجی سفارش‌ها', 'products.home_slider': 'تغییر اسلایدر صفحه اول',
+  'products.last_piece_discount': 'تغییر تخفیف آخرین دونه‌ها',
   'inventory.received': 'ورود کالا به انبار', 'sales.recorded': 'فروش حضوری', 'sales.voided': 'ابطال فروش حضوری'
 };
 /** Groups of audit events, for filtering the history; the API matches on the part before the dot. */

@@ -41,6 +41,8 @@ const ENDPOINTS: [method: string, route: string, permission: Permission][] = [
   ['GET', '/v1/admin/reports/traffic', 'reports:read'],
   ['GET', '/v1/admin/home-slider', 'products:read'],
   ['PUT', '/v1/admin/home-slider', 'products:write'],
+  ['GET', '/v1/admin/last-piece-discount', 'products:read'],
+  ['PUT', '/v1/admin/last-piece-discount', 'products:price'],
   // Shop and website stock (store-routes.ts): labels and receiving, the counter, and voids.
   ['POST', '/v1/admin/products/:id/barcodes', 'inventory:read'],
   ['GET', '/v1/admin/barcodes/:code', 'inventory:read'],

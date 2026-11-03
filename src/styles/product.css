@@ -56,6 +56,8 @@
 /* Buy column */
 .detail-copy h1 { margin: var(--space-2) 0 var(--space-2); font-size: var(--text-3xl); font-weight: var(--font-weight-light); line-height: 1.4; }
 .detail-price { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-block-end: var(--space-4); }
+/* A product with some colours and sizes at their last piece says so, without a price that only those have. */
+.detail-deal { flex-basis: 100%; margin: 0; color: var(--color-brand); font-size: var(--text-xs); font-weight: var(--font-weight-bold); }
 .sale-badge { padding: 2px 10px; border-radius: var(--radius-pill); background: var(--color-brand); color: var(--color-inverse); font-size: var(--text-xs); font-weight: var(--font-weight-bold); }
 /* The buy box is a soft panel. Options inside it are paper; the chosen colour is ringed in ink, the chosen size is
    ink. Unavailable options lose their fill and take a dashed outline. */
@@ -66,14 +68,15 @@
 .variant-value::before { content: "· " / ""; color: var(--color-border-strong); }
 /* A compact, slightly raised size-guide tile to the RIGHT of the primary CTA in RTL.
    Soft brand tint and a defined border make it discoverable without dominating the buy button.
-   The label keeps the 12px minimum for text and wraps to two lines to fit the narrow tile. */
+   The label keeps the 12px minimum for text and wraps to two lines to fit the narrow tile; the tile is as tall as the
+   add button and the wishlist circle beside it (the purchase row's 52px). */
 .size-guide-trigger {
-  display: inline-flex; flex: 0 0 74px; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; inline-size: 74px; min-block-size: 54px; padding: 5px 4px;
+  display: inline-flex; flex: 0 0 70px; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; inline-size: 70px; padding: 3px 4px;
   border: 1px solid #D68B93; border-radius: var(--radius-md);
   background: var(--color-accent-wash); color: var(--color-brand);
   box-shadow: 0 2px 8px rgb(181 31 43 / 0.10);
-  font-size: var(--text-xs); font-weight: var(--font-weight-semibold); line-height: 1.15;
+  font-size: var(--text-xs); font-weight: var(--font-weight-semibold); line-height: 1.1;
   text-align: center; cursor: pointer; touch-action: manipulation;
   transition: background-color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard),
@@ -118,9 +121,13 @@
 .purchase-feedback { justify-content: flex-start; }
 .purchase-feedback-actions { display: inline-flex; flex-wrap: wrap; gap: 0 var(--space-3); margin-inline-start: auto; }
 .purchase-feedback .link-button { color: inherit; font-weight: var(--font-weight-bold); }
-.purchase-row { display: flex; align-items: stretch; gap: var(--space-2); }
-.purchase-row .btn-primary { flex: 1; min-inline-size: 0; padding-inline: var(--space-2); white-space: normal; text-wrap: balance; }
-.pdp-wishlist { --btn-bg: var(--color-surface); --btn-border: transparent; inline-size: 52px; padding: 0; flex-shrink: 0; }
+/* One height for the row: the size guide, the add button and the wishlist circle are all 52px, and the add label fits
+   one line in every state (its icon gives way on the narrowest phones). */
+.purchase-row { --purchase-h: 52px; display: flex; align-items: stretch; gap: var(--space-2); }
+.purchase-row > * { block-size: var(--purchase-h); min-block-size: 0; }
+.purchase-row .btn-primary { flex: 1; gap: 6px; min-inline-size: 0; padding-inline: var(--space-2); font-size: var(--text-base); }
+.purchase-label { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
+.pdp-wishlist { --btn-bg: var(--color-surface); --btn-border: transparent; inline-size: var(--purchase-h); padding: 0; flex-shrink: 0; }
 .pdp-wishlist:active:not(:disabled) { --btn-bg: var(--color-surface-sunken); }
 .pdp-wishlist.is-liked { color: var(--color-accent); }
 .buy-panel-note { display: flex; align-items: flex-start; gap: var(--space-2); margin: var(--space-3) 0 0; color: var(--color-text-subtle); font-size: var(--text-xs); line-height: 1.8; }
@@ -200,9 +207,6 @@
   .swatch { flex: 1 1 0; min-inline-size: 72px; max-inline-size: 120px; }
   .size-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .size-option { min-inline-size: 0; min-block-size: 50px; }
-  .purchase-row .btn-primary { min-block-size: 54px; }
-  .purchase-row .pdp-wishlist { inline-size: 48px; }
-  .purchase-row .size-guide-trigger { flex-basis: 70px; inline-size: 70px; }
   .pdp-details { max-inline-size: none; }
 
   .zoom-dialog.sheet-center { inset: 0; inline-size: 100cqi; block-size: 100dvh; max-block-size: 100dvh; border-radius: 0; }
@@ -243,12 +247,20 @@
 }
 @container kasra (max-width: 360px) {
   .buy-panel { padding-inline: var(--space-3); }
-  .purchase-row .btn-primary { padding-inline: 6px; font-size: var(--text-sm); }
-  .purchase-row .size-guide-trigger { flex-basis: 64px; inline-size: 64px; }
-  .purchase-row .pdp-wishlist { inline-size: 44px; }
+  .purchase-row .btn-primary { padding-inline: var(--space-2); font-size: var(--text-sm); }
+  .purchase-row .btn-primary svg { display: none; }
+  .purchase-row .size-guide-trigger { flex-basis: 60px; inline-size: 60px; }
   .pdp-sticky-inner .btn { padding-inline: 12px; font-size: var(--text-xs); }
   .swatch { min-inline-size: 64px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pdp-sticky-bar, .zoom-image img { transition: none; }
+}
+
+/* A size whose last piece has the discount: a small red «٪» on the option's corner. */
+.size-option { position: relative; }
+.size-deal {
+  position: absolute; inset-block-start: -7px; inset-inline-end: -5px; display: grid; place-items: center;
+  inline-size: 20px; block-size: 20px; border-radius: 50%; background: var(--color-brand); color: var(--color-inverse);
+  font-size: var(--text-xs); font-weight: var(--font-weight-bold); line-height: 1;
 }

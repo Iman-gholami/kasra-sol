@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Activity, ClipboardList, ExternalLink, GalleryHorizontal, LayoutDashboard, LogOut, Package, PackagePlus, ScanBarcode, ScrollText,
-  UserCog, UsersRound } from 'lucide-react';
+  Tag, UserCog, UsersRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/components/admin/admin-api';
 import { formatNumber, ROLE } from '@/components/admin/labels';
@@ -16,6 +16,7 @@ import { StaffManager } from '@/components/admin/staff-manager';
 import { AuditLog } from '@/components/admin/audit-log';
 import { AccountSettings } from '@/components/admin/account-settings';
 import { HomeSliderManager } from '@/components/admin/home-slider-manager';
+import { LastPieceDiscount } from '@/components/admin/last-piece-discount';
 import { StoreCounter } from '@/components/admin/store-counter';
 import { StockReceiving } from '@/components/admin/stock-receiving';
 import { Notice } from '@/components/admin/ui';
@@ -25,7 +26,7 @@ export type AdminUser = {
   customRoleId?: string | null; customRoleName?: string | null;
   active: boolean; grants: string[]; revokes: string[]; permissions: string[];
 };
-export type Section = 'overview' | 'traffic' | 'pos' | 'receiving' | 'products' | 'home' | 'orders' | 'staff' | 'audit' | 'account';
+export type Section = 'overview' | 'traffic' | 'pos' | 'receiving' | 'products' | 'home' | 'last-piece' | 'orders' | 'staff' | 'audit' | 'account';
 // The menu mirrors the API's permissions; the API still enforces every one of them on each request.
 const SECTIONS: { id: Section; label: string; title: string; permission: string | null; icon: typeof Package }[] = [
   { id: 'overview', label: 'داشبورد', title: 'داشبورد فروشگاه', permission: 'reports:read', icon: LayoutDashboard },
@@ -35,6 +36,7 @@ const SECTIONS: { id: Section; label: string; title: string; permission: string 
   { id: 'receiving', label: 'ورود کالا و برچسب', title: 'ورود کالا و چاپ برچسب', permission: 'inventory:write', icon: PackagePlus },
   { id: 'products', label: 'محصولات و موجودی', title: 'محصولات و موجودی', permission: 'products:read', icon: Package },
   { id: 'home', label: 'اسلایدر صفحه اول', title: 'اسلایدر صفحه اول', permission: 'products:write', icon: GalleryHorizontal },
+  { id: 'last-piece', label: 'تخفیف آخرین دونه‌ها', title: 'تخفیف آخرین دونه‌ها', permission: 'products:read', icon: Tag },
   { id: 'orders', label: 'سفارش‌ها', title: 'مدیریت سفارش‌ها', permission: 'orders:read', icon: ClipboardList },
   { id: 'staff', label: 'کارکنان و مجوزها', title: 'کارکنان و مجوزها', permission: 'staff:manage', icon: UsersRound },
   { id: 'audit', label: 'تاریخچه فعالیت‌ها', title: 'تاریخچه فعالیت‌ها', permission: 'staff:manage', icon: ScrollText },
@@ -202,6 +204,7 @@ export function AdminDashboard({ user, initial }: { user: AdminUser; initial: Vi
               edit={id => openEditor(id)} create={() => openEditor('new')} duplicate={id => openEditor('copy:' + id)}/>
           </div>)}
         {view.section === 'home' && <HomeSliderManager onUnsaved={setUnsaved}/>}
+        {view.section === 'last-piece' && <LastPieceDiscount canEdit={can('products:price')} onUnsaved={setUnsaved}/>}
         {view.section === 'orders' && <OrderManager canFulfill={can('orders:fulfill')} canExport={can('orders:export')}/>}
         {view.section === 'staff' && <StaffManager/>}
         {view.section === 'audit' && <AuditLog/>}

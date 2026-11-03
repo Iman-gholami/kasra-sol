@@ -222,3 +222,129 @@ describe('rate limiting behind the storefront proxy', () => {
     assert.equal((await send('10.88.0.2')).status, 400, 'another visitor is not affected');
   });
 });
+
+// The last-piece discount: a variant whose own stock is exactly 1 sells at the owner's percent off (here 20%, so the
+// 500,000 test product's last piece is 400,000), in the product data, the «تخفیف‌دارها» filter, the quote and the order.
+describe('last-piece discount per variant', () => {
+  const setDiscount = (enabled, percent = 20) =>
+    pool.query('UPDATE last_piece_discount SET enabled=$1, percent=$2 WHERE id=1', [enabled, percent]);
+  // The lookup is never cached, so it shows each fixture's stock at once.
+  const variantsNow = async () => {
+    const response = await fetch(base + '/v1/products/lookup?ids=' + PRODUCT, { headers: { 'X-Forwarded-For': nextClient() } });
+    assert.equal(response.status, 200);
+    return Object.fromEntries((await response.json()).items[0].variants.map(v => [v.size, v]));
+  };
+  let listing = 0;
+  const onSale = async () => {
+    // A distinct query string per call avoids the optional catalog cache between fixtures.
+    const response = await fetch(base + '/v1/products?sale=1&q=test&min=' + PRICE + '&max=' + PRICE + '&limit=' + (30 + ++listing),
+      { headers: { 'X-Forwarded-For': nextClient() } });
+    assert.equal(response.status, 200);
+    return (await response.json()).items.some(item => item.id === PRODUCT);
+  };
+  const unitPrices = async orderId =>
+    (await pool.query('SELECT size, unit_price FROM order_items WHERE order_id=$1 ORDER BY size', [orderId])).rows
+      .map(row => [row.size, row.unit_price]);
+  before(() => setDiscount(true));
+  after(async () => { await setDiscount(false); await setStock('M', 0); await setStock('L', 0); });
+
+  it('M:1 L:5 — only M is discounted, in the product data, the sale filter and a COD order', async () => {
+    await setStock('M', 1);
+    await setStock('L', 5);
+    const v = await variantsNow();
+    assert.deepEqual([v.M.price, v.M.compareAt], [400_000, PRICE]);
+    assert.equal(v.L.price, undefined);
+    assert.equal(await onSale(), true);
+    const m = await order(cod(1, 'M'));
+    assert.equal(m.status, 201);
+    assert.equal(m.body.totals.subtotal, 400_000);
+    assert.deepEqual(await unitPrices(m.body.id), [['M', 400_000]]);
+    const l = await order(cod(1, 'L'));
+    assert.equal(l.status, 201);
+    assert.equal(l.body.totals.subtotal, PRICE);
+  });
+
+  it('M:1 L:1 — both combinations are discounted, and one order of both charges both at the last-piece price', async () => {
+    await setStock('M', 1);
+    await setStock('L', 1);
+    const v = await variantsNow();
+    assert.deepEqual([v.M.price, v.L.price], [400_000, 400_000]);
+    const both = await order({ ...cod(1, 'M'), items: [cod(1, 'M').items[0], cod(1, 'L').items[0]] });
+    assert.equal(both.status, 201);
+    assert.equal(both.body.totals.subtotal, 800_000);
+    assert.deepEqual(await unitPrices(both.body.id), [['L', 400_000], ['M', 400_000]]);
+  });
+
+  it('an expensive product (30,000,000) with M:1 is on sale without overflowing the price arithmetic', async () => {
+    const expensive = 30_000_000;
+    await setStock('M', 1);
+    await pool.query('UPDATE products SET price=$1 WHERE id=$2', [expensive, PRODUCT]);
+    try {
+      const response = await fetch(base + '/v1/products?sale=1&q=test&min=' + expensive + '&max=' + expensive + '&limit=' + (30 + ++listing),
+        { headers: { 'X-Forwarded-For': nextClient() } });
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).items.some(item => item.id === PRODUCT), true);
+    } finally { await pool.query('UPDATE products SET price=$1 WHERE id=$2', [PRICE, PRODUCT]); }
+  });
+
+  it('refuses an order whose shown subtotal is out of date (price_changed) without creating it or moving stock', async () => {
+    await setStock('M', 1);
+    // The shopper loaded M at the catalog price; it has since dropped to its last unit and its last-piece price.
+    const stale = await order({ ...cod(1, 'M'), expectedSubtotal: PRICE });
+    assert.equal(stale.status, 409);
+    assert.equal(stale.body.error, 'price_changed');
+    assert.equal(stale.body.subtotal, 400_000);
+    assert.equal(await stockOf('M'), 1);
+    const fresh = await order({ ...cod(1, 'M'), expectedSubtotal: 400_000 });
+    assert.equal(fresh.status, 201);
+    assert.equal(fresh.body.totals.subtotal, 400_000);
+    assert.equal(await stockOf('M'), 0);
+  });
+
+  it('refuses an order whose lines were shown at other prices, even when the subtotal still matches', async () => {
+    // M dropped to its last unit (400,000) while L, at 5, stayed at 500,000; the shopper saw them the other way round.
+    await setStock('M', 1);
+    await setStock('L', 5);
+    const swapped = { ...cod(1, 'M'), expectedSubtotal: 900_000,
+      items: [{ ...cod(1, 'M').items[0], expectedPrice: PRICE }, { ...cod(1, 'L').items[0], expectedPrice: 400_000 }] };
+    const stale = await order(swapped);
+    assert.equal(stale.status, 409);
+    assert.equal(stale.body.error, 'price_changed');
+    assert.deepEqual([await stockOf('M'), await stockOf('L')], [1, 5]);
+    const fresh = await order({ ...swapped,
+      items: [{ ...swapped.items[0], expectedPrice: 400_000 }, { ...swapped.items[1], expectedPrice: PRICE }] });
+    assert.equal(fresh.status, 201);
+    assert.deepEqual(await unitPrices(fresh.body.id), [['L', PRICE], ['M', 400_000]]);
+  });
+
+  it('M:2 L:0 — no discount, and the product is not on sale', async () => {
+    await setStock('M', 2);
+    await setStock('L', 0);
+    const v = await variantsNow();
+    assert.equal(v.M.price, undefined);
+    assert.equal(await onSale(), false);
+  });
+
+  it('M:1 then restocked to 3 — the API and a new quote are back at the catalog price', async () => {
+    await setStock('M', 1);
+    assert.equal((await variantsNow()).M.price, 400_000);
+    await setStock('M', 3);
+    assert.equal((await variantsNow()).M.price, undefined);
+    const quote = await fetch(base + '/v1/checkout/quote', { method: 'POST', body: JSON.stringify(cod(1, 'M')),
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': nextClient() } });
+    assert.equal(quote.status, 200);
+    assert.equal((await quote.json()).subtotal, PRICE);
+  });
+
+  it('setting off — M:1 sells at the catalog price and is not on sale', async () => {
+    await setDiscount(false);
+    try {
+      await setStock('M', 1);
+      assert.equal((await variantsNow()).M.price, undefined);
+      assert.equal(await onSale(), false);
+      const quote = await fetch(base + '/v1/checkout/quote', { method: 'POST', body: JSON.stringify(cod(1, 'M')),
+        headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': nextClient() } });
+      assert.equal((await quote.json()).subtotal, PRICE);
+    } finally { await setDiscount(true); }
+  });
+});

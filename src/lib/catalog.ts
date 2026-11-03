@@ -5,6 +5,7 @@ import { categories } from '@/data/products';
 import { variantMatchesColorFamily } from '@/lib/shop-by-color';
 import type { CatalogFilters, CategorySlug, Product } from '@/types/store';
 import { visitorHeaders } from '@/lib/backend-products';
+import { lastPieceDeal } from '@/lib/last-piece-discount';
 
 export const PAGE_SIZE = 12;
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -63,7 +64,8 @@ export async function queryProducts(filters: CatalogFilters): Promise<{ items: P
     if (filters.q && rankProduct(product, filters.q) === null) return false;
     if (filters.min !== undefined && product.price < filters.min) return false;
     if (filters.max !== undefined && product.price > filters.max) return false;
-    if (filters.discounted && !(product.compareAt && product.compareAt > product.price)) return false;
+    // On sale: the product's own sale, or a last-piece price on one of its variants.
+    if (filters.discounted && !((product.compareAt && product.compareAt > product.price) || lastPieceDeal(product))) return false;
     const variants = product.variants.filter((variant) =>
       (!filters.size || variant.size === filters.size) &&
       (!filters.color || variantMatchesColorFamily(product, variant.colorId, filters.color)));

@@ -7,7 +7,9 @@ export type PriceLine = { price: number; quantity: number };
 // Monetary columns currently use PostgreSQL integer, not bigint.
 const MAX_AMOUNT = 2_147_483_647;
 export class DomainError extends Error {
-  constructor(public readonly status: number, message: string) { super(message); }
+  /** `code` is the response's `error` field; `extra` adds fields the client acts on (e.g. the new totals). */
+  constructor(public readonly status: number, message: string, public readonly code = 'business_rule',
+    public readonly extra: Record<string, unknown> = {}) { super(message); }
 }
 export function calculate(lines: PriceLine[], shipping: Shipping, payment: Payment, code: string, province: string, city: string) {
   if (shipping === 'courier' && !(province === 'تهران' && normalizePersian(city) === 'تهران'))

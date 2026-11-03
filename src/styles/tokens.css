@@ -23,6 +23,7 @@
   --color-accent: var(--color-brand);
   --color-accent-soft: #D77A84;    /* decorative only */
   --color-accent-wash: #F9EBED;
+  --color-logo-cream: #F2D2AF;     /* the logo's cream: the wordmark on dark grounds and the favicon's K */
   --color-border: #E5E7EB;
   --color-border-strong: #858A93;
   --color-outline-soft: rgb(24 24 24 / 0.28);
@@ -40,7 +41,6 @@
   /* Type: one family, Estedad, for everything. Large headings speak in its extra-light weight, with medium for the
      emphasised words: the contrast in weight is the display voice. */
   --font-sans: var(--font-estedad), Tahoma, "Segoe UI", sans-serif;
-  --font-wordmark: Georgia, "Times New Roman", serif;
   --font-weight-extralight: 200;
   --font-weight-light: 300;
   --font-weight-regular: 400;

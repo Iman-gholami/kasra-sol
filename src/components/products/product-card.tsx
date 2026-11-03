@@ -4,10 +4,13 @@ import { categories } from '@/data/facets';
 import { WishlistButton } from '@/components/products/wishlist-button';
 import { Price } from '@/components/products/price';
 import { discountPercent, formatNumber, formatPercent } from '@/lib/format';
+import { lastPieceDeal, type LastPieceDeal } from '@/lib/last-piece-discount';
 import type { Product } from '@/types/store';
 
 export type ProductCardData = Pick<Product,
-  'id' | 'slug' | 'name' | 'category' | 'price' | 'compareAt' | 'images' | 'colors'> & Partial<Pick<Product, 'variants'>>;
+  'id' | 'slug' | 'name' | 'category' | 'price' | 'compareAt' | 'images' | 'colors'> & Partial<Pick<Product, 'variants'>> &
+  /** For previews sent without their stock table: the last-piece deal the card shows (else derived from `variants`). */
+  { deal?: LastPieceDeal | null };
 
 const SIZES = '(max-width: 600px) 46vw, (max-width: 1080px) 31vw, (max-width: 1439px) 24vw, 330px';
 
@@ -19,7 +22,11 @@ export type CardImageLoading = 'lcp' | 'eager' | 'lazy';
  * A second photo, when there is one, crossfades in on hover with a fine pointer and is a swipe away on touch
  * screens (a CSS scroll-snap track with a scroll-driven position bar; no client JavaScript). */
 export function ProductCard({ product, loading = 'lazy', sizes = SIZES }: { product: ProductCardData; loading?: CardImageLoading; sizes?: string }) {
-  const discount = discountPercent(product.price, product.compareAt);
+  // Last pieces: when every colour and size left is one, the card shows their price; when only some are, it keeps the
+  // product's price and says that some combinations are discounted (it never implies they all are).
+  const deal = product.deal !== undefined ? product.deal : product.variants ? lastPieceDeal({ ...product, variants: product.variants }) : null;
+  const shown = deal?.everyVariant ? deal.offer : { price: product.price, compareAt: product.compareAt };
+  const discount = discountPercent(shown.price, shown.compareAt);
   const category = categories.find(item => item.slug === product.category)?.title ?? '';
   const soldOut = product.variants ? !product.variants.some(variant => variant.stock > 0) : false;
   const href = '/product/' + product.slug;
@@ -41,7 +48,8 @@ export function ProductCard({ product, loading = 'lazy', sizes = SIZES }: { prod
     <div className="product-info">
       <p className="product-category">{category}</p>
       <h3 className="product-title"><Link href={href} className="product-link"><span>{product.name}</span></Link></h3>
-      <Price price={product.price} compareAt={product.compareAt}/>
+      <Price price={shown.price} compareAt={shown.compareAt}/>
+      {deal && !deal.everyVariant && <p className="product-deal">تا {formatPercent(deal.percent)} تخفیف روی رنگ و سایزهای تک‌دونه</p>}
       <div className="color-dots" aria-hidden="true">
         {product.colors.map(color => <span key={color.id} style={{ backgroundColor: color.hex }}/>)}
         <small>{formatNumber(product.colors.length)} رنگ</small>

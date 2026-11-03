@@ -9,13 +9,13 @@ const SERIAL = '[1-9][0-9]{0,15}';
 // Only these admin endpoints are reachable from the browser; the API checks the session's permissions on each.
 const ROUTES: Record<string, RegExp> = {
   GET: new RegExp('^(auth/me|reports/overview|reports/traffic|products|products/' + PRODUCT + '|products/' + PRODUCT + '/variants|' +
-    'orders|orders/export|orders/' + UUID + '|staff|roles|audit|home-slider|barcodes/[0-9]{13}|stock-receipts|stock-receipts/' + SERIAL +
+    'orders|orders/export|orders/' + UUID + '|staff|roles|audit|home-slider|last-piece-discount|barcodes/[0-9]{13}|stock-receipts|stock-receipts/' + SERIAL +
     '|store-sales|store-holds)$'),
   POST: new RegExp('^(auth/logout|auth/password|staff|roles|products|products/' + PRODUCT + '/barcodes|stock-receipts|store-sales|' +
     'store-sales/' + SERIAL + '/void|store-holds|store-holds/' + SERIAL + '/resume)$'),
   PATCH: new RegExp('^(staff/' + UUID + '|products/' + PRODUCT + '/(price|visibility)|variants/' + UUID + '/stock|' +
     'orders/' + UUID + '/status)$'),
-  PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password|roles/' + UUID + '|home-slider)$'),
+  PUT: new RegExp('^(products/' + PRODUCT + '|staff/' + UUID + '/password|roles/' + UUID + '|home-slider|last-piece-discount)$'),
   DELETE: new RegExp('^(roles/' + UUID + '|store-holds/' + SERIAL + ')$')
 };
 // List endpoints accept these query parameters; anything else is dropped rather than forwarded.

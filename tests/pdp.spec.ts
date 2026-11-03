@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /** Real touch drag through CDP (synthetic DOM TouchEvents never scroll a native scroller). */
 async function touchDrag(page: Page, x: number, y: number, dx: number, dy: number) {
@@ -58,7 +58,7 @@ test('PDP selection responds to unavailable size after a color change',async ({p
   await page.getByRole('button',{name:'رنگ کرم'}).click();
   await expect(page.getByRole('button',{name:'سایز S ناموجود'})).toBeDisabled();
   await expect(page.getByText('سایز قبلی برای این رنگ ناموجود است')).toBeVisible();
-  await expect(page.getByRole('button',{name:'رنگ و سایز رو انتخاب کن'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'انتخاب رنگ و سایز',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'سایز M'}).click();
   await expect(page.getByText('سایز قبلی برای این رنگ ناموجود است')).toHaveCount(0);
   await page.getByRole('button',{name:'افزودن به سبد خرید',exact:true}).click();
@@ -101,27 +101,38 @@ test('PDP sticky mobile action prompts and focuses missing selection, then hides
   await expect(sticky.getByRole('link',{name:'مشاهده سبد'})).toBeVisible();
 });
 
-test('compact size guide sits by the color-and-size CTA without crowding small phones',async ({page})=>{
+test('size guide, add button and wishlist share one 52px row; the add label stays on one line',async ({page})=>{
+  // The add button used to be taller than the size guide beside it (its label wrapped onto two lines); now the three
+  // controls are one height, the heart is a circle and the label fits on one line in every state, down to 320px.
+  const lineCount = (label: Locator) => label.evaluate(el => el.getClientRects().length);
   for (const width of [320,375,390,768,1440]) {
     await page.setViewportSize({width,height:844});
     await page.goto('/product/shomiz-01');
     const row = page.locator('.purchase-row');
-    const primary = row.getByRole('button',{name:'رنگ و سایز رو انتخاب کن'});
+    const primary = row.getByRole('button',{name:'انتخاب رنگ و سایز',exact:true});
     const guide = row.getByRole('button',{name:'راهنمای سایز'});
+    const heart = row.getByRole('button',{name:'افزودن به علاقه‌مندی‌ها'});
     await expect(primary).toBeVisible();
-    await expect(guide).toBeVisible();
     await expect(guide).toHaveAttribute('aria-haspopup','dialog');
-    const cta = await primary.boundingBox(), card = await guide.boundingBox();
-    expect(cta).not.toBeNull();
-    expect(card).not.toBeNull();
-    expect(Math.abs(cta!.y-card!.y)).toBeLessThanOrEqual(1);
-    // Direction is RTL: the first purchase-row element must appear physically to the right.
+    const [cta, card, wish] = await Promise.all([primary, guide, heart].map(button => button.boundingBox()));
+    for (const box of [cta, card, wish]) {
+      expect(Math.abs(box!.height - 52), String(width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box!.y - cta!.y), String(width)).toBeLessThanOrEqual(1);
+    }
+    expect(Math.abs(wish!.width - wish!.height), String(width)).toBeLessThanOrEqual(1);
+    expect(await lineCount(primary.locator('.purchase-label')), String(width)).toBe(1);
+    // Direction is RTL: the size guide comes first, physically to the right of the add button.
     expect(card!.x).toBeGreaterThan(cta!.x + cta!.width - 1);
     await expect(guide).toHaveCSS('background-color','rgb(249, 235, 237)');
     await expect(guide).toHaveCSS('border-top-color','rgb(214, 139, 147)');
     expect(card!.width).toBeLessThanOrEqual(75);
-    expect(card!.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+1);
+
+    await page.getByRole('button',{name:'رنگ کرم'}).click();
+    await page.getByRole('button',{name:'سایز M'}).click();
+    const add = row.getByRole('button',{name:'افزودن به سبد خرید',exact:true});
+    expect(Math.abs((await add.boundingBox())!.height - 52), String(width)).toBeLessThanOrEqual(1);
+    expect(await lineCount(add.locator('.purchase-label')), String(width)).toBe(1);
   }
 });
 

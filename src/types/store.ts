@@ -1,7 +1,9 @@
 export type CategorySlug = 'shomiz' | 'manto' | 'tshirt';
 
 export type ProductColor = { id: string; name: string; hex: string; familyId?: string };
-export type ProductVariant = { colorId: string; size: string; stock: number };
+/** `price`/`compareAt` are present only when the last-piece discount changes this variant's price (its own stock is
+ * exactly 1); otherwise the variant sells at the product's price. */
+export type ProductVariant = { colorId: string; size: string; stock: number; price?: number; compareAt?: number };
 
 export type Product = {
   id: string;
