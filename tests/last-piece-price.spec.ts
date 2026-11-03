@@ -94,3 +94,27 @@ for (const [device, use] of [
     });
   });
 }
+
+test.describe('listings', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const card = (page: Page, name: string) => page.locator('.product-card').filter({ hasText: name });
+
+  test('a product with some last pieces keeps its price and says so; one with only a last piece shows its price', async ({ page }) => {
+    await page.goto('/shop?category=shomiz');
+    const some = card(page, 'شومیز ساده ویانا');
+    await expect(some.locator('.price-line strong')).toHaveText('۸۰۴٬۰۰۰ تومان');
+    await expect(some.locator('.price-line del')).toHaveCount(0);
+    await expect(some.locator('.product-deal')).toHaveText('تا ۲۰٪ تخفیف روی رنگ و سایزهای تک‌دونه');
+    await expect(some.locator('.discount-tag')).toHaveCount(0);
+    const only = card(page, 'شومیز نخی دریا');
+    await expect(only.locator('.price-line strong')).toHaveText('۵۷۴٬۰۰۰ تومان');
+    await expect(only.locator('.price-line del')).toContainText('۷۱۸٬۰۰۰');
+    await expect(only.locator('.discount-tag')).toHaveText('۲۰٪ تخفیف');
+    await expect(only.locator('.product-deal')).toHaveCount(0);
+  });
+
+  test('the sale filter includes a product whose only discount is a last piece', async ({ page }) => {
+    await page.goto('/shop?sale=1&category=shomiz');
+    await expect(card(page, 'شومیز ساده ویانا')).toHaveCount(1);
+  });
+});

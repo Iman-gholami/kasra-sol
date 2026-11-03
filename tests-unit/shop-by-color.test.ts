@@ -90,3 +90,13 @@ describe('getShopByColorResults', () => {
     assert.deepEqual(getShopByColorResults([]), []);
   });
 });
+
+describe('shop by colour previews and last pieces', () => {
+  it('carry the last-piece deal a card shows, without the stock table', () => {
+    const previews = getShopByColorResults().flatMap(result => result.products);
+    const lastPiece = previews.find(preview => preview.slug === 'shomiz-04')!;
+    assert.deepEqual(lastPiece.deal, { percent: 20, everyVariant: true, offer: { price: 574_000, compareAt: 718_000 } });
+    assert.equal(previews.find(preview => preview.slug === 'shomiz-01')!.deal, null);
+    assert.ok(!('variants' in lastPiece));
+  });
+});
