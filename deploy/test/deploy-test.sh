@@ -191,6 +191,8 @@ restored_photo=$(cat /proc/sys/kernel/random/uuid).png
 install -m 0644 /tmp/kasra-test-photo.png "$(docker volume inspect -f '{{.Mountpoint}}' kasra_media_data)/$restored_photo"
 "$BIN/backup.sh" manual
 media=$(basename "$(ls -1t "$BACKUP_DIR"/media-*-manual.tar.gz | head -n 1)")
+[ -f "$BACKUP_DIR/$dump" ] && [ "$(basename "$(ls -1t "$BACKUP_DIR"/db-*-manual.dump | head -n 1)")" != "$dump" ] \
+  || fail "the second backup replaced the first"
 tar -tzf "$BACKUP_DIR/$media" | grep -q "$photo" || fail "the media backup lacks the uploaded photo"
 in_bucket "$restored_photo" && fail "the test photo is in the bucket before the restore"
 "$BIN/restore.sh" "$dump" "$media"
