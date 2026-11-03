@@ -1,7 +1,7 @@
 import type { CatalogFilters } from '@/types/store';
 
 /** Client-safe builder for the existing catalog query contract
- * (category, q, size, color, min, max, stock=1, sale=1, last=1, sort, page). */
+ * (category, q, size, color, min, max, stock=1, sale=1, sort, page). */
 export function catalogHref(action: string, filters: CatalogFilters, fixedCategory = false,
   overrides: Record<string, string | null> = {}): string {
   const params = new URLSearchParams();
@@ -13,7 +13,6 @@ export function catalogHref(action: string, filters: CatalogFilters, fixedCatego
   if (filters.max !== undefined) params.set('max', String(filters.max));
   if (filters.inStock) params.set('stock', '1');
   if (filters.discounted) params.set('sale', '1');
-  if (filters.lastPiece) params.set('last', '1');
   if (filters.sort && filters.sort !== 'featured') params.set('sort', filters.sort);
   for (const [key, value] of Object.entries(overrides)) {
     if (value === null) params.delete(key); else params.set(key, value);

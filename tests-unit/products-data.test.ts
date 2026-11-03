@@ -6,6 +6,7 @@ import { byId, bySlug, categories, demoPhotos, getCategory, getVariant, palette,
   studioPhotos } from '@/data/products';
 import { weekLooks } from '@/data/week-looks';
 import { isDemoPhoto } from '@/lib/demo-photos';
+import { offerFor } from '@/lib/last-piece-discount';
 
 // The cart, the catalog lookup API and the backend all accept only ids of this shape.
 const PRODUCT_ID = /^[a-z0-9][a-z0-9-]{1,78}$/;
@@ -145,5 +146,30 @@ describe('lookups', () => {
     assert.deepEqual(getVariant(product, color, 'M'), product.variants.find(v => v.colorId === color && v.size === 'M'));
     assert.equal(getVariant(product, color, 'XXL'), undefined);
     assert.equal(getVariant(product, 'not-a-color', 'M'), undefined);
+  });
+});
+
+describe('demo last pieces (per variant)', () => {
+  const stockOf = (slug: string) => bySlug(slug)!.variants.map(v => [bySlug(slug)!.colors.findIndex(c => c.id === v.colorId), v.size, v.stock] as const);
+  it('sets the demo combinations at exactly one unit and leaves every other variant of those products off one', () => {
+    const ones: Record<string, [number, string][]> = {
+      'shomiz-06': [[1, 'L']], 'manto-08': [[0, 'S'], [2, 'XL']], 'tshirt-05': [[0, 'M']]
+    };
+    for (const [slug, combos] of Object.entries(ones)) {
+      for (const [colorIndex, size, stock] of stockOf(slug)) {
+        const expected = combos.some(([c, s]) => c === colorIndex && s === size);
+        assert.equal(stock === 1, expected, slug + ' ' + colorIndex + ' ' + size + ' has ' + stock);
+      }
+    }
+  });
+  it('keeps the five products whose only stock is one unit of their second colour in M', () => {
+    for (const slug of ['shomiz-04', 'shomiz-07', 'manto-06', 'manto-11', 'tshirt-08'])
+      assert.deepEqual(stockOf(slug).filter(([, , stock]) => stock > 0), [[1, 'M', 1]], slug);
+  });
+  it('prices the demo last pieces at the demo setting (20%)', () => {
+    assert.deepEqual(offerFor(bySlug('shomiz-06')!, 'black', 'L'), { price: 643_000, compareAt: 804_000 });
+    assert.deepEqual(offerFor(bySlug('shomiz-06')!, 'black', 'M'), { price: 804_000 });
+    assert.equal(offerFor(bySlug('tshirt-05')!, 'cream', 'M').price, 424_000);
+    assert.equal(offerFor(bySlug('manto-08')!, 'cream', 'XL').price, 1_314_000);
   });
 });

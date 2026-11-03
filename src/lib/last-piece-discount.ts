@@ -30,9 +30,9 @@ export function variantOffer(base: Offer, stock: number, setting: LastPieceSetti
 /** The product with each qualifying variant carrying its own `price` and `compareAt`, and any stale ones removed.
  * Pure: returns a new object. */
 export function withLastPieceOffers<T extends Priced>(product: T, setting: LastPieceSetting): T {
-  return { ...product, variants: product.variants.map(({ price: _price, compareAt: _compareAt, ...variant }) => {
-    const own = variantOffer(product, variant.stock, setting);
-    return own.price === product.price ? variant : { ...variant, ...own };
+  return { ...product, variants: product.variants.map(({ colorId, size, stock }) => {
+    const own = variantOffer(product, stock, setting);
+    return own.price === product.price ? { colorId, size, stock } : { colorId, size, stock, ...own };
   }) };
 }
 

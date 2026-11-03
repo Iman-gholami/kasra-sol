@@ -4,6 +4,7 @@ import { PAGE_SIZE, parseFilters, queryProducts } from '@/lib/catalog';
 import { catalogHref, sortLabels } from '@/lib/catalog-url';
 import { variantMatchesColorFamily } from '@/lib/shop-by-color';
 import { rankProduct } from '@/lib/search';
+import { lastPieceDeal } from '@/lib/last-piece-discount';
 import type { CatalogFilters, Product } from '@/types/store';
 import { json, setEnv, stubFetch } from './helpers';
 
@@ -25,7 +26,7 @@ describe('parseFilters (demo catalog)', () => {
     setEnv(t, demo);
     assert.deepEqual(parseFilters({}), {
       category: undefined, q: undefined, size: undefined, color: undefined, min: undefined, max: undefined,
-      inStock: false, discounted: false, lastPiece: false, sort: 'featured', page: 1
+      inStock: false, discounted: false, sort: 'featured', page: 1
     });
   });
 
@@ -59,14 +60,12 @@ describe('parseFilters (demo catalog)', () => {
       assert.equal(parseFilters({ min: value }).min, undefined, value);
   });
 
-  it('turns stock=1, sale=1 and last=1 into flags, and nothing else', t => {
+  it('turns stock=1 and sale=1 into flags, and nothing else', t => {
     setEnv(t, demo);
     assert.equal(parseFilters({ stock: '1', sale: '1' }).inStock, true);
     assert.equal(parseFilters({ stock: '1', sale: '1' }).discounted, true);
-    assert.equal(parseFilters({ last: '1' }).lastPiece, true);
     assert.equal(parseFilters({ stock: 'true', sale: 'yes' }).inStock, false);
     assert.equal(parseFilters({ stock: 'true', sale: 'yes' }).discounted, false);
-    assert.equal(parseFilters({ last: 'yes' }).lastPiece, false);
   });
 
   it('falls back to the featured sort and clamps the page between 1 and 1000', t => {
@@ -120,8 +119,8 @@ describe('queryProducts (demo catalog)', () => {
   const cases: [string, CatalogFilters, (p: Product, f: CatalogFilters) => boolean][] = [
     ['category', { category: 'manto' }, p => p.category === 'manto'],
     ['price range', { min: 1_000_000, max: 1_500_000 }, p => p.price >= 1_000_000 && p.price <= 1_500_000],
-    ['on sale', { discounted: true }, p => (p.compareAt ?? 0) > p.price],
-    ['last piece', { lastPiece: true }, p => p.variants.reduce((sum, v) => sum + v.stock, 0) === 1],
+    // A last-piece variant deal counts as on sale (shomiz-06 has one in black L, and no sale of its own).
+    ['on sale', { discounted: true }, p => (p.compareAt ?? 0) > p.price || lastPieceDeal(p) !== null],
     ['size', { size: 'S' }, (p, f) => sellable(p, f).length > 0],
     ['color family', { color: 'cream' }, (p, f) => sellable(p, f).length > 0],
     ['in stock in that size and color', { size: 'S', color: 'black', inStock: true },
@@ -134,6 +133,7 @@ describe('queryProducts (demo catalog)', () => {
       const { products } = await import('@/data/products');
       const found = await everything(filters);
       assert.ok(found.length > 0, 'the demo data should exercise this filter');
+      if (name === 'on sale') assert.ok(found.some(p => p.slug === 'shomiz-06'), 'a variant deal alone puts a product on sale');
       assert.deepEqual(found.map(p => p.id).sort(), products.filter(p => matches(p, filters)).map(p => p.id).sort());
     });
   }
@@ -175,12 +175,12 @@ describe('queryProducts (live catalog)', () => {
     const answer = { items: [], total: 0, page: 2, pages: 2 };
     const calls = stubFetch(t, () => json(answer));
     const result = await queryProducts({ category: 'manto', q: 'لینن', size: 'M', color: 'black', min: 0, max: 900,
-      inStock: true, discounted: true, lastPiece: true, sort: 'price-asc', page: 2 });
+      inStock: true, discounted: true, sort: 'price-asc', page: 2 });
     assert.deepEqual(result, answer);
     const url = new URL(calls[0].url);
     assert.equal(url.origin + url.pathname, 'http://api.test/v1/products');
     assert.deepEqual(Object.fromEntries(url.searchParams), { category: 'manto', q: 'لینن', size: 'M', color: 'black',
-      min: '0', max: '900', stock: '1', sale: '1', last: '1', sort: 'price-asc', page: '2' });
+      min: '0', max: '900', stock: '1', sale: '1', sort: 'price-asc', page: '2' });
     assert.equal(calls[0].init.cache, 'no-store');
   });
 
@@ -203,8 +203,8 @@ describe('catalogHref', () => {
     assert.equal(catalogHref('/shop', {}), '/shop');
     assert.equal(catalogHref('/shop', { sort: 'featured' }), '/shop');
     assert.equal(catalogHref('/shop', { category: 'manto', q: 'لینن', size: 'M', color: 'black', min: 0, max: 900,
-      inStock: true, discounted: true, lastPiece: true, sort: 'newest' }),
-    '/shop?category=manto&q=%D9%84%DB%8C%D9%86%D9%86&size=M&color=black&min=0&max=900&stock=1&sale=1&last=1&sort=newest');
+      inStock: true, discounted: true, sort: 'newest' }),
+    '/shop?category=manto&q=%D9%84%DB%8C%D9%86%D9%86&size=M&color=black&min=0&max=900&stock=1&sale=1&sort=newest');
   });
 
   it('leaves the category out on a category page, where it is part of the path', () => {
@@ -219,7 +219,7 @@ describe('catalogHref', () => {
   it('round-trips through parseFilters', t => {
     setEnv(t, demo);
     const filters: CatalogFilters = { category: 'tshirt', q: 'پنبه', size: 'XL', color: 'white', min: 100, max: 5_000_000,
-      inStock: true, discounted: true, lastPiece: true, sort: 'price-desc', page: 4 };
+      inStock: true, discounted: true, sort: 'price-desc', page: 4 };
     const href = catalogHref('/shop', filters, false, { page: '4' });
     assert.deepEqual(parseFilters(Object.fromEntries(new URL(href, 'http://x').searchParams)), filters);
   });

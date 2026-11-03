@@ -1,4 +1,5 @@
 import type { CategorySlug, Product } from '@/types/store';
+import { DEMO_LAST_PIECE_SETTING, withLastPieceOffers } from '@/lib/last-piece-discount';
 
 export { categories, palette, standardSizes } from '@/data/facets';
 import { categories, palette, standardSizes } from '@/data/facets';
@@ -54,10 +55,18 @@ const collections: {
   }
 ];
 
-/** Demo «آخرین دونه‌ها»: models down to their very last piece (one unit, in their second colour, size M). */
-const demoLastPieces = new Set(['shomiz-04', 'shomiz-07', 'manto-06', 'manto-11', 'tshirt-08']);
+/** Demo «آخرین دونه‌ها»: variants at exactly one unit, as [colour index, size]. The first five products have nothing
+ * else in stock (`only`); the other three keep their usual stock in every other colour and size. */
+const demoLastPieces: Record<string, { only: boolean; at: [number, string][] }> = {
+  'shomiz-04': { only: true, at: [[1, 'M']] }, 'shomiz-07': { only: true, at: [[1, 'M']] },
+  'manto-06': { only: true, at: [[1, 'M']] }, 'manto-11': { only: true, at: [[1, 'M']] },
+  'tshirt-08': { only: true, at: [[1, 'M']] },
+  'shomiz-06': { only: false, at: [[1, 'L']] }, 'manto-08': { only: false, at: [[0, 'S'], [2, 'XL']] },
+  'tshirt-05': { only: false, at: [[0, 'M']] }
+};
 
-export const products: Product[] = collections.flatMap((collection, categoryIndex) =>
+/** The demo catalog as the shop stocks it: catalog prices only. The database seed writes this. */
+export const catalogProducts: Product[] = collections.flatMap((collection, categoryIndex) =>
   collection.names.map((name, i) => {
     const index = i + 1;
     const colorList = [
@@ -83,8 +92,8 @@ export const products: Product[] = collections.flatMap((collection, categoryInde
         sizes.map((size, sizeIndex) => ({
           colorId: color.id,
           size,
-          stock: demoLastPieces.has(slug) ? Number(colorIndex === 1 && size === 'M')
-            : (i + colorIndex + sizeIndex) % 7 === 0 ? 0 : 2 + (i + sizeIndex) % 8
+          stock: demoLastPieces[slug]?.at.some(([c, s]) => c === colorIndex && s === size) ? 1
+            : demoLastPieces[slug]?.only ? 0 : (i + colorIndex + sizeIndex) % 7 === 0 ? 0 : 2 + (i + sizeIndex) % 8
         }))
       ),
       material: collection.material,
@@ -95,6 +104,9 @@ export const products: Product[] = collections.flatMap((collection, categoryInde
     };
   })
 );
+/** What the demo storefront shows: demo mode has no back office, so the last-piece discount is on
+ * (DEMO_LAST_PIECE_SETTING) and variants at one unit carry their own price. */
+export const products: Product[] = catalogProducts.map(product => withLastPieceOffers(product, DEMO_LAST_PIECE_SETTING));
 
 export const bySlug = (slug: string): Product | undefined =>
   products.find((product) => product.slug === slug);

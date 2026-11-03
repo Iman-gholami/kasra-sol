@@ -34,12 +34,11 @@ export function CatalogView({ title, intro, action, filters, data, fixedCategory
   if (filters.max !== undefined) chips.push({ key: 'max', label: 'تا ' + formatNumber(filters.max) + ' تومان' });
   if (filters.inStock) chips.push({ key: 'stock', label: 'فقط موجودها' });
   if (filters.discounted) chips.push({ key: 'sale', label: 'تخفیف‌دارها' });
-  if (filters.lastPiece) chips.push({ key: 'last', label: 'آخرین دونه‌ها' });
   if (filters.sort && filters.sort !== 'featured') chips.push({ key: 'sort', label: sortLabels[filters.sort] });
 
-  const clearHref = makeUrl({ category: null, size: null, color: null, min: null, max: null, stock: null, sale: null, last: null, sort: null, page: null });
+  const clearHref = makeUrl({ category: null, size: null, color: null, min: null, max: null, stock: null, sale: null, sort: null, page: null });
   const allHref = action === '/search' ? makeUrl({ category: null, page: null }) : '/shop' + makeUrl({ category: null, page: null }).slice(action.length);
-  const relaxHref = makeUrl({ size: null, color: null, min: null, max: null, stock: null, sale: null, last: null, page: null });
+  const relaxHref = makeUrl({ size: null, color: null, min: null, max: null, stock: null, sale: null, page: null });
   const categoryHref = (slug: string) => action === '/search'
     ? makeUrl({ category: slug, page: null })
     : '/category/' + slug + makeUrl({ category: null, page: null }).slice(action.length);
