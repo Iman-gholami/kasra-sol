@@ -8,6 +8,8 @@
 .content-page .content-lede { font-size: var(--text-md); color: var(--color-text); }
 .content-page > .btn { margin-block-start: var(--space-3); }
 .content-page .empty-state { margin-block-start: var(--space-4); }
+/* The contact page shows the footer's phone lines and social links in their light colours. */
+.contact-page .social-links { margin-block-end: var(--space-6); }
 .accordion-group { margin-block-start: var(--space-4); }
 .accordion-group .accordion > summary { padding-block: var(--space-3); line-height: 1.7; }
 

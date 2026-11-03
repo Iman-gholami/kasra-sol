@@ -275,9 +275,27 @@ bottom sheets round their top corners; side drawers stay square against the scre
 are `--radius-md`.
 
 ### Footer
-`components/layout/footer.tsx`, `styles/layout.css`. The wordmark in the logo's cream heads it. A soft rounded panel (`--radius-lg`, `--color-surface-muted`) at
-page width: the panel itself is the page-width box, so its columns line up with the header. The copyright line sits
-beneath it, outside the panel.
+`components/layout/footer.tsx`, `styles/layout.css`. One charcoal panel (`--color-text`, `--radius-lg`) at page width,
+read like the boutique's calling card, top to bottom:
+- the wordmark in the logo's cream and the one-line tagline;
+- **تماس با کسری**: the three phone lines (store, support, wholesale) as one grouped block with hairline seams. Each
+  row is a single call link (`tel:+98…`): the line's name small and muted, the number large (`--text-2xl`, light) in
+  the logo's cream, in Persian digits grouped as they are said (`۰۲۱ ۶۳۱۲ ۸۹۶۲`, `۰۹۰۲ ۶۴۵ ۰۵۹۶`) and set `dir="ltr"`,
+  and a Kasra-red call badge at the row's end. The numbers are the footer's one bold element; everything else is quiet;
+- Instagram and the Bale channel as two outlined pills, each with the network's own logo in its own colours, opening
+  in a new tab;
+- the links: «کالکشن‌ها» and «راهنمای خرید» in two columns, then about, contact and account in one row;
+- the small print and, on the production domain only, the eNamad seal on a small white tile (under the text from
+  360px down).
+
+Focus rings in the footer are cream, since Kasra red does not show on charcoal. The contact page shows the same phone
+lines and social links in light colours (the pieces read `--line-*` values the footer sets), and the footer's copy of
+them is hidden there.
+
+The numbers and addresses live in one place, `src/data/contact.ts`; `src/lib/phone.ts` turns a number into its link and
+its display form and refuses anything but an 11-digit number starting with 0. The pieces are
+`components/layout/contact-channels.tsx`. Tests: `tests-unit/contact.test.ts` (numbers, addresses, markup),
+`tests/footer.spec.ts` (footer and contact page at 390 and 320px).
 
 ### Bottom navigation (phones)
 `components/layout/bottom-nav.tsx`. Solid paper with a hairline on top (no translucency). The current tab is oxblood
