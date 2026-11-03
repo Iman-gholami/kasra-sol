@@ -7,6 +7,12 @@ label=${1:-manual}
 [[ $label =~ ^[a-z0-9-]+$ ]] || die "invalid backup label"
 install -d -m 0700 "$BACKUP_DIR"
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
+# Names have one-second resolution: a second backup with the same label in the same second would overwrite the first
+# (the deployment test takes two within a second). Wait for a name of its own instead.
+while [ -e "$BACKUP_DIR/db-$stamp-$label.dump" ] || [ -e "$BACKUP_DIR/media-$stamp-$label.tar.gz" ]; do
+  sleep 1
+  stamp=$(date -u +%Y%m%dT%H%M%SZ)
+done
 
 [ "$(service_state postgres)" = healthy ] || die "PostgreSQL is not running; nothing to back up"
 user=$(env_get POSTGRES_USER); db=$(env_get POSTGRES_DB)
