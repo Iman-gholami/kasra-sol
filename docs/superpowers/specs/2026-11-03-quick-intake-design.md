@@ -1,7 +1,7 @@
 # Quick goods intake with barcodes, and categories the shop manages — design
 
-Status: **waiting for the owner's review**. After approval, an implementation plan is written
-(`docs/superpowers/plans/2026-11-03-quick-intake.md`) and reviewed before any code.
+Status: **approved by the owner** (2026-11-03). Implementation plan:
+`docs/superpowers/plans/2026-11-03-quick-intake.md`, reviewed by the owner before any code.
 
 This is sub-project **1 of 3** agreed with the owner:
 
