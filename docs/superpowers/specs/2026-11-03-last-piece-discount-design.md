@@ -1,4 +1,4 @@
-# Last-piece discount («تخفیف آخرین دونه‌ها») — design, revision 3
+# Last-piece discount («تخفیف آخرین دونه‌ها») — design, revision 4
 
 Status: **waiting for the owner's approval** (with the implementation plan,
 `docs/superpowers/plans/2026-11-03-last-piece-discount.md`). No code is written until it is approved.
@@ -7,6 +7,9 @@ Revision 2: the discount is decided **per variant** (one colour in one size), no
 Revision 3: the home rail is per variant too (one card per qualifying colour and size, opening the product page with
 it chosen), «مشاهده همه» opens a page of every qualifying variant, and the section gets its own visual direction
 (below) instead of following the reference screenshot's red panel.
+Revision 4 (owner): the section follows the owner's reference layout after all (papionlady.com's «آخرین دونه», from
+the owner's screenshots), in Kasra red, with the owner's pick of five icon concepts, the discount stamp. Mockups:
+the scratchpad's `mockup/final-*.png`, shared in the chat.
 
 ## Goal
 
@@ -161,11 +164,11 @@ Demo stock gets these combinations (models no test uses today), so each case can
 
 - **What they list**: every variant with stock exactly 1 of a published product, whose colour is still one of the
   product's colours, newest product first, then in the product's colour order and size order. The home rail shows
-  the first ten and a closing «مشاهده همه» tile; `/last-pieces` shows them all. Both are listed with the setting off
+  the first ten; `/last-pieces` shows them all. Both are listed with the setting off
   too (they are the last pieces either way); only the price changes with it.
-- **A card**: the photo, the badge («۲۰٪ تخفیف» when its price is lowered, else «فقط ۱ دونه»), the product name, the
-  colour swatch and name, the size, «فقط ۱ دونه» beside it when the badge shows the discount, and the variant's price
-  (struck original and red price when lowered). It opens `/product/<slug>?color=<colorId>&size=<size>`, where the buy
+- **A card** (see the visual direction): the photo, the pill («۲۰٪ تخفیف» when its price is lowered, else «فقط ۱
+  دونه»), the product name, the colour swatch, colour name and size, and the variant's price (struck original when
+  lowered). It opens `/product/<slug>?color=<colorId>&size=<size>`, where the buy
   box starts with that colour and size chosen. Invalid or sold-out choices in the address are ignored.
 - **`/last-pieces`**: the title «آخرین دونه‌ها», the line, «X دونه», the same cards in two columns, and an empty state
   «الان هیچ رنگ و سایزی تک‌دونه نیست.» with «دیدن همه محصولات». The shop's `last=1` filter (product-level) is removed
@@ -173,25 +176,27 @@ Demo stock gets these combinations (models no test uses today), so each case can
 
 ## Visual direction (the section)
 
-Kasra's system is a white page with cool-gray studio rooms, ink type and one Kasra red; the reference's red panel
-would shout over it. The section takes its own, quieter place in that system:
+The owner's reference (papionlady.com's «آخرین دونه» rail, phone layout), in Kasra's own colours and with Kasra's own
+icon. Their artwork is not reused.
 
-- **A warm room.** The panel is the logo's cream lightened to a room, `--color-sand: #F7E6D3` (ink on it 15:1, muted
-  text 4.7:1, Kasra red 5.4:1): the only warm room on the page, so it is noticed without a red flood, and it ties the
-  section to the new logo. Kasra red is kept for what matters: the discount badge and the sale price.
-- **The pieces hang on a rail.** A thin ink clothes rail runs along the top of the scroller; each card is a white
-  hang tag (`--radius-md`) with a punched hole, hanging from the rail on a short string. Swiping slides the last
-  pieces along the rail (the rail scrolls with them). The title has the hanger mark already drawn for this section.
-- **Type and copy**: the title in Estedad light at the section-heading size; the line «از هر کدوم فقط یکی مونده؛ مال
-  کسیه که زودتر برسه.» (with «با تا ۲۰٪ تخفیف» when cards are discounted) and «مشاهده همه» on the title row.
-- **Phones first.** The rail bleeds to the screen edges with the gutter as its scroll padding; cards are about 44% of
-  the column, so two and a peek of the third show; scroll-snap on each card; a thin progress line under the rail
-  (scroll-driven where supported, absent otherwise). Nothing hijacks vertical scrolling. Pressing a card gives
-  feedback (`scale(.98)`).
-- **Motion, once and on request.** With a fine pointer, the pointed-at card swings a little on its string and its photo
-  zooms 3%; nothing moves on its own. Reduced motion: no swing, instant arrow scrolling.
-- **Mouse users** get paper arrow discs over the photos (disabled at each end and until hydrated; a double press moves
-  two pages), as built for the earlier rail.
+- **The band**: Kasra red (`--color-brand`, `#B51F2B`), edge to edge on phones (the column on wider screens), with
+  square sides like the other edge-to-edge strips.
+- **Title row**: at the inline start the stamp (below) and «آخرین دونه‌ها» in white, Estedad 800 at `1.25rem`; at the
+  inline end «مشاهده همه» in white 800 with a chevron (`ChevronLeft`), a 44px target. No tagline in the rail.
+- **The stamp** (the owner's pick): a 72px white sticker with a scalloped edge (22 scallops), a dashed Kasra-red inner
+  ring and a red centre reading «فقط / ۱ / دونه», popping out of the band's top edge beside the title
+  (`aria-hidden`; the title says it). Its edge turns with page scrolling where `animation-timeline: scroll()` is
+  supported (no autoplay, so WCAG 2.2.2 holds) and is still otherwise and under reduced motion.
+- **Cards**: white, `14px` radius, `10px` padding, about 43% of the column wide (so the next card is visibly cut,
+  inviting a swipe), scroll-snapped. Inside: the photo (4:5, studio gray, `10px` radius); the red pill «۲۰٪ تخفیف»
+  (or «فقط ۱ دونه» when the price is not lowered) sitting on the photo's bottom edge at the inline start; the name in
+  Estedad 800 at 15px, at most two lines; the colour swatch with «مشکی، سایز L»; at the inline end, the struck
+  original price with «تومان» and, under it, the price in ink 700.
+- **Arrows**: white 44px discs with a chevron, centred on the photos at both ends of the band, on every device (as in
+  the reference), the one at the start faded until the rail has moved; disabled at each end and until hydrated; a
+  quick double press moves two pages.
+- **Motion**: none on its own besides the stamp's scroll-linked turn; pressing a card gives `scale(.98)`. Reduced
+  motion: nothing moves, arrows scroll instantly.
 
 ## Back office
 
@@ -261,9 +266,10 @@ Plus: `PUT` without `products:price` is 403; with it, it saves, is in the activi
 - tshirt-05 in its first colour and M shows 424,000 struck 530,000.
 - Back office (admin E2E, real API): turn it on at 20%, see a variant's public price change and its line in the live
   list, turn it off and see the catalog price back.
-- The rail: nine demo cards (the table above), each with its colour, size and price; a card opens its product with
-  that colour and size chosen; «مشاهده همه» opens `/last-pieces` with all nine; swiping on a 320px phone never widens
-  the page; the arrows for mouse users; no serious axe findings.
+- The rail: nine demo cards (the table above), each with its colour, size and price, on the Kasra-red band with the
+  stamp beside the title; a card opens its product with that colour and size chosen; «مشاهده همه» opens
+  `/last-pieces` with all nine; swiping on a 320px phone never widens the page; the arrows on phones and desktop; no
+  serious axe findings.
 
 ## Out of scope
 

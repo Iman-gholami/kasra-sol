@@ -15,7 +15,7 @@ prices every order line with the same function from the line's own variant row; 
 **Tech Stack:** Next.js 16 / React 19 storefront (TypeScript, CSS with container queries), Fastify + Drizzle +
 PostgreSQL API, node:test (`tsx --test`), Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-11-03-last-piece-discount-design.md` (revision 3).
+**Spec:** `docs/superpowers/specs/2026-11-03-last-piece-discount-design.md` (revision 4).
 
 ## Global Constraints
 
@@ -30,13 +30,14 @@ PostgreSQL API, node:test (`tsx --test`), Playwright.
 - Storefront CSS: container queries (`@container kasra (max-width: …)`) and `cqi` only, never viewport-width media
   queries or `vw` (`tests-unit/single-layout-css.test.ts`); text ≥ 12px; touch targets ≥ 44px; motion uses
   `transform`/`opacity`, never runs on its own, and is off under `prefers-reduced-motion`.
-- Copy, verbatim: «آخرین دونه‌ها» · «از هر کدوم فقط یکی مونده؛ مال کسیه که زودتر برسه.» (with discounted cards:
-  «از هر کدوم فقط یکی مونده، با تا X٪ تخفیف؛ مال کسیه که زودتر برسه.») · «مشاهده همه» · «فقط ۱ دونه» ·
+- Copy, verbatim: «آخرین دونه‌ها» · on `/last-pieces` only, «از هر کدوم فقط یکی مونده؛ مال کسیه که زودتر برسه.» ·
+  «مشاهده همه» · «فقط ۱ دونه» ·
   «X٪ تخفیف» · listings «تا X٪ تخفیف روی رنگ و سایزهای تک‌دونه» · chosen variant «X٪ تخفیف آخرین دونه» ·
   size name suffix «، با تخفیف آخرین دونه» · page count «X دونه» · empty «الان هیچ رنگ و سایزی تک‌دونه نیست.» with
   «دیدن همه محصولات» · admin section «تخفیف آخرین دونه‌ها» · admin own-sale note «تخفیف خود محصول بیشتر است».
   Numbers in Persian digits via `formatNumber` / `formatPercent`.
-- New colour token: `--color-sand: #F7E6D3` (the rail's room).
+- The rail's look is the spec's "Visual direction": the Kasra-red band, white cards, the pill on the photo's edge,
+  arrows on every device, the 72px scalloped stamp beside the title. No new colour token.
 
 ## Review Focus
 
@@ -319,8 +320,8 @@ assert.equal(offerFor(withLastPieceOffers({ ...p, variants: p.variants.map(v => 
 
 **Files:**
 - Modify: `src/lib/last-pieces.ts`, `src/components/home/last-pieces.tsx`, `src/components/home/last-pieces-arrows.tsx`
-  (selectors only), `src/styles/home.css`, `src/styles/tokens.css`, `DESIGN.md`
-- Create: `src/components/home/last-piece-card.tsx`, `src/app/last-pieces/page.tsx`
+  (selectors; shown on every device), `src/styles/home.css`, `DESIGN.md`
+- Create: `src/components/home/last-piece-card.tsx`, `src/components/home/last-piece-stamp.tsx`, `src/app/last-pieces/page.tsx`
 - Test: `tests-unit/last-pieces.test.ts`, `tests/last-pieces.spec.ts`
 
 **Interfaces:**
@@ -331,7 +332,8 @@ assert.equal(offerFor(withLastPieceOffers({ ...p, variants: p.variants.map(v => 
   - `getLastPieces(products: Product[], limit?: number): { items: LastPiece[]; total: number; maxPercent: number }`
     — every variant at stock 1 whose colour is in `product.colors`; order: product `createdAt` desc, then colour
     order, then size order; `percent` is 0 when the offer is not lowered
-  - `LastPieceCard({ piece, onRail?: boolean })` — the hang-tag card (string to the rail only `onRail`)
+  - `LastPieceCard({ piece })` — the white card of the spec's visual direction
+  - `LastPieceStamp()` — the scalloped stamp SVG (`aria-hidden`)
   - `/last-pieces`: `export const dynamic = 'force-dynamic'`, metadata via `pageMetadata({ path: '/last-pieces', … })`
 
 - [ ] **Step 1: Write the failing tests.** Unit: the demo gives the nine pieces in the fixture order with their
@@ -339,19 +341,18 @@ assert.equal(offerFor(withLastPieceOffers({ ...p, variants: p.variants.map(v => 
   `maxPercent` ignores it; `limit` 10 caps `items` but not `total`; `href` for shomiz-06 is
   `/product/shomiz-06?color=black&size=L`. E2E (`last-pieces.spec.ts`, rewritten): the region «آخرین دونه‌ها» sits
   between the arrivals and shop by colour with nine `.last-piece-card`s; the first is شومیز نخی دریا, «سفید»,
-  «M», «۲۰٪ تخفیف», «۵۷۴٬۰۰۰ تومان» with «۷۱۸٬۰۰۰» struck; the line reads «از هر کدوم فقط یکی مونده، با تا ۲۰٪
-  تخفیف؛ مال کسیه که زودتر برسه.»; the section background is `rgb(247, 230, 211)`; clicking manto-08's cream XL card
+  «M», «۲۰٪ تخفیف», «۵۷۴٬۰۰۰ تومان» with «۷۱۸٬۰۰۰» struck; the band's background is `rgb(181, 31, 43)` and the stamp
+  sits beside the title; clicking manto-08's cream XL card
   opens its product with cream and XL pressed; «مشاهده همه» → `/last-pieces` with nine cards and «۹ دونه»; the arrow
-  tests and the 320/390 swipe test carried over (no page overflow, two cards and a peek); serious/critical axe
-  findings: none on both pages.
+  tests carried over, now also on a touch phone (the arrows are shown there too); the 320/390 swipe test (no page
+  overflow, a second card visibly cut); serious/critical axe findings: none on both pages.
 - [ ] **Step 2: Run** `npx tsx --test tests-unit/last-pieces.test.ts`; build; the spec — expected: FAIL.
-- [ ] **Step 3: Implement** the visual direction of the spec: the sand room (`--color-sand`), the ink rail line drawn
-  on the track (it scrolls with the cards), hang-tag cards with a punched hole and string, the hanger mark by the
-  title, the bled track on phones with gutter scroll padding, the scroll-driven progress line inside
-  `@supports (animation-timeline: scroll())`, the hover swing (`rotate` ≤ 1.5° around the hole) and 3% photo zoom
-  under `(hover: hover) and (prefers-reduced-motion: no-preference)`, press feedback `scale(.98)`, the closing
-  «مشاهده همه» tile, the arrows for fine pointers; `/last-pieces` as a two-column grid of the same cards with the
-  empty state. Update `DESIGN.md` (home sections, tokens).
+- [ ] **Step 3: Implement** the spec's visual direction: the edge-to-edge Kasra-red band, the title row with the
+  stamp popping out of the band's top edge, the white cards (photo, pill on the photo's edge, name, colour and size,
+  prices at the inline end), the arrows on every device, the stamp's edge turning with page scroll inside
+  `@supports (animation-timeline: scroll())` and `(prefers-reduced-motion: no-preference)`, press feedback
+  `scale(.98)`; `/last-pieces` as a two-column grid of the same cards under a light page heading with the line and
+  the empty state. Update `DESIGN.md` (home sections).
 - [ ] **Step 4: Run** the unit and E2E specs plus `tests/single-layout.spec.ts`, `tests/a11y.spec.ts`,
   `tests/mobile-v9.spec.ts`, `npm run test:unit` — expected: PASS. Take phone and desktop screenshots and check them
   against the spec's visual direction.
