@@ -134,15 +134,14 @@
 .last-pieces-title { display: flex; align-items: center; gap: var(--space-1); min-inline-size: 0; }
 .last-pieces-title h2 { margin: 0; color: inherit; font-size: 1.25rem; font-weight: var(--font-weight-heavy); line-height: 1.6; }
 .last-pieces-all { display: inline-flex; align-items: center; gap: 2px; min-block-size: var(--touch); flex-shrink: 0; color: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-heavy); }
-/* The stamp pops out of the band's top edge; its scalloped edge turns with page scrolling where scroll timelines exist. */
+/* The stamp pops out of the band's top edge; its scalloped edge and ring turn on their own, very slowly (one turn in
+   40s), while «فقط ۱ دونه» stays upright. Still for visitors who ask for reduced motion. */
 .last-pieces-stamp { display: block; inline-size: 72px; block-size: 72px; flex-shrink: 0; margin-block: -34px -8px; overflow: visible; filter: drop-shadow(0 6px 8px rgb(58 3 8 / 0.45)); }
 .last-pieces-stamp-edge { transform-box: view-box; transform-origin: 60px 60px; }
-@supports (animation-timeline: scroll()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .last-pieces-stamp-edge { animation: last-stamp-turn linear both; animation-timeline: scroll(root block); }
-  }
+@media (prefers-reduced-motion: no-preference) {
+  .last-pieces-stamp-edge { animation: last-stamp-turn 40s linear infinite; }
 }
-@keyframes last-stamp-turn { to { rotate: -720deg; } }
+@keyframes last-stamp-turn { to { rotate: -360deg; } }
 
 .last-pieces-body { position: relative; margin-block-start: 6px; }
 .last-pieces-track { overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: var(--last-pad); scrollbar-width: none; }

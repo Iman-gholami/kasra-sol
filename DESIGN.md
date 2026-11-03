@@ -166,7 +166,8 @@ the week of looks, new arrivals, shop by colour, the service links and the closi
   one unit left (newest product first, at most ten; left out when there are none). Laid out like the owner's reference
   (papionlady.com's «آخرین دونه») in Kasra red: a red band edge to edge (`overflow-x: clip`, so the sideways rail never
   widens a phone's page); the stamp (a white scalloped sticker reading «فقط ۱ دونه», popping out of the band's top
-  edge; its edge turns with page scrolling where scroll timelines exist, never on its own) beside the white title, and
+  edge; its scalloped edge and dashed ring turn on their own, one turn in 40s, while the words stay upright; still
+  for reduced motion) beside the white title, and
   «مشاهده همه» at the inline end; white cards (`14px` radius) about 43% of the column wide, so the third is cut at the
   edge: the 4:5 photo with the pill on its bottom edge («۲۰٪ تخفیف», or «فقط ۱ دونه» when the price is not lowered),
   the name, the colour swatch with «مشکی، سایز L», and the struck original over the price at the inline end. Arrows on

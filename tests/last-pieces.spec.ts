@@ -129,3 +129,19 @@ test.describe('phone', () => {
     }
   });
 });
+
+test('the stamp edge turns on its own, very slowly; the words stay upright; still for reduced motion', async ({ page }) => {
+  await page.goto('/');
+  const edge = railOf(page).locator('.last-pieces-stamp-edge');
+  const turning = await edge.evaluate(el => {
+    const style = getComputedStyle(el);
+    return { name: style.animationName, seconds: parseFloat(style.animationDuration), repeat: style.animationIterationCount,
+      running: el.getAnimations().some(animation => animation.playState === 'running') };
+  });
+  expect(turning).toEqual({ name: 'last-stamp-turn', seconds: 40, repeat: 'infinite', running: true });
+  // Only the scalloped edge and its ring turn: «فقط ۱ دونه» and the red centre never move.
+  for (const still of await railOf(page).locator('.last-pieces-stamp > :not(.last-pieces-stamp-edge)').all())
+    expect(await still.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await edge.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+});
