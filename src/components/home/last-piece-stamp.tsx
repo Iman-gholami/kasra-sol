@@ -1,6 +1,6 @@
 /** The «آخرین دونه‌ها» stamp (the owner's pick): a white sticker with a scalloped edge and a dashed red ring around a
- * red centre reading «فقط ۱ دونه». Decorative: the section title says the same. Its edge turns with page scrolling where
- * supported (home.css). */
+ * red centre reading «فقط ۱ دونه». Decorative: the section title says the same. Its edge and ring turn very slowly on their
+ * own, the words never move (home.css). */
 export function LastPieceStamp() {
   return <svg className="last-pieces-stamp" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
     <g className="last-pieces-stamp-edge">
