@@ -9,6 +9,7 @@ import { mediaRoutes } from './media';
 import { reportRoutes } from './reports';
 import { trafficRoutes } from './traffic';
 import { homeAdminRoutes } from './home-routes';
+import { lastPieceAdminRoutes } from './last-piece-routes';
 import { storeRoutes } from './store-routes';
 import { roleRoutes } from './role-routes';
 import { recordAudit } from './audit';
@@ -260,6 +261,7 @@ export async function adminRoutes(app: FastifyInstance, opts: { invalidateCatalo
   await reportRoutes(app, requirePermission);
   await trafficRoutes(app, requirePermission);
   await homeAdminRoutes(app, requirePermission, opts);
+  await lastPieceAdminRoutes(app, requirePermission, opts);
   await storeRoutes(app, requirePermission, opts);
   await roleRoutes(app, requirePermission);
 

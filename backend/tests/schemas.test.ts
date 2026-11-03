@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { productInput } from '../src/admin/product-schema';
+import { lastPieceInput, productInput } from '../src/admin/product-schema';
 import { detectImage, MAX_IMAGE_BYTES } from '../src/admin/image-type';
 import { cart, checkout } from '../src/validation';
 
@@ -80,5 +80,19 @@ describe('checkout input', () => {
   it('rejects over-long notes and codes', () => {
     assert.equal(checkout.safeParse({ ...order, fields: { ...order.fields, notes: 'x'.repeat(501) } }).success, false);
     assert.equal(checkout.safeParse({ ...order, code: 'x'.repeat(33) }).success, false);
+  });
+});
+
+describe('lastPieceInput', () => {
+  it('accepts the switch and a whole percent from 5 to 70, typed in Persian digits too', () => {
+    assert.deepEqual(lastPieceInput.parse({ enabled: true, percent: '۲۵' }), { enabled: true, percent: 25 });
+    assert.deepEqual(lastPieceInput.parse({ enabled: false, percent: 5 }), { enabled: false, percent: 5 });
+    assert.deepEqual(lastPieceInput.parse({ enabled: true, percent: 70 }), { enabled: true, percent: 70 });
+  });
+  it('refuses a percent out of range or not a whole number, a missing switch and unknown fields', () => {
+    for (const body of [{ enabled: true, percent: 4 }, { enabled: true, percent: 71 }, { enabled: true, percent: '۷۵' },
+      { enabled: true, percent: 20.5 }, { enabled: true, percent: 'abc' }, { percent: 20 }, { enabled: 'yes', percent: 20 },
+      { enabled: true, percent: 20, extra: 1 }])
+      assert.equal(lastPieceInput.safeParse(body).success, false, JSON.stringify(body));
   });
 });

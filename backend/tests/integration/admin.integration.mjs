@@ -648,3 +648,46 @@ describe('traffic statistics', () => {
     assert.equal((await api('/v1/admin/reports/traffic?days=90', { token: owner.token })).data.daily.length, 90);
   });
 });
+
+describe('last-piece discount setting', () => {
+  const setL = stock => pool.query("UPDATE product_variants SET stock=$1 WHERE product_id=$2 AND color_id='black' AND size='L'", [stock, PRODUCT]);
+  const publicL = async () => {
+    const found = await api('/v1/products/lookup?ids=' + PRODUCT);
+    assert.equal(found.status, 200);
+    return found.data.items[0].variants.find(v => v.size === 'L');
+  };
+  const setting = async () => (await pool.query('SELECT enabled, percent FROM last_piece_discount WHERE id=1')).rows[0];
+  it('the owner turns it on: saved, audited, the public price of a variant at one unit changes, and it is listed', async () => {
+    await setL(1);
+    try {
+      const saved = await api('/v1/admin/last-piece-discount', { method: 'PUT', token: owner.token, body: { enabled: true, percent: '۳۰' } });
+      assert.equal(saved.status, 200, JSON.stringify(saved.data));
+      assert.deepEqual(saved.data, { enabled: true, percent: 30 });
+      assert.deepEqual(await setting(), { enabled: true, percent: 30 });
+      const audit = await pool.query("SELECT details FROM admin_audit_log WHERE action='products.last_piece_discount' ORDER BY id DESC LIMIT 1");
+      assert.deepEqual(audit.rows[0].details.to, { enabled: true, percent: 30 });
+      // 1,200,000 struck × 0.7 = 840,000, below the 900,000 sale price: the last-piece discount wins.
+      const l = await publicL();
+      assert.deepEqual([l.price, l.compareAt], [840_000, 1_200_000]);
+      const listed = await api('/v1/admin/last-piece-discount', { token: owner.token });
+      assert.equal(listed.status, 200);
+      const line = listed.data.variants.find(v => v.productId === PRODUCT && v.size === 'L');
+      // Earlier tests in this file rename the colour; the list names it as the product does now.
+      const colorName = (await revision()).item.colors.find(color => color.id === 'black').name;
+      assert.deepEqual([line.colorName, line.price, line.compareAt, line.offerPrice, line.ownSaleWins], [colorName, 900_000, 1_200_000, 840_000, false]);
+      assert.ok(!listed.data.variants.some(v => v.productId === PRODUCT && v.size === 'M'), 'M has ten units');
+    } finally { await setL(2); }
+  });
+  it('refuses an out-of-range percent and a user without the price permission, changing nothing', async () => {
+    assert.equal((await api('/v1/admin/last-piece-discount', { method: 'PUT', token: owner.token, body: { enabled: true, percent: 75 } })).status, 400);
+    assert.equal((await api('/v1/admin/last-piece-discount', { method: 'PUT', token: staff.token, body: { enabled: false, percent: 20 } })).status, 403);
+    assert.deepEqual(await setting(), { enabled: true, percent: 30 });
+  });
+  it('the owner turns it off again: the public price is the catalog price', async () => {
+    await setL(1);
+    try {
+      assert.equal((await api('/v1/admin/last-piece-discount', { method: 'PUT', token: owner.token, body: { enabled: false, percent: 20 } })).status, 200);
+      assert.equal((await publicL()).price, undefined);
+    } finally { await setL(2); }
+  });
+});
