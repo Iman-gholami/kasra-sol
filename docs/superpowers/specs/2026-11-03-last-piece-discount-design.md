@@ -1,8 +1,12 @@
-# Last-piece discount («تخفیف آخرین دونه‌ها») — design, revision 2
+# Last-piece discount («تخفیف آخرین دونه‌ها») — design, revision 3
 
-Status: **waiting for the owner's approval**. No code is written until it is approved.
+Status: **waiting for the owner's approval** (with the implementation plan,
+`docs/superpowers/plans/2026-11-03-last-piece-discount.md`). No code is written until it is approved.
 
-Revision 2 (owner's request): the discount is decided **per variant** (one colour in one size), not per product.
+Revision 2: the discount is decided **per variant** (one colour in one size), not per product.
+Revision 3: the home rail is per variant too (one card per qualifying colour and size, opening the product page with
+it chosen), «مشاهده همه» opens a page of every qualifying variant, and the section gets its own visual direction
+(below) instead of following the reference screenshot's red panel.
 
 ## Goal
 
@@ -19,7 +23,8 @@ variants, and loses it again when that variant is restocked or sold out.
 | How it is set | **Automatically**, from one setting (on/off, percent) for the whole store |
 | Shop counter (`صندوق فروش حضوری`) | **Not applied**: the counter keeps the catalog price printed on the labels |
 | A variant that is already on sale | **The bigger discount wins**; the two never stack |
-| The home «آخرین دونه‌ها» rail and `last=1` | **Open, see below** |
+| The home «آخرین دونه‌ها» rail | **Per variant**: one card per colour and size at stock 1 (owner, revision 3) |
+| «مشاهده همه» | **A page of every qualifying variant**, `/last-pieces`; the shop's product-level `last=1` filter is removed |
 
 ## The rule
 
@@ -152,17 +157,41 @@ Demo stock gets these combinations (models no test uses today), so each case can
 | manto-08 | first colour in S and third colour in XL at 1, the rest unchanged | two combinations of one product |
 | tshirt-05 (own 18% sale, 437,000 from 530,000) | first colour in M at 1, the rest unchanged | the bigger discount wins (424,000) |
 
-## Open decision: the home «آخرین دونه‌ها» rail and `/shop?last=1`
+## The home rail and the «مشاهده همه» page
 
-Today they show models whose **total** stock is one. With a per-variant discount, two options:
+- **What they list**: every variant with stock exactly 1 of a published product, whose colour is still one of the
+  product's colours, newest product first, then in the product's colour order and size order. The home rail shows
+  the first ten and a closing «مشاهده همه» tile; `/last-pieces` shows them all. Both are listed with the setting off
+  too (they are the last pieces either way); only the price changes with it.
+- **A card**: the photo, the badge («۲۰٪ تخفیف» when its price is lowered, else «فقط ۱ دونه»), the product name, the
+  colour swatch and name, the size, «فقط ۱ دونه» beside it when the badge shows the discount, and the variant's price
+  (struck original and red price when lowered). It opens `/product/<slug>?color=<colorId>&size=<size>`, where the buy
+  box starts with that colour and size chosen. Invalid or sold-out choices in the address are ignored.
+- **`/last-pieces`**: the title «آخرین دونه‌ها», the line, «X دونه», the same cards in two columns, and an empty state
+  «الان هیچ رنگ و سایزی تک‌دونه نیست.» with «دیدن همه محصولات». The shop's `last=1` filter (product-level) is removed
+  from the storefront and the API: this page replaces it.
 
-- **A (recommended) — per variant.** The rail shows one card per qualifying colour and size (newest product first, at
-  most ten cards): the photo, «فقط ۱ دونه», the colour and size, and that variant's price. A card opens the product
-  page with that colour and size already chosen (`?color=…&size=…`). `/shop?last=1` lists products with at least one
-  variant at stock 1. The rail then promotes exactly the pieces that are discounted. With a real inventory it may fill
-  up quickly; it still shows at most ten cards.
-- **B — keep it per product.** The rail stays «models down to their last unit»; their one variant is discounted as
-  above, but a product with, say, M at 1 and L at 5 is discounted in M without appearing in the rail.
+## Visual direction (the section)
+
+Kasra's system is a white page with cool-gray studio rooms, ink type and one Kasra red; the reference's red panel
+would shout over it. The section takes its own, quieter place in that system:
+
+- **A warm room.** The panel is the logo's cream lightened to a room, `--color-sand: #F7E6D3` (ink on it 15:1, muted
+  text 4.7:1, Kasra red 5.4:1): the only warm room on the page, so it is noticed without a red flood, and it ties the
+  section to the new logo. Kasra red is kept for what matters: the discount badge and the sale price.
+- **The pieces hang on a rail.** A thin ink clothes rail runs along the top of the scroller; each card is a white
+  hang tag (`--radius-md`) with a punched hole, hanging from the rail on a short string. Swiping slides the last
+  pieces along the rail (the rail scrolls with them). The title has the hanger mark already drawn for this section.
+- **Type and copy**: the title in Estedad light at the section-heading size; the line «از هر کدوم فقط یکی مونده؛ مال
+  کسیه که زودتر برسه.» (with «با تا ۲۰٪ تخفیف» when cards are discounted) and «مشاهده همه» on the title row.
+- **Phones first.** The rail bleeds to the screen edges with the gutter as its scroll padding; cards are about 44% of
+  the column, so two and a peek of the third show; scroll-snap on each card; a thin progress line under the rail
+  (scroll-driven where supported, absent otherwise). Nothing hijacks vertical scrolling. Pressing a card gives
+  feedback (`scale(.98)`).
+- **Motion, once and on request.** With a fine pointer, the pointed-at card swings a little on its string and its photo
+  zooms 3%; nothing moves on its own. Reduced motion: no swing, instant arrow scrolling.
+- **Mouse users** get paper arrow discs over the photos (disabled at each end and until hydrated; a double press moves
+  two pages), as built for the earlier rail.
 
 ## Back office
 
@@ -232,6 +261,9 @@ Plus: `PUT` without `products:price` is 403; with it, it saves, is in the activi
 - tshirt-05 in its first colour and M shows 424,000 struck 530,000.
 - Back office (admin E2E, real API): turn it on at 20%, see a variant's public price change and its line in the live
   list, turn it off and see the catalog price back.
+- The rail: nine demo cards (the table above), each with its colour, size and price; a card opens its product with
+  that colour and size chosen; «مشاهده همه» opens `/last-pieces` with all nine; swiping on a 320px phone never widens
+  the page; the arrows for mouse users; no serious axe findings.
 
 ## Out of scope
 
