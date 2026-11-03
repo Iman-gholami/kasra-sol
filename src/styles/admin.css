@@ -560,3 +560,6 @@ html:has(.admin-app), html:has(.admin-login) { scroll-padding-block: 0; }
   .admin-table th { background: none; }
   .admin-subcard, .admin-table tr { break-inside: avoid; }
 }
+
+/* «تخفیف آخرین دونه‌ها»: the percent field's inline error. */
+.admin-field-error { margin: -2px 0 0; color: var(--admin-danger, #9B2F2A); font-size: 12px; font-weight: 600; }

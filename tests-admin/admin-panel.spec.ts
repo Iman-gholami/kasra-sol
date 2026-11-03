@@ -166,7 +166,8 @@ test('an online order stays unpaid: it can be cancelled but never prepared or sh
 test('staff: least privilege in the menu and on every API call', async ({ page }) => {
   await signIn(page, accounts().staff);
   const nav = page.getByRole('navigation', { name: 'بخش‌های مدیریت' });
-  await expect(nav.getByRole('button')).toHaveText(['صندوق فروش', 'محصولات و موجودی', 'سفارش‌ها', 'حساب من']);
+  // Staff see the last-piece discount read-only (it needs products:read to view, products:price to change).
+  await expect(nav.getByRole('button')).toHaveText(['صندوق فروش', 'محصولات و موجودی', 'تخفیف آخرین دونه‌ها', 'سفارش‌ها', 'حساب من']);
   // Shop staff open the panel on the counter; receiving goods and discounts need an owner's grant.
   await expect(page.getByRole('heading', { level: 1, name: 'صندوق فروش حضوری' })).toBeVisible();
   await expect(page.getByLabel('تخفیف (تومان)')).toHaveCount(0);
@@ -833,4 +834,66 @@ test('product photo removal can be undone before saving and persists after savin
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
   await page.getByRole('button', { name: 'ویرایش ' + PRODUCT_NAME, exact: true }).click();
   await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
+});
+
+test('the owner sets the last-piece discount: a colour and size at one unit sells at it on the website', async ({ page, browser, request }) => {
+  test.setTimeout(120_000);
+  const problems = watchConsole(page);
+  const headers = { 'X-Forwarded-For': visitorAddress() };
+  const owner = await (await request.post(API + '/v1/admin/auth/login', { data: accounts().owner, headers })).json() as { token: string };
+  const auth = { ...headers, Authorization: 'Bearer ' + owner.token };
+  const image = await (await request.post(API + '/v1/admin/media', { headers: { ...auth, 'Content-Type': 'image/png' }, data: PNG }))
+    .json() as { url: string };
+  const id = 'e2e-last-piece', name = 'شومیز تک‌دونه آزمون';
+  expect((await request.post(API + '/v1/admin/products', { headers: auth, data: {
+    id, slug: id, name, category: 'shomiz', description: 'شومیز برای آزمون تخفیف آخرین دونه', price: 640_000, compareAt: null,
+    images: [image.url], colors: [{ id: 'white', name: 'سفید', hex: '#ffffff' }], sizes: ['S', 'M'],
+    variants: [{ colorId: 'white', size: 'S', stock: 1 }, { colorId: 'white', size: 'M', stock: 4 }],
+    material: 'پنبه', fit: 'آزاد', care: 'شست‌وشو با آب سرد', featured: false } })).status()).toBe(201);
+  expect((await request.patch(API + '/v1/admin/products/' + id + '/visibility', { headers: auth, data: { active: true } })).status()).toBe(200);
+
+  await signIn(page, accounts().owner);
+  await openTab(page, 'تخفیف آخرین دونه‌ها');
+  const enabled = page.getByRole('checkbox', { name: /تخفیف آخرین دونه‌ها روشن باشد/ });
+  const percent = page.getByRole('textbox', { name: /درصد تخفیف/ });
+  const save = page.getByRole('button', { name: 'ذخیره تخفیف' });
+  await expect(enabled).not.toBeChecked();
+  await expect(page.locator('.admin-last-piece').filter({ hasText: name })).toContainText('سفید، سایز S');
+  // Out of range: an inline error and nothing saved.
+  await enabled.check();
+  await percent.fill('۷۵');
+  await save.click();
+  await expect(page.getByText('درصد باید عددی صحیح بین ۵ تا ۷۰ باشد.')).toBeVisible();
+  await percent.fill('۲۵');
+  await save.click();
+  await expect(page.getByText('تخفیف آخرین دونه‌ها ذخیره شد', { exact: false })).toBeVisible();
+  await expect(page.locator('.admin-last-piece').filter({ hasText: name })).toContainText('۴۸۰٬۰۰۰');
+  const scan = await new AxeBuilder({ page }).include('.admin-app').withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(scan.violations.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', '))).toEqual([]);
+  await shot(page, 'last-piece-discount');
+
+  const context = await browser.newContext({ extraHTTPHeaders: { 'X-Forwarded-For': visitorAddress() } });
+  const shop = await context.newPage();
+  await shop.goto('/product/' + id + '?color=white&size=S');
+  await expect(shop.locator('.detail-price strong.price')).toHaveText('۴۸۰٬۰۰۰ تومان');
+  await shop.getByRole('button', { name: 'سایز M', exact: true }).click();
+  await expect(shop.locator('.detail-price strong.price')).toHaveText('۶۴۰٬۰۰۰ تومان');
+
+  // Staff can see the setting but not change prices.
+  const staffContext = await browser.newContext();
+  const staff = await staffContext.newPage();
+  await signIn(staff, accounts().staff);
+  await openTab(staff, 'تخفیف آخرین دونه‌ها');
+  await expect(staff.getByRole('checkbox', { name: /تخفیف آخرین دونه‌ها روشن باشد/ })).toBeDisabled();
+  await expect(staff.getByText('برای تغییر تخفیف، مجوز «تغییر قیمت» لازم است.')).toBeVisible();
+  await staffContext.close();
+
+  // Off again: the website is back at the catalog price.
+  await enabled.uncheck();
+  await save.click();
+  await expect(page.getByText('تخفیف آخرین دونه‌ها ذخیره شد', { exact: false })).toBeVisible();
+  await shop.goto('/product/' + id + '?color=white&size=S');
+  await expect(shop.locator('.detail-price strong.price')).toHaveText('۶۴۰٬۰۰۰ تومان');
+  await context.close();
+  expect(problems).toEqual([]);
 });
