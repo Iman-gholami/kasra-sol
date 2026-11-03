@@ -161,17 +161,23 @@ the week of looks, new arrivals, shop by colour, the service links and the closi
   are rounded like the rooms. The day and outfit sit under each photo; each look opens `/shop` on its category and
   colour. Pointing at or focusing a look fades the other five models (only the models: a photo's gray is the strip's,
   so the strip stays whole). Phones and tablets scroll the strip sideways, about two and a half looks at a time.
-- **«آخرین دونه‌ها»** (`components/home/last-pieces.tsx`, `lib/last-pieces.ts`): between the new arrivals and shop
-  by colour, the models down to their very last piece (stock over every colour and size adds up to exactly one),
-  newest first, at most ten; left out when there are none. One Kasra-red panel (`--radius-lg`) that scrolls sideways
-  with scroll-snap, about two and a half tiles at a time. The first tile holds the title, a white hanger with a «۱ دونه»
-  tag (the section's one decorative element: the last piece on the rack; it swings once when a mouse points at it),
-  the line «از هر کدوم فقط یکی مونده؛ مال کسیه که زودتر برسه.» and «مشاهده همه»; then a white card per model (3:4
-  photo with a «فقط ۱ دونه» pill, name kept to two lines, the colour swatch and size that are left, price); then a
-  closing «مشاهده همه» tile. Both links open `/shop?last=1`, a catalog filter the API also serves (`last=1`), shown
-  in the shop as a removable «آخرین دونه‌ها» chip. Server-rendered; only the arrows hydrate. They are paper discs over
-  the photos, shown only with a fine pointer that can hover (touch swipes, keyboards tab through the cards), disabled
-  at each end and until hydrated, and a quick double press moves two pages. Focus rings turn white on the red panel.
+- **«آخرین دونه‌ها»** (`components/home/last-pieces.tsx`, `last-piece-card.tsx`, `last-piece-stamp.tsx`,
+  `lib/last-pieces.ts`): between the new arrivals and shop by colour, one card per colour-and-size variant with exactly
+  one unit left (newest product first, at most ten; left out when there are none). Laid out like the owner's reference
+  (papionlady.com's «آخرین دونه») in Kasra red: a red band edge to edge (`overflow-x: clip`, so the sideways rail never
+  widens a phone's page); the stamp (a white scalloped sticker reading «فقط ۱ دونه», popping out of the band's top
+  edge; its edge turns with page scrolling where scroll timelines exist, never on its own) beside the white title, and
+  «مشاهده همه» at the inline end; white cards (`14px` radius) about 43% of the column wide, so the third is cut at the
+  edge: the 4:5 photo with the pill on its bottom edge («۲۰٪ تخفیف», or «فقط ۱ دونه» when the price is not lowered),
+  the name, the colour swatch with «مشکی، سایز L», and the struck original over the price at the inline end. Arrows on
+  every device (white discs centred on the photos, faded while disabled; a quick double press moves two pages). A card
+  opens `/product/<slug>?color=…&size=…` with that colour and size chosen. «مشاهده همه» is `/last-pieces`: every last
+  piece as the same cards in two columns, under a light heading, the line and the count.
+- **Last-piece discount** (`lib/last-piece-discount.ts`, back office «تخفیف آخرین دونه‌ها»): a variant whose own stock is
+  exactly 1 sells at the owner's percent off (the bigger of it and the product's own sale; demo mode: 20%). The product
+  page price follows the chosen colour and size (qualifying sizes carry a red «٪»); listings keep the product's price
+  with «تا ۲۰٪ تخفیف روی رنگ و سایزهای تک‌دونه» when only some combinations qualify; the cart, checkout and the
+  server's order total use the variant's price.
 - **Shop by colour:** on the white page under a hairline (its product photos bring their own gray); colour choices
   are soft pills, the chosen one ringed in ink. The preview leads with products whose card photos differ.
 - **Service links:** one quiet row of three split by hairlines, each with its arrow; stacked on phones.

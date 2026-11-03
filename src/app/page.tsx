@@ -43,7 +43,7 @@ export default async function HomePage() {
   const slides = heroProducts.map(({ id, slug, name, images, price, compareAt }) =>
     ({ id, slug, name, image: process.env.BACKEND_INTERNAL_URL ? images[0] : studioPhotos.cover, price, compareAt }));
   const colors = getShopByColorResults(products);
-  const lastPieces = getLastPieces(products);
+  const lastPieces = getLastPieces(products, 10);
 
   return <>
     <section className="hero container wide-editorial" aria-labelledby="hero-title">
@@ -69,7 +69,7 @@ export default async function HomePage() {
       <ProductGrid products={arrivals}/>
     </section>
 
-    {lastPieces && <LastPieces rail={lastPieces}/>}
+    {lastPieces.items.length > 0 && <LastPieces rail={lastPieces}/>}
 
     <ShopByColor options={colors}/>
 

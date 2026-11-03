@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-/** Previous/next for «آخرین دونه‌ها», for mouse users (CSS shows them only with a fine pointer that can hover; touch
- * screens swipe and keyboards tab through the cards). Each press moves by the cards that fit; a button is disabled
+/** Previous/next for «آخرین دونه‌ها», on every device as in the owner's reference (touch screens can also swipe, and
+ * keyboards tab through the cards). Each press moves by the cards that fit; a button is disabled
  * at its end. Both stay disabled (and hidden) until the rail has hydrated and measured itself: a button that cannot
  * act yet never looks pressable. They float over the photos, so appearing shifts nothing. */
 export function LastPiecesArrows({ trackId }: { trackId: string }) {
@@ -37,7 +37,7 @@ export function LastPiecesArrows({ trackId }: { trackId: string }) {
 
   function move(forward: boolean) {
     const track = document.getElementById(trackId);
-    const card = track?.querySelector<HTMLElement>('.last-card'), list = track?.querySelector('.last-pieces-list');
+    const card = track?.querySelector<HTMLElement>('.last-piece-card'), list = track?.querySelector('.last-pieces-list');
     if (!track || !card || !list) return;
     const step = card.offsetWidth + (parseFloat(getComputedStyle(list).columnGap) || 0);
     const distance = Math.max(1, Math.floor(track.clientWidth / step)) * step;
@@ -54,11 +54,11 @@ export function LastPiecesArrows({ trackId }: { trackId: string }) {
   return <div className="last-pieces-arrows">
     <button type="button" className="last-pieces-arrow" aria-label="دونه‌های قبلی" aria-controls={trackId}
       disabled={edges.atStart} onClick={() => move(false)}>
-      <ChevronRight size={20} aria-hidden="true"/>
+      <ChevronRight size={22} aria-hidden="true"/>
     </button>
     <button type="button" className="last-pieces-arrow" aria-label="دونه‌های بعدی" aria-controls={trackId}
       disabled={edges.atEnd} onClick={() => move(true)}>
-      <ChevronLeft size={20} aria-hidden="true"/>
+      <ChevronLeft size={22} aria-hidden="true"/>
     </button>
   </div>;
 }
