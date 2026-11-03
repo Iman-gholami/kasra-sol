@@ -79,10 +79,10 @@ export function CartPage() {
                 <LineDetails item={row.item} product={row.product}/>
                 <p className="cart-unit">
                   <span>قیمت واحد:</span>
-                  {row.product.compareAt && row.product.compareAt > row.product.price && <del className="price">
-                    <span className="sr-only">قیمت پیشین: </span>{formatNumber(row.product.compareAt)}<span className="sr-only"> تومان</span>
+                  {row.offer.compareAt && row.offer.compareAt > row.offer.price && <del className="price">
+                    <span className="sr-only">قیمت پیشین: </span>{formatNumber(row.offer.compareAt)}<span className="sr-only"> تومان</span>
                   </del>}
-                  <strong className="price">{toman(row.product.price)}</strong>
+                  <strong className="price">{toman(row.offer.price)}</strong>
                 </p>
                 {row.item.quantity >= lineLimit(row.stock)
                   ? <p className="cart-stock-note">{row.stock > MAX_LINE_QUANTITY
@@ -94,7 +94,7 @@ export function CartPage() {
                 <span className="cart-qty-label" aria-hidden="true">تعداد:</span>
                 <QuantityStepper value={row.item.quantity} max={lineLimit(row.stock)} itemLabel={row.product.name}
                   onChange={value => updateQuantity(row.item, value)}/>
-                {row.item.quantity > 1 && <span className="cart-line-total">جمع: <strong className="price">{toman(row.product.price * row.item.quantity)}</strong></span>}
+                {row.item.quantity > 1 && <span className="cart-line-total">جمع: <strong className="price">{toman(row.offer.price * row.item.quantity)}</strong></span>}
                 <div className="cart-line-actions">
                   <button type="button" className="link-button cart-save" aria-label={'انتقال به علاقه‌مندی‌ها، ' + row.product.name}
                     onClick={() => { remove(row.item, true); focusIn('[data-undo="' + CSS.escape(row.key) + '"]'); }}>

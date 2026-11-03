@@ -1,4 +1,5 @@
 import { byId } from '@/data/products';
+import { offerFor } from '@/lib/last-piece-discount';
 import { formatNumber, normalizePersian, toLatinDigits } from '@/lib/format';
 import type { CartItem, Product } from '@/types/store';
 
@@ -65,13 +66,15 @@ export type Line = { item: CartItem; product: Product };
 export const resolveLines = (cart: CartItem[], lookup: (id: string) => Product | undefined = byId): Line[] =>
   cart.flatMap(item => { const product = lookup(item.productId); return product ? [{ item, product }] : []; });
 
-/** `original` is the price before product markdowns; `savings` is what those markdowns take off. */
+/** `original` is the price before product markdowns; `savings` is what those markdowns take off. Each line is priced
+ * at its own colour and size (a last piece carries its discount). */
 export function cartTotals(lines: Line[]) {
   let units = 0, subtotal = 0, original = 0;
   for (const { item, product } of lines) {
+    const { price, compareAt } = offerFor(product, item.colorId, item.size);
     units += item.quantity;
-    subtotal += product.price * item.quantity;
-    original += Math.max(product.price, product.compareAt ?? product.price) * item.quantity;
+    subtotal += price * item.quantity;
+    original += Math.max(price, compareAt ?? price) * item.quantity;
   }
   return { units, subtotal, original, savings: original - subtotal };
 }
