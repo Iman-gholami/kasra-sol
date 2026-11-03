@@ -92,8 +92,9 @@ function lastPieceDeal(product: Product): { percent: number; everyVariant: boole
   delivery, locks `FOR UPDATE` in the same transaction). `unit_price` stores the variant's price, and totals are
   computed from it, so the customer pays exactly what the page showed for that colour and size. If the variant
   reaches or leaves its last unit (or the setting or a price changes) between loading the page and placing the order,
-  the storefront sends the subtotal it showed as `expectedSubtotal`; when the server's subtotal differs, the order is
-  refused with `409 price_changed` (and the new `subtotal`), nothing is stored or decremented, and the checkout reloads
+  the storefront sends the subtotal it showed as `expectedSubtotal` and each line's unit price as `expectedPrice`;
+  when the server's subtotal or any line's price differs (two lines can change in opposite directions and keep the
+  subtotal), the order is refused with `409 price_changed` (and the new `subtotal`), nothing is stored or decremented, and the checkout reloads
   the cart's products, shows the new prices with «قیمت یکی از اقلام تغییر کرده و مبلغ سفارش به‌روز شد…» and lets the
   shopper place it again. The field is optional, so an older client is still served. A variant at stock 1 can only
   be ordered once (quantity 1), and a second order for it fails on stock as today.
@@ -259,6 +260,7 @@ mixed stock.
 | setting off | M:1 is at the catalog price |
 | price 30,000,000, M:1 | `sale=1` answers 200 and lists it (no integer overflow) |
 | M:1, order sent with `expectedSubtotal` = the catalog price | `409 price_changed` with the discounted `subtotal`; no order, stock still 1; resent with the discounted subtotal it is placed |
+| M:1, L:5, lines sent with their prices swapped (same subtotal) | `409 price_changed`, no stock moved; resent with the right line prices it is placed and stores them |
 
 Plus: `PUT` without `products:price` is 403; with it, it saves, is in the activity log and changes the public price.
 

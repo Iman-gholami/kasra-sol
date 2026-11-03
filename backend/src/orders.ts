@@ -66,7 +66,9 @@ export async function createOrder(data: Checkout, key: string) {
     const lines = await resolveCart(tx, data.items, lock);
     const totals = calculate(lines.map(x => ({ price: x.offer.price, quantity: x.item.quantity })),
       data.shipping, data.payment, data.code, data.fields.province, data.fields.city);
-    if (data.expectedSubtotal !== undefined && data.expectedSubtotal !== totals.subtotal)
+    // Per line too: two lines can change in opposite directions and leave the subtotal as it was.
+    if ((data.expectedSubtotal !== undefined && data.expectedSubtotal !== totals.subtotal)
+      || lines.some(x => x.item.expectedPrice !== undefined && x.item.expectedPrice !== x.offer.price))
       throw new DomainError(409, 'قیمت یکی از اقلام تغییر کرده است. مبلغ تازه را ببین و دوباره ثبت کن.', 'price_changed',
         { subtotal: totals.subtotal });
     const status = lock ? 'confirmed_cod' : 'pending_payment';

@@ -301,6 +301,22 @@ describe('last-piece discount per variant', () => {
     assert.equal(await stockOf('M'), 0);
   });
 
+  it('refuses an order whose lines were shown at other prices, even when the subtotal still matches', async () => {
+    // M dropped to its last unit (400,000) while L, at 5, stayed at 500,000; the shopper saw them the other way round.
+    await setStock('M', 1);
+    await setStock('L', 5);
+    const swapped = { ...cod(1, 'M'), expectedSubtotal: 900_000,
+      items: [{ ...cod(1, 'M').items[0], expectedPrice: PRICE }, { ...cod(1, 'L').items[0], expectedPrice: 400_000 }] };
+    const stale = await order(swapped);
+    assert.equal(stale.status, 409);
+    assert.equal(stale.body.error, 'price_changed');
+    assert.deepEqual([await stockOf('M'), await stockOf('L')], [1, 5]);
+    const fresh = await order({ ...swapped,
+      items: [{ ...swapped.items[0], expectedPrice: 400_000 }, { ...swapped.items[1], expectedPrice: PRICE }] });
+    assert.equal(fresh.status, 201);
+    assert.deepEqual(await unitPrices(fresh.body.id), [['L', PRICE], ['M', 400_000]]);
+  });
+
   it('M:2 L:0 — no discount, and the product is not on sale', async () => {
     await setStock('M', 2);
     await setStock('L', 0);

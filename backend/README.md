@@ -37,7 +37,7 @@ Demo seed runs only if **no products exist**; restarting never resets stock. Dem
 
 ```json
 {
-  "items": [{ "productId": "manto-01", "colorId": "black", "size": "M", "quantity": 1 }],
+  "items": [{ "productId": "manto-01", "colorId": "black", "size": "M", "quantity": 1, "expectedPrice": 640000 }],
   "fields": {
     "name": "Example Customer", "mobile": "09123456789", "province": "تهران",
     "city": "تهران", "address": "خیابان مثال، پلاک ۱۰", "postal": "1234567890", "notes": ""
@@ -47,8 +47,9 @@ Demo seed runs only if **no products exist**; restarting never resets stock. Dem
 ```
 
 Use a colorId belonging to an existing product. Never trust prices, discounts or stock submitted by a browser.
-`expectedSubtotal` (optional) is the subtotal the shopper was shown; it is never used as a price. When the server's
-subtotal differs (a colour and size reached or left its last unit, or a price changed), the order is refused with
+`expectedSubtotal` and each line's `expectedPrice` (optional) are what the shopper was shown; they are never used as
+prices. When the server's subtotal or a line's unit price differs (a colour and size reached or left its last unit, or
+a price changed), the order is refused with
 `409 { "error": "price_changed", "subtotal": <server subtotal>, "message": … }` and nothing is stored.
 
 **Order semantics:** `confirmed_cod` orders atomically decrement inventory using row locks. `pending_payment` online orders are stored as **unpaid** and **do not reserve or decrement stock**; no payment confirmation can occur before integrating a real PSP and its verified, idempotent callback. No fake successful payment is emitted. Guest receipts require an unpredictable per-order HMAC access token; do not place it in a public URL or logs.
