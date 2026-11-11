@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { PackagePlus, Printer, Search, Trash2 } from 'lucide-react';
 import { adminApi, errorMessage, newClientRef } from '@/components/admin/admin-api';
 import { digitsOnly, formatDateTime, formatNumber } from '@/components/admin/labels';
-import { barcodeProblem, ScanField } from '@/components/admin/scan-field';
+import { barcodeProblem, ScanField, typingElsewhere } from '@/components/admin/scan-field';
 import { Loading, Notice, Pager } from '@/components/admin/ui';
 
 type Line = { productId: string; name: string; colorId: string; colorName: string; size: string; quantity: string };
@@ -75,7 +75,10 @@ export function StockReceiving({ onUnsaved }: { onUnsaved?: (question: string | 
   const attempt = useRef({ signature: '', ref: '' });
   useEffect(() => { onUnsaved?.(lines.length ? UNSAVED_RECEIPT : null); }, [lines.length, onUnsaved]);
   useEffect(() => () => onUnsaved?.(null), [onUnsaved]);
-  const refocus = useCallback(() => requestAnimationFrame(() => scan.current?.focus()), []);
+  // Back to the scan field after each scan, unless the user is typing in a quantity or the search meanwhile.
+  const refocus = useCallback(() => requestAnimationFrame(() => {
+    if (!typingElsewhere(scan.current)) scan.current?.focus();
+  }), []);
 
   function addLines(added: Omit<Line, 'quantity'>[], quantities: number[]) {
     const next = [...linesRef.current];

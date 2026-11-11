@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } fr
 import { CirclePause, Minus, Play, Plus, ReceiptText, RefreshCw, Trash2, Undo2 } from 'lucide-react';
 import { adminApi, AdminApiError, errorMessage, newClientRef } from '@/components/admin/admin-api';
 import { digitsOnly, formatDateTime, formatNumber, formatToman, STORE_PAYMENT } from '@/components/admin/labels';
-import { barcodeProblem, ScanField } from '@/components/admin/scan-field';
+import { barcodeProblem, ScanField, typingElsewhere } from '@/components/admin/scan-field';
 import { Badge, Loading, Notice } from '@/components/admin/ui';
 
 type Item = { code: string; productId: string; name: string; colorName: string; size: string; price: number; stock: number };
@@ -127,6 +127,10 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
   useEffect(() => { onUnsaved?.(lines.length ? UNSAVED_CART : null); }, [lines.length, onUnsaved]);
   useEffect(() => () => onUnsaved?.(null), [onUnsaved]);
   const refocus = useCallback(() => requestAnimationFrame(() => scan.current?.focus()), []);
+  // A lookup that answers while the cashier types a note or a discount leaves the cursor where it is.
+  const refocusAfterScan = useCallback(() => requestAnimationFrame(() => {
+    if (!typingElsewhere(scan.current)) scan.current?.focus();
+  }), []);
   // Held carts are shared by every counter device, so the list is read again whenever this window gets focus.
   useEffect(() => {
     const controller = new AbortController();
@@ -171,7 +175,7 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
     } catch (cause) { setMessage({ tone: 'error', text: errorMessage(cause) }); }
   }
   function scanned(code: string) {
-    queue.current = queue.current.then(() => add(code)).finally(refocus);
+    queue.current = queue.current.then(() => add(code)).finally(refocusAfterScan);
   }
   function setQuantity(code: string, quantity: number) {
     commit(linesRef.current.flatMap(line => line.code !== code ? [line]

@@ -12,6 +12,13 @@ export function barcodeProblem(code: string) {
   return null;
 }
 
+/** Whether the cursor is in a field other than the scan field (a note, a discount, a quantity, a search). A scan
+ * whose lookup answers while the user types there must not pull the cursor away mid-word. */
+export function typingElsewhere(scan: HTMLInputElement | null) {
+  const active = document.activeElement;
+  return Boolean(active && active !== scan && active.matches('input:not([type="radio"], [type="checkbox"]), textarea, select'));
+}
+
 /** A USB or Bluetooth barcode scanner types the digits and presses Enter, like a keyboard. With the computer set
  * to Persian the digits arrive as ۰-۹, so they are converted; the field empties itself for the next scan. */
 export const ScanField = forwardRef<HTMLInputElement, {
