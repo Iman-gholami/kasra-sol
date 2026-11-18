@@ -19,9 +19,13 @@ async function accessibilityViolations(page: Page, scope: string) {
   return scan.violations.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', '));
 }
 
+/** Opens a section from the menu; on phones the sections are behind the «همه بخش‌ها» button. */
 async function openTab(page: Page, label: string) {
+  const menu = page.getByRole('button', { name: /^همه بخش‌ها/ });
+  if (await menu.isVisible()) await menu.click();
   await page.getByRole('navigation', { name: 'بخش‌های مدیریت' }).getByRole('button', { name: label }).click();
 }
+const addressSection = (page: Page) => page.locator('summary', { hasText: 'آدرس صفحه محصول' });
 async function customerOrder(browser: Browser, payment: 'cod' | 'online') {
   const context = await browser.newContext({ extraHTTPHeaders: { 'X-Forwarded-For': visitorAddress() } });
   const page = await context.newPage();
@@ -54,9 +58,20 @@ test('owner dashboard: private chrome, live metrics, accessible and free of cons
   await expect(page.getByTestId('low-stock-count')).toContainText('ترکیب کم‌موجود');
   await expect(page.getByTestId('orders-month')).toContainText(/سفارش‌های \S+ ۱۴[۰-۹]{2}/);
   await expect(page.getByText('هیچ عددی در این صفحه درآمد قطعی نیست', { exact: false })).toBeVisible();
+  const today = page.getByTestId('today');
+  await expect(today.getByTestId('store-today')).toContainText('فروش حضوری امروز');
+  await expect(today.getByTestId('store-month')).toContainText('تومان');
   const scan = await new AxeBuilder({ page }).include('.admin-app').withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(scan.violations.map(v => v.id + ': ' + v.nodes.map(n => n.target.join(' ')).join(', '))).toEqual([]);
   await shot(page, 'dashboard-desktop');
+  // The demo catalog has colours and sizes running low: the to-do item opens the product list filtered to them.
+  const low = today.locator('li').filter({ hasText: 'رو به اتمام' });
+  await low.getByRole('button', { name: /نمایش محصولات/ }).click();
+  await expect(page).toHaveURL(/tab=products&stock=low/);
+  await expect(page.getByLabel('فیلتر موجودی')).toHaveValue('low');
+  await expect(page.getByRole('row').filter({ hasText: 'کم‌موجود' }).first()).toBeVisible();
+  await page.goBack();
+  await expect(page.getByTestId('today')).toBeVisible();
   expect(problems).toEqual([]);
 });
 
@@ -67,9 +82,12 @@ test('owner creates a draft with photos, publishes it, and it reaches the storef
   await openTab(page, 'محصولات و موجودی');
   await page.getByRole('button', { name: 'افزودن محصول' }).click();
   await expect(page.getByRole('heading', { name: 'افزودن محصول جدید' })).toBeFocused();
+  await page.getByLabel('نام محصول').fill(PRODUCT_NAME);
+  // The address is made from the name; it can still be set by hand.
+  await addressSection(page).click();
+  await expect(page.getByLabel('آدرس محصول (slug)')).toHaveValue('manto-ktan-azmaishi');
   await page.getByLabel('شناسه ثابت (لاتین)').fill(PRODUCT);
   await page.getByLabel('آدرس محصول (slug)').fill(PRODUCT);
-  await page.getByLabel('نام محصول').fill(PRODUCT_NAME);
   await page.getByLabel('دسته‌بندی').selectOption('manto');
   await page.getByLabel('قیمت فروش (تومان)').fill('۱۲۵۰۰۰۰');
   await page.getByLabel('قیمت قبل از تخفیف (اختیاری)').fill('1490000');
@@ -77,7 +95,7 @@ test('owner creates a draft with photos, publishes it, and it reaches the storef
   await page.getByLabel('جنس پارچه').fill('کتان');
   await page.getByLabel('فرم لباس').fill('آزاد');
   await page.getByLabel('راهنمای نگهداری').fill('شست‌وشو با آب سرد');
-  await page.getByLabel('سایزها، جداشده با ویرگول').fill('M، L');
+  await page.getByRole('group', { name: 'سایزهای حروفی' }).getByRole('button', { name: 'L', exact: true }).click();
   await page.getByLabel('مشکی / M').fill('5');
   await page.getByLabel('مشکی / L').fill('2');
   const upload = page.getByLabel(/انتخاب تصویر/);
@@ -207,10 +225,10 @@ test('manager: runs the store but cannot administer staff', async ({ page }) => 
   await openTab(page, 'محصولات و موجودی');
   await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT);
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
-  // Typed on a Persian keyboard: a number input would silently drop these digits.
+  // Typed on a Persian keyboard: a number input would silently drop these digits. Thousands are grouped for reading.
   const price = page.getByRole('textbox', { name: 'قیمت فروش ' + PRODUCT_NAME + ' به تومان' });
   await price.fill('۱۲۰۰۰۰۰');
-  await expect(price).toHaveValue('1200000');
+  await expect(price).toHaveValue('1,200,000');
   await page.getByRole('row', { name: new RegExp(PRODUCT_NAME) }).getByRole('button', { name: 'ثبت', exact: true }).click();
   await expect(page.getByText('قیمت ذخیره شد.')).toBeVisible();
   expect(await page.evaluate(async () => (await fetch('/api/admin/staff')).status)).toBe(403);
@@ -548,13 +566,14 @@ test('product editor: unsaved changes are guarded, Back moves between screens, a
   await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
   await page.getByRole('button', { name: 'کپی ' + PRODUCT_NAME + ' به‌عنوان محصول جدید' }).click();
   await expect(page.getByRole('heading', { name: 'کپی محصول' })).toBeFocused();
+  await addressSection(page).click();
   await expect(page.getByLabel('شناسه ثابت (لاتین)')).toHaveValue(PRODUCT + '-copy');
   await expect(page.getByLabel('نام محصول')).toHaveValue(PRODUCT_NAME + ' (کپی)');
   await expect(page.getByLabel('مشکی / M')).toHaveValue('0');
   await page.getByLabel('مشکی / M').fill('۷');
-  // Renaming a color keeps the stock entered for it.
-  await page.getByLabel('شناسه لاتین').fill('jet-black');
-  await expect(page.getByLabel('مشکی / M')).toHaveValue('7');
+  // Renaming a colour keeps the stock entered for it.
+  await page.getByLabel('نام رنگ').fill('مشکی براق');
+  await expect(page.getByLabel('مشکی براق / M')).toHaveValue('7');
   await page.getByRole('button', { name: 'ایجاد پیش‌نویس محصول' }).click();
   await expect(page.getByText('محصول ذخیره شد.')).toBeVisible();
   await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill(PRODUCT + '-copy');
@@ -562,6 +581,54 @@ test('product editor: unsaved changes are guarded, Back moves between screens, a
   const copy = page.getByRole('row', { name: new RegExp(PRODUCT_NAME + ' \\(کپی\\)') });
   await expect(copy.getByText('پیش‌نویس')).toBeVisible();
   await expect(copy).toContainText('۷ عدد');
+  expect(problems).toEqual([]);
+});
+
+test('a product needs no Latin codes: colours and sizes are picked, the address comes from the name, it is published from the editor', async ({ page }) => {
+  const problems = watchConsole(page);
+  await signIn(page, accounts().owner);
+  await openTab(page, 'محصولات و موجودی');
+  const name = 'شومیز حریر گلدار';
+  for (const round of [1, 2]) {
+    await page.getByRole('button', { name: 'افزودن محصول' }).click();
+    await page.getByLabel('نام محصول').fill(name);
+    await page.getByLabel('قیمت فروش (تومان)').fill('۸۹۰۰۰۰');
+    await expect(page.getByLabel('قیمت فروش (تومان)')).toHaveValue('890,000');
+    await page.getByLabel('قیمت قبل از تخفیف (اختیاری)').fill('1000000');
+    await expect(page.getByText('۱۱٪ تخفیف')).toBeVisible();
+    await page.getByLabel('توضیحات محصول').fill('شومیز حریر سبک با طرح گل‌های ریز برای تابستان');
+    await page.getByLabel('جنس پارچه').fill('حریر');
+    await page.getByLabel('فرم لباس').fill('آزاد');
+    await page.getByLabel('راهنمای نگهداری').fill('شست‌وشوی دستی با آب ولرم');
+    await page.getByRole('button', { name: 'افزودن رنگ', exact: true }).click();
+    await page.getByRole('button', { name: 'افزودن رنگ سرمه‌ای' }).click();
+    await expect(page.getByLabel('نام رنگ')).toHaveCount(2);
+    await page.getByRole('group', { name: 'سایزهای حروفی' }).getByRole('button', { name: 'L', exact: true }).click();
+    await page.getByLabel('سرمه‌ای / L').fill('3');
+    if (round === 1) {
+      // Publishing needs a photo: the form says so instead of failing on the server.
+      await page.getByRole('button', { name: 'ایجاد و انتشار در فروشگاه' }).click();
+      await expect(page.getByTestId('admin-app').getByRole('alert')).toContainText('دست‌کم یک عکس لازم است');
+      await shot(page, 'product-editor-presets');
+    }
+    await page.getByLabel(/انتخاب تصویر/).setInputFiles([{ name: 'front.png', mimeType: 'image/png', buffer: PNG }]);
+    await expect(page.locator('.admin-gallery-item')).toHaveCount(1);
+    await page.getByRole('button', { name: 'ایجاد و انتشار در فروشگاه' }).click();
+    await expect(page.getByText('محصول ذخیره و در فروشگاه منتشر شد.')).toBeVisible();
+  }
+  // The second product with the same name got the next free address.
+  await page.getByRole('searchbox', { name: 'جست‌وجوی محصول' }).fill('shomiz-hrir-gldar');
+  await page.getByRole('button', { name: 'جست‌وجو', exact: true }).click();
+  const rows = page.getByRole('row', { name: new RegExp(name) });
+  await expect(rows).toHaveCount(2);
+  await expect(rows.filter({ hasText: 'منتشرشده' })).toHaveCount(2);
+  await expect(page.getByText('shomiz-hrir-gldar-2')).toBeVisible();
+  const storefront = await page.context().browser()!.newPage();
+  await storefront.goto('/product/shomiz-hrir-gldar-2');
+  await expect(storefront.getByRole('heading', { level: 1, name })).toBeVisible();
+  await expect(storefront.locator('.detail-price')).toContainText('۸۹۰٬۰۰۰');
+  await expect(storefront.getByRole('button', { name: 'رنگ سرمه‌ای' })).toBeVisible();
+  await storefront.close();
   expect(problems).toEqual([]);
 });
 
@@ -593,6 +660,23 @@ test('orders: period filter, Excel export of the filtered list, and a printable 
   await expect(detail.getByRole('heading', { name: 'اقلام سفارش' })).toBeVisible();
   await expect(detail).toContainText('کد پستی');
   await page.emulateMedia({ media: 'screen' });
+  // The courier gets the address by paste, and Back (a phone's back gesture) returns to the same filtered list.
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await detail.getByRole('button', { name: 'کپی مشخصات ارسال' }).click();
+  await expect(detail.getByRole('status').filter({ hasText: 'کپی شد' })).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('گیرنده: مهمان نمایشی');
+  expect(copied).toContain('کد پستی: ');
+  await expect(page).toHaveURL(/tab=orders&order=[0-9a-f-]{36}/);
+  await page.reload();
+  await expect(page.getByTestId('order-detail')).toContainText('مهمان نمایشی');
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'فهرست سفارش‌ها' })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByTestId('order-detail')).toBeVisible();
+  await page.getByRole('button', { name: 'بازگشت به سفارش‌ها' }).first().click();
+  await expect(page.getByRole('heading', { name: 'فهرست سفارش‌ها' })).toBeVisible();
+  await expect(page).not.toHaveURL(/order=/);
 });
 
 test('traffic statistics: real storefront visits appear in the owner dashboard, bots do not', async ({ page, browser }) => {
@@ -759,6 +843,14 @@ test.describe('phone layout', () => {
     expect(await overflowing(page)).toEqual([]);
     await shot(page, 'login-mobile');
     await signIn(page, accounts().owner);
+    const nav = page.getByRole('navigation', { name: 'بخش‌های مدیریت' });
+    await expect(nav).toBeHidden();
+    await page.getByRole('button', { name: /^همه بخش‌ها/ }).click();
+    await expect(nav.getByRole('button')).toHaveCount(11);
+    for (const button of await nav.getByRole('button').all()) await expect(button).toBeInViewport();
+    await shot(page, 'menu-mobile');
+    await page.getByRole('button', { name: 'بستن منو' }).click();
+    await expect(nav).toBeHidden();
     for (const [label, name] of [['داشبورد', 'dashboard'], ['آمار بازدید', 'traffic'], ['صندوق فروش', 'counter'],
       ['ورود کالا و برچسب', 'receiving'], ['محصولات و موجودی', 'products'], ['اسلایدر صفحه اول', 'home-slider'],
       ['سفارش‌ها', 'orders'], ['کارکنان و مجوزها', 'staff'], ['تاریخچه فعالیت‌ها', 'audit'], ['حساب من', 'account']] as const) {

@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { Archive, ChevronDown, ChevronUp, Copy, ImageIcon, PackageSearch, Pencil, Plus, Search, Send, Tag } from 'lucide-react';
 import { adminApi, AdminApiError, errorMessage } from '@/components/admin/admin-api';
 import { CATEGORY, digitsOnly, formatNumber, formatToman, PRODUCT_STATUS } from '@/components/admin/labels';
-import { Badge, Loading, Notice, Pager } from '@/components/admin/ui';
+import { discountPercent } from '@/components/admin/product-form';
+import { AmountInput, Badge, Loading, Notice, Pager } from '@/components/admin/ui';
 
 export type ProductRow = {
   id: string; name: string; slug: string; category: string; price: number; compareAt: number | null;
@@ -75,6 +76,7 @@ function Row({ product, permissions, changed, edit, duplicate }: {
     return 'موجودی ' + variant.color_name + ' / ' + variant.size + ' ذخیره شد.';
   });
   const status = PRODUCT_STATUS[product.status];
+  const off = discountPercent(product.price, product.compareAt);
   const stockClass = product.stock <= 0 ? 'admin-stock-none' : product.lowVariants > 0 ? 'admin-stock-low' : 'admin-stock-good';
   return <Fragment>
     <tr className={expanded ? 'admin-row-expanded' : undefined}>
@@ -98,12 +100,13 @@ function Row({ product, permissions, changed, edit, duplicate }: {
             product.lowVariants > 0 && formatNumber(product.lowVariants) + ' ترکیب کم‌موجود'].filter(Boolean).join(' · ')}</span>}</td>
       <td data-label="قیمت">
         {can('products:price') ? <form className="admin-price-form" onSubmit={savePrice}>
-          <input type="text" inputMode="numeric" maxLength={10} required dir="ltr" value={price}
-            aria-label={'قیمت فروش ' + product.name + ' به تومان'} onChange={event => setPrice(digitsOnly(event.target.value))}/>
+          <AmountInput required value={price} aria-label={'قیمت فروش ' + product.name + ' به تومان'} onDigits={setPrice}/>
           <button className="admin-btn admin-btn-primary admin-btn-small" disabled={busy || price === '' || Number(price) === product.price}
             type="submit">ثبت</button>
         </form> : <span className="admin-nowrap">{formatToman(product.price)}</span>}
-        {product.compareAt ? <span className="admin-sub">قبل از تخفیف: {formatToman(product.compareAt)}</span> : null}
+        {product.compareAt ? <span className="admin-sub">قبل از تخفیف: {formatToman(product.compareAt)}
+          {off ? ' (' + formatNumber(off) + '٪ تخفیف)' : ''}
+        </span> : null}
       </td>
       <td data-label="مدیریت">
         <div className="admin-table-actions">
@@ -150,13 +153,14 @@ function Row({ product, permissions, changed, edit, duplicate }: {
   </Fragment>;
 }
 
-export function ProductList({ permissions, edit, create, duplicate, initialQuery = '' }: {
+export function ProductList({ permissions, edit, create, duplicate, initialQuery = '', initialStock = 'all', initialStatus = 'all' }: {
   permissions: string[]; edit: (id: string) => void; create: () => void; duplicate: (id: string) => void; initialQuery?: string;
+  initialStock?: string; initialStatus?: string;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [search, setSearch] = useState(initialQuery.trim());
-  const [status, setStatus] = useState('all');
-  const [stock, setStock] = useState('all');
+  const [status, setStatus] = useState(initialStatus);
+  const [stock, setStock] = useState(initialStock);
   const [page, setPage] = useState(1);
   const [version, setVersion] = useState(0);
   const [data, setData] = useState<ProductPage | null>(null);

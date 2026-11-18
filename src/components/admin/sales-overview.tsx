@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Clock3, CreditCard, Package, PackageX, RefreshCw, ShoppingBag, TrendingUp, Truck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronLeft, Clock3, CreditCard, FilePen, Package, PackageX, RefreshCw, ScanBarcode, ShoppingBag,
+  TrendingUp, Truck } from 'lucide-react';
+import type { ProductFilter } from '@/components/admin/admin-dashboard';
 import { adminApi, errorMessage } from '@/components/admin/admin-api';
 import { formatNumber, formatToman } from '@/components/admin/labels';
 import { Loading, Notice } from '@/components/admin/ui';
@@ -16,9 +18,60 @@ type Report = {
   trend: { date: string; orders: number; codOrders: number; onlineOrders: number; deliveredOrders: number; deliveredValue: string }[];
   topProducts: { id: string; name: string; units: number; orders: number }[];
   lowStock: { id: string; name: string; colorId: string; colorName: string; size: string; stock: number }[];
+  // Counter sales (absent from an API older than this panel).
+  store?: { todaySales: number; todayValue: string; monthSales: number; monthValue: string };
 };
 const dayLabel = new Intl.DateTimeFormat('fa-IR', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
-const shortDate = (date: string) => dayLabel.format(new Date(date + 'T12:00:00Z'));
+const weekday = new Intl.DateTimeFormat('fa-IR', { timeZone: 'UTC', weekday: 'short' });
+const dayMonth = new Intl.DateTimeFormat('fa-IR', { timeZone: 'UTC', day: 'numeric', month: 'short' });
+const todayLong = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', day: 'numeric', month: 'long' });
+const asDay = (date: string) => new Date(date + 'T12:00:00Z');
+const shortDate = (date: string) => dayLabel.format(asDay(date));
+
+type Task = { key: string; count: number; text: string; action: string; tone: 'info' | 'warning' | 'danger'; icon: typeof Package;
+  run?: () => void };
+/** «امروز در یک نگاه»: today's money and orders, and what is waiting for someone, each a click away from where it is done. */
+function Today({ report, newOrders, openOrders, openProducts }: {
+  report: Report; newOrders: number | null; openOrders?: () => void; openProducts?: (filter: ProductFilter) => void;
+}) {
+  const tasks = ([
+    { key: 'orders', count: newOrders ?? 0, tone: 'info', icon: ShoppingBag, action: 'رسیدگی به سفارش‌ها', run: openOrders,
+      text: 'سفارش جدید سایت منتظر آماده‌سازی و ارسال است' },
+    { key: 'out', count: report.products.out_of_stock_products, tone: 'danger', icon: PackageX, action: 'نمایش محصولات',
+      run: openProducts && (() => openProducts({ stock: 'out' })), text: 'محصول منتشرشده کاملاً تمام شده و در سایت قابل خرید نیست' },
+    { key: 'low', count: report.products.low_stock_products, tone: 'warning', icon: AlertTriangle, action: 'نمایش محصولات',
+      run: openProducts && (() => openProducts({ stock: 'low' })), text: 'محصول رو به اتمام است (رنگ و سایزی با ۱ تا ۳ عدد)' },
+    { key: 'draft', count: report.products.draft, tone: 'info', icon: FilePen, action: 'نمایش پیش‌نویس‌ها',
+      run: openProducts && (() => openProducts({ status: 'draft' })), text: 'محصول پیش‌نویس هنوز در فروشگاه منتشر نشده است' }
+  ] satisfies Task[]).filter(task => task.count > 0);
+  const store = report.store;
+  return <section className="admin-panel admin-today" aria-labelledby="today-title" data-testid="today">
+    <div className="admin-panel-head"><div>
+      <h2 id="today-title">امروز در یک نگاه</h2>
+      <p>{todayLong.format(new Date())}</p>
+    </div></div>
+    <div className="admin-panel-body admin-stack-sm">
+      <div className="admin-today-stats">
+        {store && <p data-testid="store-today"><ScanBarcode size={18} aria-hidden="true"/><span>فروش حضوری امروز</span>
+          <strong>{formatToman(store.todayValue)}</strong><small>{formatNumber(store.todaySales)} فاکتور</small></p>}
+        <p><ShoppingBag size={18} aria-hidden="true"/><span>سفارش‌های سایت امروز</span>
+          <strong>{formatNumber(report.orders.today)} سفارش</strong>
+          <small>{formatNumber(report.trend.at(-1)?.codOrders ?? 0)} پرداخت در محل</small></p>
+        {store && <p data-testid="store-month"><TrendingUp size={18} aria-hidden="true"/><span>فروش حضوری {report.period.monthLabel}</span>
+          <strong>{formatToman(store.monthValue)}</strong><small>{formatNumber(store.monthSales)} فاکتور</small></p>}
+      </div>
+      <h3 className="admin-section-title">کارهای در انتظار</h3>
+      {tasks.length ? <ul className="admin-tasks">
+        {tasks.map(task => <li key={task.key} data-tone={task.tone}>
+          <task.icon size={18} aria-hidden="true"/>
+          <span><strong>{formatNumber(task.count)}</strong> {task.text}</span>
+          {task.run && <button type="button" className="admin-btn admin-btn-outline admin-btn-small" onClick={task.run}>
+            {task.action} <ChevronLeft size={14} aria-hidden="true"/></button>}
+        </li>)}
+      </ul> : <p className="admin-tasks-done"><CheckCircle2 size={18} aria-hidden="true"/> کار عقب‌افتاده‌ای نیست؛ سفارش تازه‌ای منتظر نیست و همه محصولات موجودی دارند.</p>}
+    </div>
+  </section>;
+}
 
 function Metric({ title, value, hint, icon: Icon, testId, tone = 'neutral' }: {
   title: string; value: string; hint: string; icon: typeof ShoppingBag; testId: string; tone?: 'neutral' | 'warning' | 'danger';
@@ -30,8 +83,11 @@ function Metric({ title, value, hint, icon: Icon, testId, tone = 'neutral' }: {
   </article>;
 }
 
-/** `openProduct` (when the account may see products) jumps from a low-stock row to that product in the product list. */
-export function SalesOverview({ openProduct }: { openProduct?: (id: string) => void }) {
+/** `openProduct` (when the account may see products) jumps from a low-stock row to that product in the product list;
+ * `openOrders` and `openProducts` open the lists the to-do items point at. `newOrders` is null when orders are hidden. */
+export function SalesOverview({ openProduct, openOrders, openProducts, newOrders = null }: {
+  openProduct?: (id: string) => void; openOrders?: () => void; openProducts?: (filter: ProductFilter) => void; newOrders?: number | null;
+}) {
   const [report, setReport] = useState<Report | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
@@ -58,6 +114,7 @@ export function SalesOverview({ openProduct }: { openProduct?: (id: string) => v
     {error && <Notice tone="error">{error}</Notice>}
     {busy && !report && <Loading label="در حال دریافت آمار فروشگاه…"/>}
     {report && <>
+      <Today report={report} newOrders={newOrders} openOrders={openOrders} openProducts={openProducts}/>
       <div className="admin-metrics" aria-busy={busy}>
         <Metric testId="orders-today" icon={ShoppingBag} title="سفارش‌های امروز" value={formatNumber(report.orders.today)}
           hint={'سفارش‌های لغونشده امروز؛ ' + formatNumber(report.trend.at(-1)?.codOrders ?? 0) + ' پرداخت در محل، ' +
@@ -103,7 +160,8 @@ export function SalesOverview({ openProduct }: { openProduct?: (id: string) => v
               <span className="admin-chart-value">{formatNumber(day.orders)}</span>
               <div className="admin-chart-track"><div className="admin-chart-bar"
                 style={{ height: day.orders ? Math.max(6, day.orders / maxOrders * 100) + '%' : '0' }}/></div>
-              <span className="admin-chart-label">{shortDate(day.date)}</span>
+              <span className="admin-chart-label"><span>{weekday.format(asDay(day.date))}</span>
+                <span>{dayMonth.format(asDay(day.date))}</span></span>
             </div>)}
           </div>
           <div className="admin-table-scroll">

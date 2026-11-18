@@ -11,6 +11,7 @@ type ProductRow = { total: number; active: number; draft: number; archived: numb
 type TopRow = { id: string; name: string; units: number; orders: number };
 type LowRow = { id: string; name: string; colorId: string; colorName: string; size: string; stock: number };
 type AmountRow = { amount: string; orders: number };
+type StoreRow = { today_sales: number; today_value: string; month_sales: number; month_value: string };
 
 // Start of a Tehran calendar day as an absolute instant, so the comparison can use the created_at index.
 const TODAY = "((now() AT TIME ZONE 'Asia/Tehran')::date::timestamp AT TIME ZONE 'Asia/Tehran')";
@@ -24,7 +25,7 @@ export async function reportRoutes(app: FastifyInstance, guard: Guard) {
     // Days are Tehran local days; "month" is the current Solar Hijri month. Cancelled orders are not counted
     // as orders. COD delivery is an operational status, not proof that money was collected.
     const month = persianMonthStart();
-    const [summary, catalog, monthlyDelivered, trend, top, low] = await Promise.all([
+    const [summary, catalog, monthlyDelivered, trend, top, low, store] = await Promise.all([
       pool.query<SummaryRow>([
         "SELECT COUNT(*) FILTER (WHERE status<>'cancelled' AND created_at >=", TODAY, ')::int AS today_orders,',
         "COUNT(*) FILTER (WHERE status<>'cancelled' AND created_at >=", MONTH, ')::int AS month_orders,',
@@ -81,11 +82,19 @@ export async function reportRoutes(app: FastifyInstance, guard: Guard) {
         "WHERE color->>'id'=v.color_id LIMIT 1),v.color_id) AS \"colorName\",",
         'v.size,v.stock FROM product_variants v JOIN products p ON p.id=v.product_id',
         'WHERE p.active AND v.stock<=3 ORDER BY v.stock ASC,p.name ASC,v.size ASC LIMIT 8'
-      ].join(' '))
+      ].join(' ')),
+      // Sales at the shop counter: money actually taken, so voided sales are left out. Today lies within the month.
+      pool.query<StoreRow>([
+        'SELECT COUNT(*) FILTER (WHERE created_at >=', TODAY, ')::int AS today_sales,',
+        'COALESCE(SUM(total) FILTER (WHERE created_at >=', TODAY, '),0)::text AS today_value,',
+        'COUNT(*)::int AS month_sales, COALESCE(SUM(total),0)::text AS month_value',
+        'FROM store_sales WHERE voided_at IS NULL AND created_at >=', MONTH
+      ].join(' '), [month.start])
     ]);
     const daily = trend.rows;
     const today = daily.at(-1) ?? { deliveredOrders: 0, deliveredValue: '0' };
     const s = summary.rows[0];
+    const shop = store.rows[0];
     return reply.header('Cache-Control', 'no-store').send({
       timezone: 'Asia/Tehran', currency: 'IRT', paymentVerificationAvailable: false,
       note: 'مبالغ، ارزش سفارش‌های پرداخت در محل با وضعیت تحویل‌شده هستند؛ دریافت وجه تأیید نشده و درآمد قطعی محسوب نمی‌شوند.',
@@ -107,6 +116,12 @@ export async function reportRoutes(app: FastifyInstance, guard: Guard) {
       products: catalog.rows[0] ?? {
         total: 0, active: 0, draft: 0, archived: 0, low_variants: 0, out_of_stock_variants: 0,
         low_stock_products: 0, out_of_stock_products: 0
+      },
+      store: {
+        todaySales: shop?.today_sales ?? 0,
+        todayValue: shop?.today_value ?? '0',
+        monthSales: shop?.month_sales ?? 0,
+        monthValue: shop?.month_value ?? '0'
       },
       trend: daily,
       topProducts: top.rows,

@@ -160,6 +160,22 @@ describe('counter sales', () => {
     assert.equal((await api('/v1/admin/store-sales?date=2020-01-01', { token: staff.token })).data.summary.sales, 0);
   });
 
+  it('counts counter sales on the dashboard, today and this month, and drops a voided one', async () => {
+    const report = async () => (await api('/v1/admin/reports/overview', { token: manager.token })).data.store;
+    const id = await product('report', { M: 2, L: 0 });
+    const { M } = await barcodes(id);
+    const before = await report();
+    const sold = await sell(staff.token, [{ code: M, quantity: 2 }]);
+    assert.equal(sold.status, 201);
+    const after = await report();
+    assert.deepEqual([after.todaySales - before.todaySales, after.monthSales - before.monthSales], [1, 1]);
+    assert.equal(BigInt(after.todayValue) - BigInt(before.todayValue), BigInt(2 * PRICE));
+    assert.equal(BigInt(after.monthValue) - BigInt(before.monthValue), BigInt(2 * PRICE));
+    const voided = await api('/v1/admin/store-sales/' + sold.data.sale.id + '/void', { method: 'POST', token: manager.token, body: {} });
+    assert.equal(voided.status, 200);
+    assert.deepEqual(await report(), before, 'a voided sale is no longer counted');
+  });
+
   it('refuses a sale the stock cannot cover without taking any of its lines', async () => {
     const id = await product('short', { M: 3, L: 1 });
     const codes = await barcodes(id);

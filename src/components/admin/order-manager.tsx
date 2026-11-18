@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { ArrowRight, ClipboardList, Download, Phone, Printer, RefreshCw, Search } from 'lucide-react';
+import { ArrowRight, ClipboardCopy, ClipboardList, Download, Phone, Printer, RefreshCw, Search } from 'lucide-react';
 import { adminApi, AdminApiError, adminDownload, errorMessage } from '@/components/admin/admin-api';
 import {
   formatDateTime, formatNumber, formatToman, ORDER_STATUS, PAYMENT_METHOD, paymentState, SHIPPING_METHOD,
@@ -38,10 +38,30 @@ function confirmText(order: { payment: string }, next: string) {
   return TRANSITION_ACTIONS[next] + ' برای این سفارش ثبت شود؟';
 }
 
+/** The delivery details as plain text, to paste into a courier's or the post office's message. */
+function shippingText(order: Pick<OrderDetail, 'id' | 'address'>) {
+  const { name, mobile, province, city, address, postal, notes } = order.address;
+  return ['سفارش ' + shortId(order.id), 'گیرنده: ' + name, 'موبایل: ' + mobile, 'نشانی: ' + province + '، ' + city + '، ' + address,
+    'کد پستی: ' + postal, ...(notes ? ['توضیحات: ' + notes] : [])].join('\n');
+}
+/** Copies `text`; pages opened by a LAN address (no HTTPS) have no Clipboard API, so a hidden field is used there. */
+async function copyText(text: string) {
+  if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return; }
+  const field = Object.assign(document.createElement('textarea'), { value: text });
+  field.setAttribute('readonly', '');
+  field.style.position = 'fixed'; field.style.opacity = '0';
+  document.body.append(field);
+  field.select();
+  const copied = document.execCommand('copy');
+  field.remove();
+  if (!copied) throw new Error('copy failed');
+}
+
 function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: boolean; onBack: () => void }) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [copied, setCopied] = useState<'yes' | 'failed' | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const fetchOrder = useCallback((signal?: AbortSignal) =>
@@ -84,6 +104,11 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
         <ArrowRight size={15} aria-hidden="true"/> بازگشت به سفارش‌ها</button>
       <button type="button" className="admin-btn admin-btn-outline admin-btn-small" onClick={() => window.print()}>
         <Printer size={15} aria-hidden="true"/> چاپ برگه سفارش</button>
+      <button type="button" className="admin-btn admin-btn-outline admin-btn-small"
+        onClick={() => copyText(shippingText(order)).then(() => setCopied('yes'), () => setCopied('failed'))}>
+        <ClipboardCopy size={15} aria-hidden="true"/> کپی مشخصات ارسال</button>
+      <span role="status" className="admin-sub">{copied === 'yes' ? 'نام، موبایل و نشانی کپی شد؛ در پیام‌رسان پیک یا پست جای‌گذاری کنید.'
+        : copied === 'failed' ? 'کپی ممکن نشد؛ نشانی را از کادر «مشتری و نشانی تحویل» بردارید.' : ''}</span>
     </div>
     <section className="admin-panel" aria-labelledby="order-title">
       <div className="admin-panel-head">
@@ -174,7 +199,11 @@ function OrderDetailView({ id, canFulfill, onBack }: { id: string; canFulfill: b
   </div>;
 }
 
-export function OrderManager({ canFulfill, canExport }: { canFulfill: boolean; canExport: boolean }) {
+/** `selected` is the order open in the address bar (`?order=`); `open` and `close` move between it and the list, which
+ * stays mounted underneath so its filters and page are kept. */
+export function OrderManager({ canFulfill, canExport, selected, open, close }: {
+  canFulfill: boolean; canExport: boolean; selected: string | null; open: (id: string) => void; close: () => void;
+}) {
   const [status, setStatus] = useState('open');
   const [period, setPeriod] = useState('all');
   const [exporting, setExporting] = useState(false);
@@ -184,7 +213,6 @@ export function OrderManager({ canFulfill, canExport }: { canFulfill: boolean; c
   const [data, setData] = useState<OrderList | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   useEffect(() => {
     if (selected) return;
@@ -197,8 +225,7 @@ export function OrderManager({ canFulfill, canExport }: { canFulfill: boolean; c
     return () => controller.abort();
   }, [status, period, search, page, selected, version]);
 
-  if (selected) return <OrderDetailView id={selected} canFulfill={canFulfill}
-    onBack={() => { setSelected(null); setLoading(true); }}/>;
+  if (selected) return <OrderDetailView key={selected} id={selected} canFulfill={canFulfill} onBack={close}/>;
   function submit(event: FormEvent) {
     event.preventDefault();
     setLoading(true); setPage(1); setSearch(query.trim()); setVersion(v => v + 1);
@@ -244,9 +271,9 @@ export function OrderManager({ canFulfill, canExport }: { canFulfill: boolean; c
         </div>
       </div>
       {error && <div className="admin-panel-body"><Notice tone="error">{error}</Notice></div>}
-      {loading ? <div className="admin-panel-body"><Loading label="در حال دریافت سفارش‌ها…"/></div>
+      {loading && !data ? <div className="admin-panel-body"><Loading label="در حال دریافت سفارش‌ها…"/></div>
         : data && data.items.length ? <>
-          <div className="admin-table-scroll">
+          <div className="admin-table-scroll" aria-busy={loading}>
             <table className="admin-table admin-table-cards">
               <thead><tr><th scope="col">سفارش</th><th scope="col">مشتری</th><th scope="col">مبلغ</th>
                 <th scope="col">پرداخت</th><th scope="col">وضعیت</th><th scope="col"><span className="sr-only">جزئیات</span></th></tr></thead>
@@ -262,7 +289,7 @@ export function OrderManager({ canFulfill, canExport }: { canFulfill: boolean; c
                   <td data-label="پرداخت"><Badge tone={payment.tone}>{payment.label}</Badge></td>
                   <td data-label="وضعیت"><Badge tone={statusTone(order.status)}>{statusLabel(order.status)}</Badge></td>
                   <td><button type="button" className="admin-btn admin-btn-outline admin-btn-small"
-                    aria-label={'جزئیات سفارش ' + shortId(order.id)} onClick={() => setSelected(order.id)}>جزئیات</button></td>
+                    aria-label={'جزئیات سفارش ' + shortId(order.id)} onClick={() => open(order.id)}>جزئیات</button></td>
                 </tr>;
               })}</tbody>
             </table>

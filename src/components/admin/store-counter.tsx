@@ -3,9 +3,9 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { CirclePause, Minus, Play, Plus, ReceiptText, RefreshCw, Trash2, Undo2 } from 'lucide-react';
 import { adminApi, AdminApiError, errorMessage, newClientRef } from '@/components/admin/admin-api';
-import { digitsOnly, formatDateTime, formatNumber, formatToman, STORE_PAYMENT } from '@/components/admin/labels';
+import { formatDateTime, formatNumber, formatToman, STORE_PAYMENT } from '@/components/admin/labels';
 import { barcodeProblem, ScanField } from '@/components/admin/scan-field';
-import { Badge, Loading, Notice } from '@/components/admin/ui';
+import { AmountInput, Badge, Loading, Notice } from '@/components/admin/ui';
 
 type Item = { code: string; productId: string; name: string; colorName: string; size: string; price: number; stock: number };
 type Line = Item & { quantity: number };
@@ -364,8 +364,7 @@ export function StoreCounter({ permissions, onUnsaved }: { permissions: string[]
             </label>)}
           </fieldset>
           {canDiscount && <label className="admin-field">تخفیف (تومان)
-            <input type="text" inputMode="numeric" dir="ltr" maxLength={10} value={discount}
-              onChange={event => setDiscount(digitsOnly(event.target.value))}/>
+            <AmountInput value={discount} onDigits={setDiscount}/>
           </label>}
           <label className="admin-field">یادداشت (اختیاری)
             <input type="text" maxLength={300} value={note} onChange={event => setNote(event.target.value)}/>

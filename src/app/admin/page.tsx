@@ -6,7 +6,7 @@ import { forwardedFor } from '@/lib/backend-proxy';
 
 export const metadata: Metadata = { title: 'مدیریت فروشگاه', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; edit?: string; q?: string }> }) {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; edit?: string; q?: string; stock?: string; status?: string; order?: string }> }) {
   const token = (await cookies()).get('kasra_admin')?.value;
   if (!token || !/^[a-f0-9]{64}$/.test(token)) redirect('/admin/login');
   const internal = process.env.BACKEND_INTERNAL_URL;
@@ -25,8 +25,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     if (error && typeof error === 'object' && 'digest' in error) throw error;
     return <section className="admin-login" role="alert"><div className="admin-login-card">ارتباط با سرور مدیریت برقرار نشد. دوباره تلاش کنید.</div></section>;
   }
-  const { tab, edit, q } = await searchParams;
+  const { tab, edit, q, stock, status, order } = await searchParams;
   // Repeated parameters arrive as arrays; only plain strings are used, and the dashboard validates them.
   const one = (value: unknown) => typeof value === 'string' ? value : undefined;
-  return <AdminDashboard user={user} initial={{ tab: one(tab), edit: one(edit), q: one(q) }}/>;
+  return <AdminDashboard user={user} initial={{ tab: one(tab), edit: one(edit), q: one(q), stock: one(stock), status: one(status),
+    order: one(order) }}/>;
 }
